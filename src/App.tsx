@@ -9,7 +9,6 @@ import {
   DEFAULT_SONG_INFO_URL,
   DIFFICULTIES,
   FC_ORDER,
-  FC_ORDER_MAP,
   PLAYLOG_FILTERS_STORAGE_KEY,
   PlaylogSortKey,
   RECORD_STORAGE_KEY,
@@ -332,6 +331,14 @@ function App() {
   ]);
 
   useEffect(() => {
+    localStorage.setItem(SONG_INFO_STORAGE_KEY, songInfoUrl);
+  }, [songInfoUrl]);
+
+  useEffect(() => {
+    localStorage.setItem(RECORD_STORAGE_KEY, recordCollectorUrl);
+  }, [recordCollectorUrl]);
+
+  useEffect(() => {
     detailAbortRef.current?.abort();
     setSelectedDetailTitle(null);
     setSelectedDetailRows([]);
@@ -552,9 +559,6 @@ function App() {
     if (!nextSongInfoUrl || !nextRecordUrl) {
       return;
     }
-
-    localStorage.setItem(SONG_INFO_STORAGE_KEY, nextSongInfoUrl);
-    localStorage.setItem(RECORD_STORAGE_KEY, nextRecordUrl);
 
     setSongInfoUrl(nextSongInfoUrl);
     setRecordCollectorUrl(nextRecordUrl);

@@ -5,10 +5,14 @@ export const RECORD_STORAGE_KEY = 'maistats.record-url';
 export const SCORE_FILTERS_STORAGE_KEY = 'maistats.score-filters';
 export const PLAYLOG_FILTERS_STORAGE_KEY = 'maistats.playlog-filters';
 
+const ENV_SONG_INFO_URL = import.meta.env.VITE_SONG_INFO_SERVER_URL?.trim();
+const ENV_RECORD_COLLECTOR_URL =
+  import.meta.env.VITE_RECORD_COLLECTOR_SERVER_URL?.trim();
+
 export const DEFAULT_SONG_INFO_URL =
-  import.meta.env.VITE_SONG_INFO_SERVER_URL ?? 'http://localhost:3001';
+  ENV_SONG_INFO_URL || 'http://localhost:3001';
 export const DEFAULT_RECORD_COLLECTOR_URL =
-  import.meta.env.VITE_RECORD_COLLECTOR_SERVER_URL ?? 'http://localhost:3000';
+  ENV_RECORD_COLLECTOR_URL || 'http://localhost:3000';
 
 export const CHART_TYPES: ChartType[] = ['STD', 'DX'];
 export const DIFFICULTIES: DifficultyCategory[] = [
