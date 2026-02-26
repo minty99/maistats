@@ -89,9 +89,10 @@ export type ActiveTab = 'scores' | 'playlogs';
 export type ScoreSortKey =
   | 'title'
   | 'achievement'
+  | 'rating'
   | 'days'
   | 'internal'
   | 'dxRatio'
   | 'lastPlayed';
 
-export type PlaylogSortKey = 'playedAt' | 'achievement' | 'dxRatio' | 'title';
+export type PlaylogSortKey = 'playedAt' | 'achievement' | 'rating' | 'dxRatio' | 'title';

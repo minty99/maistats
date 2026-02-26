@@ -318,6 +318,14 @@ export function ScoreExplorerSection({
                       </span>
                     </button>
                   </th>
+                  <th className="sortable">
+                    <button type="button" className="th-sort-button" onClick={() => onSortBy('rating')}>
+                      <span>Rating</span>
+                      <span className="sort-indicator">
+                        {sortIndicator(scoreSortKey === 'rating', scoreSortDesc)}
+                      </span>
+                    </button>
+                  </th>
                   <th>Rank</th>
                   <th>FC</th>
                   <th>Sync</th>
@@ -369,6 +377,7 @@ export function ScoreExplorerSection({
                     <td>{row.level ?? '-'}</td>
                     <td>{row.internalLevel?.toFixed(1) ?? '-'}</td>
                     <td>{formatPercent(row.achievementPercent)}</td>
+                    <td>{formatNumber(row.ratingPoints)}</td>
                     <td>{row.rank ?? '-'}</td>
                     <td>{row.fc ?? '-'}</td>
                     <td>{row.sync ?? '-'}</td>

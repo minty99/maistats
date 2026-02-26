@@ -186,6 +186,14 @@ export function PlaylogExplorerSection({
                       </span>
                     </button>
                   </th>
+                  <th className="sortable">
+                    <button type="button" className="th-sort-button" onClick={() => onSortBy('rating')}>
+                      <span>Rating</span>
+                      <span className="sort-indicator">
+                        {sortIndicator(playlogSortKey === 'rating', playlogSortDesc)}
+                      </span>
+                    </button>
+                  </th>
                   <th>Rank</th>
                   <th>FC</th>
                   <th>Sync</th>
@@ -213,6 +221,7 @@ export function PlaylogExplorerSection({
                     <td>{row.chartType}</td>
                     <td>{formatDifficultyShort(row.difficulty)}</td>
                     <td>{formatPercent(row.achievementPercent)}</td>
+                    <td>{formatNumber(row.ratingPoints)}</td>
                     <td>{row.rank ?? '-'}</td>
                     <td>{row.fc ?? '-'}</td>
                     <td>{row.sync ?? '-'}</td>

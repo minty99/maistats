@@ -43,6 +43,7 @@ export interface ScoreApiResponse {
   sync: SyncStatus | null;
   dx_score: number | null;
   dx_score_max: number | null;
+  rating_points?: number | null;
 }
 
 export interface SongDetailScoreApiResponse {
@@ -75,6 +76,7 @@ export interface PlayRecordApiResponse {
   credit_play_count: number | null;
   achievement_new_record: number | null;
   first_play: number | null;
+  rating_points?: number | null;
 }
 
 export interface SongSheetResponse {
@@ -121,6 +123,7 @@ export interface ScoreRow {
   dxScore: number | null;
   dxScoreMax: number | null;
   dxRatio: number | null;
+  ratingPoints: number | null;
   level: string | null;
   internalLevel: number | null;
   userLevel: string | null;
@@ -148,6 +151,7 @@ export interface PlaylogRow {
   dxScore: number | null;
   dxScoreMax: number | null;
   dxRatio: number | null;
+  ratingPoints: number | null;
   creditPlayCount: number | null;
   isNewRecord: boolean;
   isFirstPlay: boolean;

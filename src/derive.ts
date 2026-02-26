@@ -59,6 +59,55 @@ export function toDxRatio(dxScore: number | null, dxScoreMax: number | null): nu
   return dxScore / dxScoreMax;
 }
 
+function coefficientForAchievement(achievementPercent: number): number {
+  const achievement = Math.min(achievementPercent, 100.5);
+
+  if (achievement >= 100.5) return 22.4;
+  if (achievement >= 100.4999) return 22.2;
+  if (achievement >= 100.0) return 21.6;
+  if (achievement >= 99.9999) return 21.4;
+  if (achievement >= 99.5) return 21.1;
+  if (achievement >= 99.0) return 20.8;
+  if (achievement >= 98.9999) return 20.6;
+  if (achievement >= 98.0) return 20.3;
+  if (achievement >= 97.0) return 20.0;
+  if (achievement >= 96.9999) return 17.6;
+  if (achievement >= 94.0) return 16.8;
+  if (achievement >= 90.0) return 15.2;
+  if (achievement >= 80.0) return 13.6;
+  if (achievement >= 79.9999) return 12.8;
+  if (achievement >= 75.0) return 12.0;
+  if (achievement >= 70.0) return 11.2;
+  if (achievement >= 60.0) return 9.6;
+  if (achievement >= 50.0) return 8.0;
+  if (achievement >= 40.0) return 6.4;
+  if (achievement >= 30.0) return 4.8;
+  if (achievement >= 20.0) return 3.2;
+  if (achievement >= 10.0) return 1.6;
+  return 0.0;
+}
+
+function isApLike(fc: string | null): boolean {
+  return fc === 'AP' || fc === 'AP+';
+}
+
+export function toRatingPoints(
+  internalLevel: number | null,
+  achievementX10000: number | null,
+  fc: string | null,
+): number | null {
+  if (internalLevel === null || achievementX10000 === null) {
+    return null;
+  }
+
+  const achievementPercent = achievementX10000 / 10000;
+  const achievement = Math.min(achievementPercent, 100.5);
+  const coefficient = coefficientForAchievement(achievementPercent);
+  const base = Math.floor((coefficient * internalLevel * achievement) / 100);
+  const points = Number.isFinite(base) && base > 0 ? base : 0;
+  return isApLike(fc) ? points + 1 : points;
+}
+
 export function daysSince(unixtime: number | null): number | null {
   if (unixtime === null) {
     return null;
@@ -132,6 +181,11 @@ export function buildScoreRows(
       dxScore: score.dx_score,
       dxScoreMax: score.dx_score_max,
       dxRatio: toDxRatio(score.dx_score, score.dx_score_max),
+      ratingPoints: score.rating_points ?? toRatingPoints(
+        sheet?.internal_level ?? null,
+        score.achievement_x10000,
+        score.fc,
+      ),
       level: sheet?.level ?? null,
       internalLevel: sheet?.internal_level ?? null,
       userLevel: sheet?.user_level ?? null,
@@ -151,6 +205,14 @@ export function buildPlaylogRows(
   return playlogs.map((log, index) => {
     const normalizedTitle = normalizeTitleKey(log.title);
     const songInfo = songInfoByTitle.get(normalizedTitle);
+    const sheet =
+      log.diff_category === null
+        ? null
+        : songInfo?.sheets.find(
+            (item) =>
+              item.chart_type === log.chart_type &&
+              item.difficulty === log.diff_category,
+          ) ?? null;
 
     return {
       key: `${log.played_at_unixtime}-${index}`,
@@ -169,6 +231,11 @@ export function buildPlaylogRows(
       dxScore: log.dx_score,
       dxScoreMax: log.dx_score_max,
       dxRatio: toDxRatio(log.dx_score, log.dx_score_max),
+      ratingPoints: log.rating_points ?? toRatingPoints(
+        sheet?.internal_level ?? null,
+        log.achievement_x10000,
+        log.fc,
+      ),
       creditPlayCount: log.credit_play_count,
       isNewRecord: (log.achievement_new_record ?? 0) > 0,
       isFirstPlay: (log.first_play ?? 0) > 0,

@@ -523,25 +523,27 @@ tbody tr:hover {
 .score-table th:nth-child(5), .score-table td:nth-child(5) { width: 5.5ch; }  /* Lv */
 .score-table th:nth-child(6), .score-table td:nth-child(6) { width: 6.5ch; }  /* IntLv */
 .score-table th:nth-child(7), .score-table td:nth-child(7) { width: 9ch; }    /* Achv */
-.score-table th:nth-child(8), .score-table td:nth-child(8) { width: 6.5ch; }  /* Rank */
-.score-table th:nth-child(9), .score-table td:nth-child(9) { width: 5.5ch; }  /* FC */
-.score-table th:nth-child(10), .score-table td:nth-child(10) { width: 6ch; }  /* Sync */
-.score-table th:nth-child(11), .score-table td:nth-child(11) { width: 14ch; } /* DX */
-.score-table th:nth-child(12), .score-table td:nth-child(12) { width: 15ch; } /* Last Played */
-.score-table th:nth-child(13), .score-table td:nth-child(13) { width: 7ch; }  /* Days */
-.score-table th:nth-child(14), .score-table td:nth-child(14) { width: 11ch; } /* Version */
+.score-table th:nth-child(8), .score-table td:nth-child(8) { width: 7ch; }    /* Rating */
+.score-table th:nth-child(9), .score-table td:nth-child(9) { width: 6.5ch; }  /* Rank */
+.score-table th:nth-child(10), .score-table td:nth-child(10) { width: 5.5ch; } /* FC */
+.score-table th:nth-child(11), .score-table td:nth-child(11) { width: 6ch; }  /* Sync */
+.score-table th:nth-child(12), .score-table td:nth-child(12) { width: 14ch; } /* DX */
+.score-table th:nth-child(13), .score-table td:nth-child(13) { width: 15ch; } /* Last Played */
+.score-table th:nth-child(14), .score-table td:nth-child(14) { width: 7ch; }  /* Days */
+.score-table th:nth-child(15), .score-table td:nth-child(15) { width: 11ch; } /* Version */
 
 .playlog-table th:nth-child(2), .playlog-table td:nth-child(2) { width: 15ch; } /* Played At */
 .playlog-table th:nth-child(3), .playlog-table td:nth-child(3) { width: 4ch; }  /* Track */
 .playlog-table th:nth-child(5), .playlog-table td:nth-child(5) { width: 5.5ch; } /* Chart */
 .playlog-table th:nth-child(6), .playlog-table td:nth-child(6) { width: 8.5ch; } /* Diff */
 .playlog-table th:nth-child(7), .playlog-table td:nth-child(7) { width: 9ch; }   /* Achv */
-.playlog-table th:nth-child(8), .playlog-table td:nth-child(8) { width: 6.5ch; } /* Rank */
-.playlog-table th:nth-child(9), .playlog-table td:nth-child(9) { width: 5.5ch; } /* FC */
-.playlog-table th:nth-child(10), .playlog-table td:nth-child(10) { width: 6ch; } /* Sync */
-.playlog-table th:nth-child(11), .playlog-table td:nth-child(11) { width: 14ch; } /* DX */
-.playlog-table th:nth-child(12), .playlog-table td:nth-child(12) { width: 8ch; }  /* Credit Count */
-.playlog-table th:nth-child(13), .playlog-table td:nth-child(13) { width: 7ch; }  /* Flags */
+.playlog-table th:nth-child(8), .playlog-table td:nth-child(8) { width: 7ch; }   /* Rating */
+.playlog-table th:nth-child(9), .playlog-table td:nth-child(9) { width: 6.5ch; } /* Rank */
+.playlog-table th:nth-child(10), .playlog-table td:nth-child(10) { width: 5.5ch; } /* FC */
+.playlog-table th:nth-child(11), .playlog-table td:nth-child(11) { width: 6ch; } /* Sync */
+.playlog-table th:nth-child(12), .playlog-table td:nth-child(12) { width: 14ch; } /* DX */
+.playlog-table th:nth-child(13), .playlog-table td:nth-child(13) { width: 8ch; }  /* Credit Count */
+.playlog-table th:nth-child(14), .playlog-table td:nth-child(14) { width: 7ch; }  /* Flags */
 
 .score-table th:nth-child(3),
 .score-table td:nth-child(3),
@@ -557,6 +559,8 @@ tbody tr:hover {
 .score-table td:nth-child(9),
 .score-table th:nth-child(10),
 .score-table td:nth-child(10),
+.score-table th:nth-child(11),
+.score-table td:nth-child(11),
 .playlog-table th:nth-child(3),
 .playlog-table td:nth-child(3),
 .playlog-table th:nth-child(5),
@@ -568,7 +572,9 @@ tbody tr:hover {
 .playlog-table th:nth-child(9),
 .playlog-table td:nth-child(9),
 .playlog-table th:nth-child(10),
-.playlog-table td:nth-child(10) {
+.playlog-table td:nth-child(10),
+.playlog-table th:nth-child(11),
+.playlog-table td:nth-child(11) {
   text-align: center;
   white-space: nowrap;
 }

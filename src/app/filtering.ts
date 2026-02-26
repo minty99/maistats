@@ -168,6 +168,9 @@ export function buildFilteredScoreRows({
       case 'achievement':
         result = compareNullableNumber(left.achievementPercent, right.achievementPercent);
         break;
+      case 'rating':
+        result = compareNullableNumber(left.ratingPoints, right.ratingPoints);
+        break;
       case 'days':
         result =
           (left.daysSinceLastPlayed ?? oldestObservedDays) -
@@ -260,6 +263,9 @@ export function buildFilteredPlaylogRows({
         break;
       case 'achievement':
         result = compareNullableNumber(left.achievementPercent, right.achievementPercent);
+        break;
+      case 'rating':
+        result = compareNullableNumber(left.ratingPoints, right.ratingPoints);
         break;
       case 'dxRatio':
         result = compareNullableNumber(left.dxRatio, right.dxRatio);
