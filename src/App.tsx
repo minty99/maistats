@@ -581,7 +581,7 @@ function App() {
         <div className="hero-main">
           <div className="hero-title-row">
             <div>
-              <h1>maimai Score and Playlog Explorer</h1>
+              <h1>maistats</h1>
             </div>
             <button type="button" className="server-open-button" onClick={openServerModal}>
               Server Connection
