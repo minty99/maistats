@@ -86,6 +86,23 @@ npm run preview
 - `npm run build`: TypeScript 체크 + 프로덕션 빌드
 - `npm run preview`: 빌드 결과 프리뷰 서버 실행
 
+## CI/CD (arm64 Linux)
+
+- `main` 브랜치에 push하면 GitHub Actions가 `linux/arm64` 대상 assets 이미지를 빌드해 GHCR에 업로드합니다.
+- 워크플로 파일: `.github/workflows/build-and-push.yml`
+- 이미지 태그:
+  - `ghcr.io/<owner>/maistats-assets:latest`
+  - `ghcr.io/<owner>/maistats-assets:sha-<short_sha>`
+
+### 서버 배포 예시
+
+```bash
+docker run --rm -v /var/www/maistats:/dst ghcr.io/<owner>/maistats-assets:latest /dst
+```
+
+위 명령은 `/var/www/maistats`를 최신 정적 파일로 갱신합니다.  
+그 경로를 Nginx/Apache/Caddy의 document root로 연결해 서비스하면 됩니다.
+
 ## 참고
 
 - Last Played/Days는 `record-collector-server`의 `/api/recent?limit=10000` 관측 데이터 기준입니다.
