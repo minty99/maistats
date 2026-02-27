@@ -529,7 +529,7 @@ tbody tr:hover {
 .score-table th:nth-child(11), .score-table td:nth-child(11) { width: 6ch; }  /* Sync */
 .score-table th:nth-child(12), .score-table td:nth-child(12) { width: 14ch; } /* DX */
 .score-table th:nth-child(13), .score-table td:nth-child(13) { width: 15ch; } /* Last Played */
-.score-table th:nth-child(14), .score-table td:nth-child(14) { width: 7ch; }  /* Days */
+.score-table th:nth-child(14), .score-table td:nth-child(14) { width: 8ch; }  /* Play count */
 .score-table th:nth-child(15), .score-table td:nth-child(15) { width: 11ch; } /* Version */
 
 .playlog-table th:nth-child(2), .playlog-table td:nth-child(2) { width: 15ch; } /* Played At */
@@ -561,6 +561,8 @@ tbody tr:hover {
 .score-table td:nth-child(10),
 .score-table th:nth-child(11),
 .score-table td:nth-child(11),
+.score-table th:nth-child(14),
+.score-table td:nth-child(14),
 .playlog-table th:nth-child(3),
 .playlog-table td:nth-child(3),
 .playlog-table th:nth-child(5),

@@ -1,18 +1,6 @@
 import { FC_ORDER_MAP, SCORE_RANK_ORDER_MAP, ScoreSortKey, SYNC_ORDER_MAP, PlaylogSortKey } from './constants';
 import { compareNullableNumber, includesText, sortByOrder } from './utils';
-import { daysSince } from '../derive';
 import type { FcStatus, PlaylogRow, ScoreRank, ScoreRow, SyncStatus } from '../types';
-
-export function computeOldestObservedDays(playlogData: PlaylogRow[]): number {
-  const maxObservedDays = playlogData.reduce((maxValue, row) => {
-    const elapsedDays = daysSince(row.playedAtUnix);
-    if (elapsedDays === null) {
-      return maxValue;
-    }
-    return Math.max(maxValue, elapsedDays);
-  }, 0);
-  return maxObservedDays + 1;
-}
 
 export function computeScoreRankOptions(scoreData: ScoreRow[]): ScoreRank[] {
   const values = Array.from(
@@ -54,7 +42,6 @@ interface BuildFilteredScoreRowsParams {
   includeNeverPlayed: boolean;
   daysMin: number;
   daysMax: number;
-  oldestObservedDays: number;
   scoreSortKey: ScoreSortKey;
   scoreSortDesc: boolean;
 }
@@ -78,7 +65,6 @@ export function buildFilteredScoreRows({
   includeNeverPlayed,
   daysMin,
   daysMax,
-  oldestObservedDays,
   scoreSortKey,
   scoreSortDesc,
 }: BuildFilteredScoreRowsParams): ScoreRow[] {
@@ -146,12 +132,6 @@ export function buildFilteredScoreRows({
       if (!includeNeverPlayed) {
         return false;
       }
-      if (daysMin > 0) {
-        return false;
-      }
-      if (oldestObservedDays > daysMax) {
-        return false;
-      }
     } else if (row.daysSinceLastPlayed < daysMin || row.daysSinceLastPlayed > daysMax) {
       return false;
     }
@@ -170,11 +150,6 @@ export function buildFilteredScoreRows({
         break;
       case 'rating':
         result = compareNullableNumber(left.ratingPoints, right.ratingPoints);
-        break;
-      case 'days':
-        result =
-          (left.daysSinceLastPlayed ?? oldestObservedDays) -
-          (right.daysSinceLastPlayed ?? oldestObservedDays);
         break;
       case 'internal':
         result = compareNullableNumber(left.internalLevel, right.internalLevel);

@@ -10,7 +10,6 @@ import type {
 } from '../types';
 import type { ScoreSortKey } from '../app/constants';
 import {
-  formatDays,
   formatDifficultyShort,
   formatNumber,
   formatPercent,
@@ -67,7 +66,6 @@ interface ScoreExplorerSectionProps {
   scoreSortKey: ScoreSortKey;
   scoreSortDesc: boolean;
   onSortBy: (key: ScoreSortKey) => void;
-  oldestObservedDays: number;
 }
 
 export function ScoreExplorerSection({
@@ -116,7 +114,6 @@ export function ScoreExplorerSection({
   scoreSortKey,
   scoreSortDesc,
   onSortBy,
-  oldestObservedDays,
 }: ScoreExplorerSectionProps) {
   return (
     <div className="explorer-layout">
@@ -345,12 +342,7 @@ export function ScoreExplorerSection({
                       </span>
                     </button>
                   </th>
-                  <th className="sortable">
-                    <button type="button" className="th-sort-button" onClick={() => onSortBy('days')}>
-                      <span>Days</span>
-                      <span className="sort-indicator">{sortIndicator(scoreSortKey === 'days', scoreSortDesc)}</span>
-                    </button>
-                  </th>
+                  <th>Play count</th>
                   <th>Version</th>
                 </tr>
               </thead>
@@ -385,8 +377,10 @@ export function ScoreExplorerSection({
                       {formatNumber(row.dxScore)} / {formatNumber(row.dxScoreMax)}
                       <div className="muted">{formatRatio(row.dxRatio)}</div>
                     </td>
-                    <td>{row.latestPlayedAtLabel ?? toDateLabel(row.latestPlayedAtUnix) ?? '-'}</td>
-                    <td>{formatDays(row.daysSinceLastPlayed, oldestObservedDays)}</td>
+                    <td title={row.daysSinceLastPlayed === null ? undefined : `${row.daysSinceLastPlayed}일 전`}>
+                      {row.latestPlayedAtLabel ?? toDateLabel(row.latestPlayedAtUnix) ?? '-'}
+                    </td>
+                    <td>{formatNumber(row.playCount)}</td>
                     <td>{row.version ?? '-'}</td>
                   </tr>
                 ))}

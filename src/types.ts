@@ -43,6 +43,8 @@ export interface ScoreApiResponse {
   sync: SyncStatus | null;
   dx_score: number | null;
   dx_score_max: number | null;
+  last_played_at?: string | null;
+  play_count?: number | null;
   rating_points?: number | null;
 }
 
@@ -104,11 +106,6 @@ export interface SongVersionsListResponse {
   versions: SongVersionResponse[];
 }
 
-export interface PlayAgg {
-  latestPlayedAtUnix: number;
-  latestPlayedAtLabel: string | null;
-}
-
 export interface ScoreRow {
   key: string;
   title: string;
@@ -132,6 +129,7 @@ export interface ScoreRow {
   latestPlayedAtUnix: number | null;
   latestPlayedAtLabel: string | null;
   daysSinceLastPlayed: number | null;
+  playCount: number | null;
 }
 
 export interface PlaylogRow {

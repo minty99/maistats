@@ -33,7 +33,6 @@ import {
   StoredScoreFilters,
 } from './app/storage';
 import {
-  buildPlayAggMap,
   buildPlaylogRows,
   buildScoreRows,
 } from './derive';
@@ -41,7 +40,6 @@ import {
   buildFilteredPlaylogRows,
   buildFilteredScoreRows,
   computeFcOptions,
-  computeOldestObservedDays,
   computeScoreRankOptions,
   computeSyncOptions,
 } from './app/filtering';
@@ -150,7 +148,7 @@ function App() {
   const [daysMin, setDaysMin] = useState(() => coerceNumber(savedScoreFilters?.daysMin, 0));
   const [daysMax, setDaysMax] = useState(() => coerceNumber(savedScoreFilters?.daysMax, 2000));
 
-  const [scoreSortKey, setScoreSortKey] = useState<ScoreSortKey>('days');
+  const [scoreSortKey, setScoreSortKey] = useState<ScoreSortKey>('lastPlayed');
   const [scoreSortDesc, setScoreSortDesc] = useState(true);
 
   const [selectedDetailTitle, setSelectedDetailTitle] = useState<string | null>(null);
@@ -205,7 +203,6 @@ function App() {
         controller.signal,
       );
 
-      const playAggMap = buildPlayAggMap(payload.playlogs);
       const uniqueTitles = Array.from(
         new Set([...payload.ratedScores.map((row) => row.title), ...payload.playlogs.map((row) => row.title)]),
       );
@@ -223,7 +220,7 @@ function App() {
         return;
       }
 
-      const nextScoreRows = buildScoreRows(payload.ratedScores, playAggMap, metadata);
+      const nextScoreRows = buildScoreRows(payload.ratedScores, metadata);
       const nextPlaylogRows = buildPlaylogRows(payload.playlogs, metadata);
 
       setScoreData(nextScoreRows);
@@ -414,11 +411,6 @@ function App() {
     [playlogSortKey],
   );
 
-  const oldestObservedDays = useMemo(
-    () => computeOldestObservedDays(playlogData),
-    [playlogData],
-  );
-
   const scoreRankOptions = useMemo(() => computeScoreRankOptions(scoreData), [scoreData]);
   const fcOptions = useMemo(() => computeFcOptions(scoreData), [scoreData]);
   const syncOptions = useMemo(() => computeSyncOptions(scoreData), [scoreData]);
@@ -493,7 +485,6 @@ function App() {
         includeNeverPlayed,
         daysMin,
         daysMax,
-        oldestObservedDays,
         scoreSortKey,
         scoreSortDesc,
       }),
@@ -510,7 +501,6 @@ function App() {
       includeNoInternalLevel,
       internalMax,
       internalMin,
-      oldestObservedDays,
       query,
       rankFilter,
       scoreData,
@@ -663,7 +653,6 @@ function App() {
           scoreSortKey={scoreSortKey}
           scoreSortDesc={scoreSortDesc}
           onSortBy={handleScoreSortBy}
-          oldestObservedDays={oldestObservedDays}
         />
       ) : (
         <PlaylogExplorerSection

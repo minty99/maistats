@@ -1,7 +1,6 @@
 import type {
   ChartType,
   DifficultyCategory,
-  PlayAgg,
   PlayRecordApiResponse,
   PlaylogRow,
   ScoreApiResponse,
@@ -120,37 +119,33 @@ export function daysSince(unixtime: number | null): number | null {
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
-export function buildPlayAggMap(playlogs: PlayRecordApiResponse[]): Map<string, PlayAgg> {
-  const aggMap = new Map<string, PlayAgg>();
-
-  for (const log of playlogs) {
-    if (log.diff_category === null) {
-      continue;
-    }
-
-    const key = chartKey(log.title, log.chart_type, log.diff_category);
-    const current = aggMap.get(key);
-    if (!current) {
-      aggMap.set(key, {
-        latestPlayedAtUnix: log.played_at_unixtime,
-        latestPlayedAtLabel: log.played_at,
-      });
-      continue;
-    }
-
-    if (log.played_at_unixtime > current.latestPlayedAtUnix) {
-      current.latestPlayedAtUnix = log.played_at_unixtime;
-      current.latestPlayedAtLabel = log.played_at;
-    }
-
+function parseMaimaiPlayedAtToUnix(playedAt: string | null | undefined): number | null {
+  const text = playedAt?.trim();
+  if (!text) {
+    return null;
   }
 
-  return aggMap;
+  const match = /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/.exec(text);
+  if (!match) {
+    return null;
+  }
+
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.getTime();
 }
 
 export function buildScoreRows(
   scores: ScoreApiResponse[],
-  playAggMap: Map<string, PlayAgg>,
   songInfoByTitle: Map<string, SongInfoResponse>,
 ): ScoreRow[] {
   return scores.map((score) => {
@@ -163,9 +158,7 @@ export function buildScoreRows(
         item.chart_type === score.chart_type && item.difficulty === score.diff_category,
     );
 
-    const playAgg = playAggMap.get(key);
-
-    const latestPlayedAtUnix = playAgg?.latestPlayedAtUnix ?? null;
+    const latestPlayedAtUnix = parseMaimaiPlayedAtToUnix(score.last_played_at);
 
     return {
       key,
@@ -192,8 +185,9 @@ export function buildScoreRows(
       version: sheet?.version ?? null,
       imageName: songInfo?.image_name ?? null,
       latestPlayedAtUnix,
-      latestPlayedAtLabel: playAgg?.latestPlayedAtLabel ?? toDateLabel(latestPlayedAtUnix),
+      latestPlayedAtLabel: score.last_played_at ?? toDateLabel(latestPlayedAtUnix),
       daysSinceLastPlayed: daysSince(latestPlayedAtUnix),
+      playCount: score.play_count ?? null,
     };
   });
 }

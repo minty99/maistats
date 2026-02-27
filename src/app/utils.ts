@@ -19,13 +19,6 @@ export function formatNumber(value: number | null): string {
   return value.toLocaleString();
 }
 
-export function formatDays(value: number | null, unknownDays: number): string {
-  if (value === null) {
-    return `${unknownDays}+일`;
-  }
-  return `${value}일`;
-}
-
 export function includesText(haystack: string, query: string): boolean {
   if (!query.trim()) {
     return true;

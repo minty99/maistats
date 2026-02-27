@@ -90,7 +90,6 @@ export type ScoreSortKey =
   | 'title'
   | 'achievement'
   | 'rating'
-  | 'days'
   | 'internal'
   | 'dxRatio'
   | 'lastPlayed';

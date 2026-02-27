@@ -105,7 +105,8 @@ docker run --rm -v /var/www/maistats:/dst ghcr.io/<owner>/maistats-assets:latest
 
 ## 참고
 
-- Last Played/Days는 `record-collector-server`의 `/api/recent?limit=10000` 관측 데이터 기준입니다.
+- Score 화면의 Last Played/Days는 `record-collector-server`의 `/api/scores/rated` (`scores` 테이블 `last_played_at`) 기준입니다.
+- Playlog 화면은 `record-collector-server`의 `/api/recent?limit=10000` (`playlogs` 테이블) 기준입니다.
 - chart별 `play_count`는 playlog에서 추정하지 않고, 곡별 `/api/scores/detail/{title}` 조회 결과만 사용합니다.
 - 더 긴 기간 분석이 필요하면 record collector에 추가 API(예: 전체 playlog 조회)가 필요합니다.
 - UI의 `Server Connection` 섹션에서 실행 중에도 API URL을 변경할 수 있으며, 변경값은 브라우저 `localStorage`에 저장됩니다.
