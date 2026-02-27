@@ -94,4 +94,10 @@ export type ScoreSortKey =
   | 'dxRatio'
   | 'lastPlayed';
 
-export type PlaylogSortKey = 'playedAt' | 'achievement' | 'rating' | 'dxRatio' | 'title';
+export type PlaylogSortKey =
+  | 'playedAt'
+  | 'achievement'
+  | 'rating'
+  | 'dxRatio'
+  | 'playCount'
+  | 'title';

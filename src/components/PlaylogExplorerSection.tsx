@@ -205,7 +205,14 @@ export function PlaylogExplorerSection({
                       </span>
                     </button>
                   </th>
-                  <th>Credit Count</th>
+                  <th className="sortable">
+                    <button type="button" className="th-sort-button" onClick={() => onSortBy('playCount')}>
+                      <span>Credit Count</span>
+                      <span className="sort-indicator">
+                        {sortIndicator(playlogSortKey === 'playCount', playlogSortDesc)}
+                      </span>
+                    </button>
+                  </th>
                   <th>Flags</th>
                 </tr>
               </thead>

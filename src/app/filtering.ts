@@ -245,6 +245,9 @@ export function buildFilteredPlaylogRows({
       case 'dxRatio':
         result = compareNullableNumber(left.dxRatio, right.dxRatio);
         break;
+      case 'playCount':
+        result = compareNullableNumber(left.creditPlayCount, right.creditPlayCount);
+        break;
       case 'title':
         result = left.title.localeCompare(right.title, 'ko');
         break;
