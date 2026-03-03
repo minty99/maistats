@@ -20,9 +20,6 @@ export interface StoredScoreFilters {
 export interface StoredPlaylogFilters {
   chartFilter?: ChartType[];
   difficultyFilter?: DifficultyCategory[];
-  includeUnknownDiff?: boolean;
-  newRecordOnly?: boolean;
-  firstPlayOnly?: boolean;
   achievementMin?: number;
   achievementMax?: number;
 }
@@ -74,13 +71,6 @@ export function coerceNumberArray(value: unknown): number[] {
     return [];
   }
   return value.filter((item): item is number => typeof item === 'number' && Number.isFinite(item));
-}
-
-export function coerceBoolean(value: unknown, fallbackValue: boolean): boolean {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  return fallbackValue;
 }
 
 export function coerceNumber(value: unknown, fallbackValue: number): number {

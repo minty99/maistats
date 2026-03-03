@@ -1,7 +1,9 @@
+import { ChartTypeLabel } from './ChartTypeLabel';
 import { Jacket } from './Jacket';
+import { getDifficultyToneClass } from './DifficultyLabel';
 import type { SongDetailRow } from '../types';
 import {
-  formatDifficultyShort,
+  formatVersionLabel,
   formatNumber,
   formatPercent,
 } from '../app/utils';
@@ -36,9 +38,29 @@ export function SongDetailModal({
     }
 
     return (
-      <span className="estimated-level">
+      <span className={`estimated-level ${getDifficultyToneClass(row.difficulty)}`}>
         {whole}
         <span className="estimated-level-fraction">.{fraction}</span>
+      </span>
+    );
+  };
+
+  const renderLevelCell = (row: SongDetailRow) => {
+    if (row.internalLevel === null) {
+      return '-';
+    }
+
+    if (row.isInternalLevelEstimated) {
+      return (
+        <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
+          {renderInternalLevel(row)}
+        </span>
+      );
+    }
+
+    return (
+      <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
+        {row.internalLevel.toFixed(1)}
       </span>
     );
   };
@@ -71,9 +93,7 @@ export function SongDetailModal({
                 <thead>
                   <tr>
                     <th>Chart</th>
-                    <th>Diff</th>
                     <th>Lv</th>
-                    <th>IntLv</th>
                     <th>User Lv</th>
                     <th>Achv</th>
                     <th>Rank</th>
@@ -88,10 +108,10 @@ export function SongDetailModal({
                 <tbody>
                   {selectedDetailRows.map((row) => (
                     <tr key={row.key}>
-                      <td>{row.chartType}</td>
-                      <td>{formatDifficultyShort(row.difficulty)}</td>
-                      <td>{row.level ?? '-'}</td>
-                      <td>{renderInternalLevel(row)}</td>
+                      <td>
+                        <ChartTypeLabel chartType={row.chartType} />
+                      </td>
+                      <td>{renderLevelCell(row)}</td>
                       <td>{row.userLevel ?? '-'}</td>
                       <td>{formatPercent(row.achievementPercent)}</td>
                       <td>{row.rank ?? '-'}</td>
@@ -102,7 +122,7 @@ export function SongDetailModal({
                       </td>
                       <td>{row.lastPlayedAtLabel ?? '-'}</td>
                       <td>{formatNumber(row.playCount)}</td>
-                      <td>{row.version ?? '-'}</td>
+                      <td>{formatVersionLabel(row.version)}</td>
                     </tr>
                   ))}
                 </tbody>

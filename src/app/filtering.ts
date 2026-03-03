@@ -162,9 +162,6 @@ interface BuildFilteredPlaylogRowsParams {
   playlogQuery: string;
   playlogChartFilter: PlaylogRow['chartType'][];
   playlogDifficultyFilter: Array<NonNullable<PlaylogRow['difficulty']>>;
-  playlogIncludeUnknownDiff: boolean;
-  playlogNewRecordOnly: boolean;
-  playlogFirstPlayOnly: boolean;
   playlogAchievementMin: number;
   playlogAchievementMax: number;
   playlogSortKey: PlaylogSortKey;
@@ -176,9 +173,6 @@ export function buildFilteredPlaylogRows({
   playlogQuery,
   playlogChartFilter,
   playlogDifficultyFilter,
-  playlogIncludeUnknownDiff,
-  playlogNewRecordOnly,
-  playlogFirstPlayOnly,
   playlogAchievementMin,
   playlogAchievementMax,
   playlogSortKey,
@@ -193,19 +187,7 @@ export function buildFilteredPlaylogRows({
       return false;
     }
 
-    if (row.difficulty === null) {
-      if (!playlogIncludeUnknownDiff) {
-        return false;
-      }
-    } else if (!playlogDifficultyFilter.includes(row.difficulty)) {
-      return false;
-    }
-
-    if (playlogNewRecordOnly && !row.isNewRecord) {
-      return false;
-    }
-
-    if (playlogFirstPlayOnly && !row.isFirstPlay) {
+    if (row.difficulty !== null && !playlogDifficultyFilter.includes(row.difficulty)) {
       return false;
     }
 
@@ -235,7 +217,7 @@ export function buildFilteredPlaylogRows({
         result = compareNullableNumber(left.dxRatio, right.dxRatio);
         break;
       case 'playCount':
-        result = compareNullableNumber(left.creditPlayCount, right.creditPlayCount);
+        result = compareNullableNumber(left.creditId, right.creditId);
         break;
       case 'title':
         result = left.title.localeCompare(right.title, 'ko');

@@ -10,6 +10,8 @@ import {
 } from '../app/utils';
 import type { ChartType, DifficultyCategory, PlaylogRow } from '../types';
 import { toDateLabel } from '../derive';
+import { ChartTypeLabel, getChartTypeToneClass } from './ChartTypeLabel';
+import { DifficultyLabel, getDifficultyToneClass } from './DifficultyLabel';
 import { Jacket } from './Jacket';
 import { ToggleGroup } from './ToggleGroup';
 
@@ -28,12 +30,6 @@ interface PlaylogExplorerSectionProps {
   setPlaylogAchievementMin: Dispatch<SetStateAction<number>>;
   playlogAchievementMax: number;
   setPlaylogAchievementMax: Dispatch<SetStateAction<number>>;
-  playlogIncludeUnknownDiff: boolean;
-  setPlaylogIncludeUnknownDiff: Dispatch<SetStateAction<boolean>>;
-  playlogNewRecordOnly: boolean;
-  setPlaylogNewRecordOnly: Dispatch<SetStateAction<boolean>>;
-  playlogFirstPlayOnly: boolean;
-  setPlaylogFirstPlayOnly: Dispatch<SetStateAction<boolean>>;
   filteredPlaylogRows: PlaylogRow[];
   songInfoUrl: string;
   playlogSortKey: PlaylogSortKey;
@@ -56,18 +52,32 @@ export function PlaylogExplorerSection({
   setPlaylogAchievementMin,
   playlogAchievementMax,
   setPlaylogAchievementMax,
-  playlogIncludeUnknownDiff,
-  setPlaylogIncludeUnknownDiff,
-  playlogNewRecordOnly,
-  setPlaylogNewRecordOnly,
-  playlogFirstPlayOnly,
-  setPlaylogFirstPlayOnly,
   filteredPlaylogRows,
   songInfoUrl,
   playlogSortKey,
   playlogSortDesc,
   onSortBy,
 }: PlaylogExplorerSectionProps) {
+  const renderDifficultyCell = (difficulty: DifficultyCategory | null) => {
+    if (!difficulty) {
+      return <span className="difficulty-badge diff-unknown">-</span>;
+    }
+
+    return (
+      <span className={`difficulty-badge ${getDifficultyToneClass(difficulty)}`}>
+        {formatDifficultyShort(difficulty)}
+      </span>
+    );
+  };
+
+  const renderAchievementCell = (row: PlaylogRow) => {
+    return (
+      <span className={`achievement-value ${row.isNewRecord ? 'achievement-value--new' : ''}`}>
+        {formatPercent(row.achievementPercent)}
+      </span>
+    );
+  };
+
   return (
     <div className="explorer-layout">
       <aside className="sidebar-column">
@@ -75,7 +85,6 @@ export function PlaylogExplorerSection({
           <div className="panel-heading compact">
             <div>
               <h2>Filters</h2>
-              <p>플레이로그, 기록 변화, 달성률 조건으로 이력을 좁힙니다.</p>
             </div>
           </div>
           <div className="filter-grid">
@@ -94,6 +103,7 @@ export function PlaylogExplorerSection({
               options={chartTypes}
               selected={playlogChartFilter}
               onToggle={(value) => setPlaylogChartFilter((prev) => toggleArrayValue(prev, value))}
+              optionClassName={(value) => `chart-type-chip ${getChartTypeToneClass(value)}`}
             />
 
             <ToggleGroup
@@ -101,7 +111,8 @@ export function PlaylogExplorerSection({
               options={difficulties}
               selected={playlogDifficultyFilter}
               onToggle={(value) => setPlaylogDifficultyFilter((prev) => toggleArrayValue(prev, value))}
-              formatLabel={formatDifficultyShort}
+              renderLabel={(value) => <DifficultyLabel difficulty={value} short />}
+              optionClassName={(value) => `difficulty-chip ${getDifficultyToneClass(value)}`}
             />
 
             <div className="range-grid compact">
@@ -129,32 +140,6 @@ export function PlaylogExplorerSection({
               </label>
             </div>
 
-            <div className="toggle-grid">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={playlogIncludeUnknownDiff}
-                  onChange={(event) => setPlaylogIncludeUnknownDiff(event.target.checked)}
-                />
-                난이도 정보 없는 로그 포함
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={playlogNewRecordOnly}
-                  onChange={(event) => setPlaylogNewRecordOnly(event.target.checked)}
-                />
-                New Record만 보기
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={playlogFirstPlayOnly}
-                  onChange={(event) => setPlaylogFirstPlayOnly(event.target.checked)}
-                />
-                First Play만 보기
-              </label>
-            </div>
           </div>
         </section>
       </aside>
@@ -164,7 +149,6 @@ export function PlaylogExplorerSection({
           <div className="panel-heading">
             <div>
               <h2>Playlogs</h2>
-              <p>최근 플레이 흐름과 기록 상승 여부를 한 번에 확인합니다.</p>
             </div>
             <span className="panel-count">{playlogCountLabel}</span>
           </div>
@@ -172,6 +156,14 @@ export function PlaylogExplorerSection({
             <table className="playlog-table compact-table">
               <thead>
                 <tr>
+                  <th className="sortable credit-col">
+                    <button type="button" className="th-sort-button" onClick={() => onSortBy('playCount')}>
+                      <span>Credit #</span>
+                      <span className="sort-indicator">
+                        {sortIndicator(playlogSortKey === 'playCount', playlogSortDesc)}
+                      </span>
+                    </button>
+                  </th>
                   {showJackets ? <th className="jacket-col">Jacket</th> : null}
                   <th className="sortable played-at-col">
                     <button type="button" className="th-sort-button" onClick={() => onSortBy('playedAt')}>
@@ -217,20 +209,12 @@ export function PlaylogExplorerSection({
                       </span>
                     </button>
                   </th>
-                  <th className="sortable play-count-col">
-                    <button type="button" className="th-sort-button" onClick={() => onSortBy('playCount')}>
-                      <span>Credit Count</span>
-                      <span className="sort-indicator">
-                        {sortIndicator(playlogSortKey === 'playCount', playlogSortDesc)}
-                      </span>
-                    </button>
-                  </th>
-                  <th className="flags-col">Flags</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPlaylogRows.map((row) => (
                   <tr key={row.key}>
+                    <td className="credit-col">{row.creditId ?? '-'}</td>
                     {showJackets ? (
                       <td className="jacket-col">
                         <Jacket songInfoUrl={songInfoUrl} imageName={row.imageName} title={row.title} />
@@ -239,21 +223,19 @@ export function PlaylogExplorerSection({
                     <td className="played-at-col">{row.playedAtLabel ?? toDateLabel(row.playedAtUnix) ?? '-'}</td>
                     <td className="track-col">{row.track ?? '-'}</td>
                     <td className="title-col">{row.title}</td>
-                    <td className="chart-col">{row.chartType}</td>
-                    <td className="diff-col">{formatDifficultyShort(row.difficulty)}</td>
-                    <td className="achievement-col">{formatPercent(row.achievementPercent)}</td>
+                    <td className="chart-col">
+                      <ChartTypeLabel chartType={row.chartType} />
+                    </td>
+                    <td className="diff-col">
+                      {renderDifficultyCell(row.difficulty)}
+                    </td>
+                    <td className="achievement-col">{renderAchievementCell(row)}</td>
                     <td className="rating-col">{formatNumber(row.ratingPoints)}</td>
                     <td className="rank-col">{row.rank ?? '-'}</td>
                     <td className="fc-col">{row.fc ?? '-'}</td>
                     <td className="sync-col">{row.sync ?? '-'}</td>
                     <td className="dx-col">
                       {formatNumber(row.dxScore)} / {formatNumber(row.dxScoreMax)}
-                    </td>
-                    <td className="play-count-col">{row.creditPlayCount ?? '-'}</td>
-                    <td className="flags-col">
-                      {row.isNewRecord ? 'NEW ' : ''}
-                      {row.isFirstPlay ? 'FIRST' : ''}
-                      {!row.isNewRecord && !row.isFirstPlay ? '-' : ''}
                     </td>
                   </tr>
                 ))}

@@ -320,9 +320,8 @@ export function buildPlaylogRows(
         log.achievement_x10000,
         log.fc,
       ),
-      creditPlayCount: log.credit_play_count,
+      creditId: log.credit_id,
       isNewRecord: (log.achievement_new_record ?? 0) > 0,
-      isFirstPlay: (log.first_play ?? 0) > 0,
       imageName: songInfo?.image_name ?? null,
     };
   });

@@ -84,3 +84,10 @@ export function formatDifficultyShort(value: string | null | undefined): string 
   }
   return DIFFICULTY_SHORT_LABELS[value] ?? value;
 }
+
+export function formatVersionLabel(value: string | null | undefined): string {
+  if (!value) {
+    return '-';
+  }
+  return value.replace(/^maimaiでらっくす/, 'DX');
+}

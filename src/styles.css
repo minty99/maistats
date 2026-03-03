@@ -11,6 +11,13 @@
   --line-strong: #c2cddd;
   --chip: #f3f6fb;
   --chip-active: #2563eb;
+  --diff-basic: #3d9b58;
+  --diff-advanced: #d3a11f;
+  --diff-expert: #d24343;
+  --diff-master: #8450c8;
+  --diff-remaster: #b88cff;
+  --chart-std: #4ea7e7;
+  --chart-dx: #7b8795;
 }
 
 * {
@@ -117,7 +124,7 @@ select {
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 2px;
   background: rgba(243, 246, 251, 0.92);
   color: #475569;
   font-size: 12px;
@@ -335,6 +342,202 @@ select {
   color: #eff6ff;
 }
 
+.difficulty-label {
+  font-weight: 700;
+}
+
+.chart-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4ch;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 12%, white);
+  font-size: inherit;
+  font-weight: 500;
+  line-height: 1.1;
+  vertical-align: middle;
+}
+
+.chart-type-std {
+  color: var(--chart-std);
+}
+
+.chart-type-dx {
+  color: var(--chart-dx);
+}
+
+.difficulty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5ch;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 12%, white);
+  font-size: inherit;
+  font-weight: 400;
+  line-height: 1.1;
+  vertical-align: middle;
+}
+
+.diff-basic {
+  color: var(--diff-basic);
+}
+
+.diff-advanced {
+  color: var(--diff-advanced);
+}
+
+.diff-expert {
+  color: var(--diff-expert);
+}
+
+.diff-master {
+  color: var(--diff-master);
+}
+
+.diff-remaster {
+  color: var(--diff-remaster);
+}
+
+.diff-unknown {
+  color: #64748b;
+}
+
+.difficulty-chip {
+  background: #fff;
+}
+
+.chart-type-chip {
+  background: #fff;
+}
+
+.chart-type-chip.chart-type-std {
+  border-color: color-mix(in srgb, var(--chart-std) 28%, white);
+  background: color-mix(in srgb, var(--chart-std) 10%, white);
+}
+
+.chart-type-chip.chart-type-dx {
+  border-color: color-mix(in srgb, var(--chart-dx) 28%, white);
+  background: color-mix(in srgb, var(--chart-dx) 10%, white);
+}
+
+.chart-type-chip.active {
+  color: inherit;
+}
+
+.chart-type-chip.active.chart-type-std {
+  border-color: var(--chart-std);
+  background: color-mix(in srgb, var(--chart-std) 18%, white);
+}
+
+.chart-type-chip.active.chart-type-dx {
+  border-color: var(--chart-dx);
+  background: color-mix(in srgb, var(--chart-dx) 18%, white);
+}
+
+.difficulty-chip.diff-basic {
+  border-color: color-mix(in srgb, var(--diff-basic) 30%, white);
+  background: color-mix(in srgb, var(--diff-basic) 10%, white);
+}
+
+.difficulty-chip.diff-advanced {
+  border-color: color-mix(in srgb, var(--diff-advanced) 34%, white);
+  background: color-mix(in srgb, var(--diff-advanced) 14%, white);
+}
+
+.difficulty-chip.diff-expert {
+  border-color: color-mix(in srgb, var(--diff-expert) 30%, white);
+  background: color-mix(in srgb, var(--diff-expert) 10%, white);
+}
+
+.difficulty-chip.diff-master {
+  border-color: color-mix(in srgb, var(--diff-master) 30%, white);
+  background: color-mix(in srgb, var(--diff-master) 10%, white);
+}
+
+.difficulty-chip.diff-remaster {
+  border-color: color-mix(in srgb, var(--diff-remaster) 34%, white);
+  background: color-mix(in srgb, var(--diff-remaster) 14%, white);
+}
+
+.difficulty-chip.active {
+  color: inherit;
+}
+
+.difficulty-chip.active.diff-basic {
+  border-color: var(--diff-basic);
+  background: color-mix(in srgb, var(--diff-basic) 18%, white);
+}
+
+.difficulty-chip.active.diff-advanced {
+  border-color: var(--diff-advanced);
+  background: color-mix(in srgb, var(--diff-advanced) 22%, white);
+}
+
+.difficulty-chip.active.diff-expert {
+  border-color: var(--diff-expert);
+  background: color-mix(in srgb, var(--diff-expert) 18%, white);
+}
+
+.difficulty-chip.active.diff-master {
+  border-color: var(--diff-master);
+  background: color-mix(in srgb, var(--diff-master) 18%, white);
+}
+
+.difficulty-chip.active.diff-remaster {
+  border-color: var(--diff-remaster);
+  background: color-mix(in srgb, var(--diff-remaster) 22%, white);
+}
+
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.6ch;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 12%, white);
+  font-size: inherit;
+  font-weight: 400;
+  line-height: 1.1;
+  vertical-align: middle;
+}
+
+.picker-summary-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.difficulty-summary-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.difficulty-summary-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.difficulty-summary-separator {
+  color: var(--muted);
+  margin: 0 1px;
+}
+
+.difficulty-summary-all {
+  font-weight: 700;
+}
+
 .search-box {
   display: grid;
   gap: 6px;
@@ -429,6 +632,15 @@ select:focus-visible {
   gap: 6px;
 }
 
+.filter-panel .chip {
+  border-radius: 2px;
+}
+
+.filter-panel > .filter-grid > label {
+  display: grid;
+  gap: 6px;
+}
+
 .filter-panel input,
 .filter-panel select,
 .filter-panel button {
@@ -470,6 +682,15 @@ select:focus-visible {
   max-height: 70vh;
   -webkit-overflow-scrolling: touch;
   background: #fcfdff;
+}
+
+.table-loading-state {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 4%, white);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 table {
@@ -629,17 +850,8 @@ tbody tr:hover {
   width: 5.5ch;
 }
 
-.score-table .diff-col,
-.playlog-table .diff-col {
-  width: 8.5ch;
-}
-
 .score-table .level-col {
-  width: 5.5ch;
-}
-
-.score-table .internal-col {
-  width: 6.5ch;
+  width: 8ch;
 }
 
 .score-table .achievement-col,
@@ -677,11 +889,33 @@ tbody tr:hover {
 }
 
 .playlog-table .played-at-col {
-  width: 15ch;
+  width: 13ch;
 }
 
 .playlog-table .track-col {
   width: 4ch;
+}
+
+.playlog-table .chart-col {
+  width: 5ch;
+}
+
+.playlog-table .diff-col {
+  width: 6.5ch;
+}
+
+.playlog-table .achievement-col {
+  width: 15ch;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.playlog-table .dx-col {
+  width: 13ch;
+}
+
+.playlog-table .credit-col {
+  width: 7ch;
 }
 
 .score-table .play-count-col,
@@ -693,19 +927,14 @@ tbody tr:hover {
   width: 11ch;
 }
 
-.playlog-table .flags-col {
-  width: 7ch;
-}
-
 .score-table .chart-col,
-.score-table .diff-col,
 .score-table .level-col,
-.score-table .internal-col,
 .score-table .rating-col,
 .score-table .rank-col,
 .score-table .fc-col,
 .score-table .sync-col,
 .score-table .play-count-col,
+.playlog-table .credit-col,
 .playlog-table .track-col,
 .playlog-table .chart-col,
 .playlog-table .diff-col,
@@ -715,6 +944,21 @@ tbody tr:hover {
 .playlog-table .sync-col {
   text-align: center;
   white-space: nowrap;
+}
+
+.achievement-value {
+  display: inline-flex;
+  justify-content: flex-start;
+  width: 9ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.achievement-value--empty {
+  color: var(--muted);
+}
+
+.achievement-value--new {
+  font-weight: 700;
 }
 
 .modal-backdrop {
@@ -975,7 +1219,7 @@ tbody tr:hover {
   align-items: center;
   min-height: 24px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.9);
   color: #1e293b;
   font-size: 10px;
@@ -984,7 +1228,7 @@ tbody tr:hover {
 
 .picker-badge.difficulty {
   background: color-mix(in srgb, var(--picker-accent) 16%, white);
-  color: color-mix(in srgb, var(--picker-accent) 78%, black);
+  color: #1e293b;
 }
 
 .picker-badge.muted {
@@ -1144,21 +1388,35 @@ tbody tr:hover {
   width: min(420px, 100%);
 }
 
-.picker-filter-menu-grid {
+.picker-filter-sections {
+  display: grid;
+  gap: 14px;
+}
+
+.picker-filter-section {
   display: grid;
   gap: 8px;
 }
 
-.picker-filter-menu-grid button {
+.picker-filter-section .chip-row {
+  gap: 8px;
+}
+
+.picker-version-launcher {
   height: auto;
   min-height: 62px;
+  padding: 10px 12px;
   display: grid;
   justify-items: start;
   gap: 4px;
-  padding: 10px 12px;
+  text-align: left;
 }
 
-.picker-filter-menu-grid span {
+.picker-version-launcher strong {
+  font-size: 14px;
+}
+
+.picker-version-launcher span {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1166,8 +1424,11 @@ tbody tr:hover {
   color: #64748b;
 }
 
-.picker-filter-menu-grid strong {
-  font-size: 14px;
+.picker-filter-error {
+  margin: 0;
+  font-size: 12px;
+  color: #b91c1c;
+  line-height: 1.45;
 }
 
 .picker-filter-toolbar {

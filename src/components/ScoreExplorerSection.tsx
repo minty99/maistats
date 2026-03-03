@@ -10,17 +10,20 @@ import type {
 } from '../types';
 import type { ScoreSortKey } from '../app/constants';
 import {
-  formatDifficultyShort,
+  formatVersionLabel,
   formatNumber,
   formatPercent,
   sortIndicator,
   toggleArrayValue,
 } from '../app/utils';
+import { ChartTypeLabel, getChartTypeToneClass } from './ChartTypeLabel';
+import { DifficultyLabel, getDifficultyToneClass } from './DifficultyLabel';
 import { Jacket } from './Jacket';
 import { ToggleGroup } from './ToggleGroup';
 
 interface ScoreExplorerSectionProps {
   scoreCountLabel: string;
+  isLoading: boolean;
   showJackets: boolean;
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
@@ -64,6 +67,7 @@ interface ScoreExplorerSectionProps {
 
 export function ScoreExplorerSection({
   scoreCountLabel,
+  isLoading,
   showJackets,
   query,
   setQuery,
@@ -115,9 +119,29 @@ export function ScoreExplorerSection({
     }
 
     return (
-      <span className="estimated-level">
+      <span className={`estimated-level ${getDifficultyToneClass(row.difficulty)}`}>
         {whole}
         <span className="estimated-level-fraction">.{fraction}</span>
+      </span>
+    );
+  };
+
+  const renderLevelCell = (row: ScoreRow) => {
+    if (row.internalLevel === null) {
+      return '-';
+    }
+
+    if (row.isInternalLevelEstimated) {
+      return (
+        <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
+          {renderInternalLevel(row)}
+        </span>
+      );
+    }
+
+    return (
+      <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
+        {row.internalLevel.toFixed(1)}
       </span>
     );
   };
@@ -147,6 +171,7 @@ export function ScoreExplorerSection({
               options={chartTypes}
               selected={chartFilter}
               onToggle={(value) => setChartFilter((prev) => toggleArrayValue(prev, value))}
+              optionClassName={(value) => `chart-type-chip ${getChartTypeToneClass(value)}`}
             />
 
             <ToggleGroup
@@ -154,7 +179,8 @@ export function ScoreExplorerSection({
               options={difficulties}
               selected={difficultyFilter}
               onToggle={(value) => setDifficultyFilter((prev) => toggleArrayValue(prev, value))}
-              formatLabel={formatDifficultyShort}
+              renderLabel={(value) => <DifficultyLabel difficulty={value} short />}
+              optionClassName={(value) => `difficulty-chip ${getDifficultyToneClass(value)}`}
             />
             <label>
               <span>Version</span>
@@ -167,7 +193,7 @@ export function ScoreExplorerSection({
                 <option value="OLD">OLD</option>
                 {versionOptions.map((version) => (
                   <option key={version} value={version}>
-                    {version}
+                    {formatVersionLabel(version)}
                   </option>
                 ))}
               </select>
@@ -277,6 +303,7 @@ export function ScoreExplorerSection({
             <span className="panel-count">{scoreCountLabel}</span>
           </div>
           <div className="table-wrap">
+            {isLoading ? <div className="table-loading-state">Loading charts...</div> : null}
             <table className="score-table compact-table">
               <thead>
                 <tr>
@@ -288,11 +315,9 @@ export function ScoreExplorerSection({
                     </button>
                   </th>
                   <th className="chart-col">Chart</th>
-                  <th className="diff-col">Diff</th>
-                  <th className="level-col">Lv</th>
-                  <th className="sortable internal-col">
+                  <th className="sortable level-col">
                     <button type="button" className="th-sort-button" onClick={() => onSortBy('internal')}>
-                      <span>IntLv</span>
+                      <span>Lv</span>
                       <span className="sort-indicator">
                         {sortIndicator(scoreSortKey === 'internal', scoreSortDesc)}
                       </span>
@@ -363,10 +388,10 @@ export function ScoreExplorerSection({
                         </button>
                       </div>
                     </td>
-                    <td className="chart-col">{row.chartType}</td>
-                    <td className="diff-col">{formatDifficultyShort(row.difficulty)}</td>
-                    <td className="level-col">{row.level ?? '-'}</td>
-                    <td className="internal-col">{renderInternalLevel(row)}</td>
+                    <td className="chart-col">
+                      <ChartTypeLabel chartType={row.chartType} />
+                    </td>
+                    <td className="level-col">{renderLevelCell(row)}</td>
                     <td className="achievement-col">{formatPercent(row.achievementPercent)}</td>
                     <td className="rating-col">{formatNumber(row.ratingPoints)}</td>
                     <td className="rank-col">{row.rank ?? '-'}</td>
@@ -382,7 +407,7 @@ export function ScoreExplorerSection({
                       {row.latestPlayedAtLabel ?? toDateLabel(row.latestPlayedAtUnix) ?? '-'}
                     </td>
                     <td className="play-count-col">{formatNumber(row.playCount)}</td>
-                    <td className="version-col">{row.version ?? '-'}</td>
+                    <td className="version-col">{formatVersionLabel(row.version)}</td>
                   </tr>
                 ))}
               </tbody>

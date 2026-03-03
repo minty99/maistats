@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { fetchRandomPickerSong, fetchSongVersions } from '../api';
 import {
@@ -20,8 +20,10 @@ import {
   readStoredJson,
   type StoredRandomPickerFilters,
 } from '../app/storage';
-import { formatDifficultyShort, formatNumber, formatPercent } from '../app/utils';
+import { formatNumber, formatPercent, formatVersionLabel } from '../app/utils';
 import type { ChartType, DifficultyCategory, RandomPickerSong, SongVersionResponse } from '../types';
+import { getChartTypeToneClass } from './ChartTypeLabel';
+import { DifficultyLabel, getDifficultyToneClass } from './DifficultyLabel';
 import { Jacket } from './Jacket';
 
 interface RandomPickerPageProps {
@@ -29,11 +31,11 @@ interface RandomPickerPageProps {
   recordCollectorUrl: string;
 }
 
-type ModalKind = 'filters' | 'chartTypes' | 'difficulties' | 'versions' | null;
+type ModalKind = 'filters' | 'versions' | null;
 
 interface FilterOption {
   value: string;
-  label: string;
+  label: ReactNode;
   subtitle?: string;
 }
 
@@ -68,14 +70,33 @@ function formatAchievement(achievementX10000: number | null): string {
   return formatPercent(achievementX10000 / 10000, 4);
 }
 
-function buildDifficultySummary(indices: number[]): string {
+function renderDifficultySummary(indices: number[], includeLabel = true): ReactNode {
   if (indices.length === DIFFICULTIES.length) {
-    return 'DIFF ALL';
+    return (
+      <span className={includeLabel ? 'picker-summary-inline' : undefined}>
+        {includeLabel ? <span>DIFF</span> : null}
+        <span className="difficulty-summary-all">ALL</span>
+      </span>
+    );
   }
-  const labels = indices
-    .map((value) => formatDifficultyShort(DIFFICULTY_INDEX_LABELS[value]))
-    .sort((left, right) => left.localeCompare(right, 'ko'));
-  return `DIFF ${labels.join('/')}`;
+
+  const values = [...indices]
+    .sort((left, right) => left - right)
+    .map((value) => DIFFICULTY_INDEX_LABELS[value]);
+
+  return (
+    <span className={includeLabel ? 'picker-summary-inline' : undefined}>
+      {includeLabel ? <span>DIFF</span> : null}
+      <span className="difficulty-summary-list">
+        {values.map((value, index) => (
+          <span key={value} className="difficulty-summary-item">
+            <DifficultyLabel difficulty={value} short />
+            {index < values.length - 1 ? <span className="difficulty-summary-separator">/</span> : null}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
 }
 
 function buildChartSummary(chartTypes: ChartType[]): string {
@@ -92,13 +113,16 @@ function buildVersionSummary(
   if (includeVersionIndices === null) {
     return 'VER ALL';
   }
-  if (includeVersionIndices.length === 0) {
-    return 'VER NONE';
-  }
-  if (versionOptions.length > 0 && includeVersionIndices.length === versionOptions.length) {
+
+  const selectedCount = includeVersionIndices === null ? versionOptions.length : includeVersionIndices.length;
+  return `${selectedCount.toLocaleString()} versions selected`;
+}
+
+function buildCompactVersionSummary(includeVersionIndices: number[] | null): string {
+  if (includeVersionIndices === null) {
     return 'VER ALL';
   }
-  return `VER ${includeVersionIndices.length}`;
+  return `VER ${includeVersionIndices.length.toLocaleString()}`;
 }
 
 function getPickerResultMessage(error: Error): { empty: boolean; message: string } {
@@ -176,21 +200,23 @@ function SelectionModal({
 }
 
 function FiltersMenu({
-  chartSummary,
-  difficultySummary,
+  chartTypes,
+  difficultyIndices,
   versionSummary,
   isVersionLoading,
-  onOpenChartTypes,
-  onOpenDifficulties,
+  versionError,
+  onToggleChartType,
+  onToggleDifficulty,
   onOpenVersions,
   onClose,
 }: {
-  chartSummary: string;
-  difficultySummary: string;
+  chartTypes: ChartType[];
+  difficultyIndices: number[];
   versionSummary: string;
   isVersionLoading: boolean;
-  onOpenChartTypes: () => void;
-  onOpenDifficulties: () => void;
+  versionError: string | null;
+  onToggleChartType: (value: ChartType) => void;
+  onToggleDifficulty: (value: number) => void;
   onOpenVersions: () => void;
   onClose: () => void;
 }) {
@@ -206,19 +232,64 @@ function FiltersMenu({
             닫기
           </button>
         </div>
-        <div className="picker-filter-menu-grid">
-          <button type="button" onClick={onOpenChartTypes}>
-            <span>TYPE</span>
-            <strong>{chartSummary}</strong>
-          </button>
-          <button type="button" onClick={onOpenDifficulties}>
-            <span>DIFF</span>
-            <strong>{difficultySummary}</strong>
-          </button>
-          <button type="button" onClick={onOpenVersions}>
-            <span>VER</span>
-            <strong>{isVersionLoading ? '...' : versionSummary}</strong>
-          </button>
+        <div className="picker-filter-sections">
+          <section className="picker-filter-section">
+            <div className="filter-label">Type</div>
+            <div className="chip-row">
+              {CHART_TYPES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={[
+                    'chip',
+                    chartTypes.includes(value) ? 'active' : '',
+                    'chart-type-chip',
+                    getChartTypeToneClass(value),
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => onToggleChartType(value)}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="picker-filter-section">
+            <div className="filter-label">Diff</div>
+            <div className="chip-row">
+              {DIFFICULTY_INDICES.map((value) => {
+                const difficulty = DIFFICULTY_INDEX_LABELS[value];
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={[
+                      'chip',
+                      difficultyIndices.includes(value) ? 'active' : '',
+                      'difficulty-chip',
+                      getDifficultyToneClass(difficulty),
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => onToggleDifficulty(value)}
+                  >
+                    <DifficultyLabel difficulty={difficulty} short />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="picker-filter-section">
+            <div className="filter-label">Ver</div>
+            <button type="button" className="picker-version-launcher" onClick={onOpenVersions}>
+              <strong>{isVersionLoading ? 'Loading versions...' : versionSummary}</strong>
+              <span>Choose versions</span>
+            </button>
+            {versionError ? <p className="picker-filter-error">{versionError}</p> : null}
+          </section>
         </div>
       </section>
     </div>
@@ -473,32 +544,23 @@ export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPick
   ]);
 
   const chartSummary = useMemo(() => buildChartSummary(chartTypes), [chartTypes]);
-  const difficultySummary = useMemo(
-    () => buildDifficultySummary(difficultyIndices),
+  const difficultySummaryNode = useMemo(
+    () => renderDifficultySummary(difficultyIndices),
     [difficultyIndices],
   );
   const versionSummary = useMemo(
     () => buildVersionSummary(includeVersionIndices, versionOptions),
     [includeVersionIndices, versionOptions],
   );
-
-  const chartOptions = useMemo<FilterOption[]>(
-    () => CHART_TYPES.map((value) => ({ value, label: value })),
-    [],
-  );
-  const difficultyOptions = useMemo<FilterOption[]>(
-    () =>
-      DIFFICULTY_INDICES.map((value) => ({
-        value: String(value),
-        label: DIFFICULTY_INDEX_LABELS[value],
-      })),
-    [],
+  const compactVersionSummary = useMemo(
+    () => buildCompactVersionSummary(includeVersionIndices),
+    [includeVersionIndices],
   );
   const versionModalOptions = useMemo<FilterOption[]>(
     () =>
       versionOptions.map((option) => ({
         value: String(option.version_index),
-        label: option.version_name,
+        label: formatVersionLabel(option.version_name),
         subtitle: `${option.song_count.toLocaleString()} songs`,
       })),
     [versionOptions],
@@ -590,7 +652,9 @@ export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPick
           />
           <div className="picker-stage-gradient" />
           <div className="picker-stage-badges">
-            <span className="picker-badge difficulty">{pickedSong.difficulty}</span>
+            <span className="picker-badge difficulty">
+              <DifficultyLabel difficulty={pickedSong.difficulty} />
+            </span>
             <span className="picker-badge">{pickedSong.chartType}</span>
             {pickedSong.version ? <span className="picker-badge muted">{pickedSong.version}</span> : null}
           </div>
@@ -634,40 +698,15 @@ export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPick
     if (activeModal === 'filters') {
       return (
         <FiltersMenu
-          chartSummary={chartSummary}
-          difficultySummary={difficultySummary}
+          chartTypes={chartTypes}
+          difficultyIndices={difficultyIndices}
           versionSummary={versionSummary}
           isVersionLoading={isLoadingVersions}
-          onOpenChartTypes={() => setActiveModal('chartTypes')}
-          onOpenDifficulties={() => setActiveModal('difficulties')}
+          versionError={versionError}
+          onToggleChartType={toggleChartType}
+          onToggleDifficulty={toggleDifficulty}
           onOpenVersions={() => setActiveModal('versions')}
           onClose={() => setActiveModal(null)}
-        />
-      );
-    }
-
-    if (activeModal === 'chartTypes') {
-      return (
-        <SelectionModal
-          title="Chart Type"
-          options={chartOptions}
-          selectedValues={chartTypes}
-          onToggle={(value) => toggleChartType(value as ChartType)}
-          onSelectAll={() => setChartTypes([...CHART_TYPES])}
-          onClose={() => setActiveModal('filters')}
-        />
-      );
-    }
-
-    if (activeModal === 'difficulties') {
-      return (
-        <SelectionModal
-          title="Difficulty"
-          options={difficultyOptions}
-          selectedValues={difficultyIndices.map(String)}
-          onToggle={(value) => toggleDifficulty(Number(value))}
-          onSelectAll={() => setDifficultyIndices([...DIFFICULTY_INDICES])}
-          onClose={() => setActiveModal('filters')}
         />
       );
     }
@@ -718,10 +757,10 @@ export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPick
             </div>
 
             <div className="picker-summary-row">
-              <span className="toolbar-pill">LV {rangeFrom.toFixed(1)} - {rangeTo.toFixed(1)}</span>
+             <span className="toolbar-pill">LV {rangeFrom.toFixed(1)} - {rangeTo.toFixed(1)}</span>
               <span className="toolbar-pill">{chartSummary}</span>
-              <span className="toolbar-pill">{difficultySummary}</span>
-              <span className="toolbar-pill">{isLoadingVersions ? 'VER ...' : versionSummary}</span>
+              <span className="toolbar-pill">{difficultySummaryNode}</span>
+              <span className="toolbar-pill">{isLoadingVersions ? 'VER ...' : compactVersionSummary}</span>
             </div>
 
             <div className="picker-range-row">

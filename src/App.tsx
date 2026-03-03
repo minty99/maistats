@@ -26,7 +26,6 @@ import {
 import { sortByOrder, toggleArrayValue } from './app/utils';
 import {
   coerceArray,
-  coerceBoolean,
   coerceNumber,
   coerceStringArray,
   readStoredJson,
@@ -117,7 +116,7 @@ function App() {
   const [recordCollectorUrlDraft, setRecordCollectorUrlDraft] =
     useState(recordCollectorUrl);
 
-  const [, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const [scoreRecords, setScoreRecords] = useState<ScoreApiResponse[]>([]);
@@ -193,15 +192,6 @@ function App() {
     const values = coerceArray(savedPlaylogFilters?.difficultyFilter, DIFFICULTIES);
     return values.length > 0 ? values : [...DIFFICULTIES];
   });
-  const [playlogIncludeUnknownDiff, setPlaylogIncludeUnknownDiff] = useState(() =>
-    coerceBoolean(savedPlaylogFilters?.includeUnknownDiff, true),
-  );
-  const [playlogNewRecordOnly, setPlaylogNewRecordOnly] = useState(() =>
-    coerceBoolean(savedPlaylogFilters?.newRecordOnly, false),
-  );
-  const [playlogFirstPlayOnly, setPlaylogFirstPlayOnly] = useState(() =>
-    coerceBoolean(savedPlaylogFilters?.firstPlayOnly, false),
-  );
   const [playlogAchievementMin, setPlaylogAchievementMin] = useState(() =>
     coerceNumber(savedPlaylogFilters?.achievementMin, 0),
   );
@@ -365,9 +355,6 @@ function App() {
     const payload: StoredPlaylogFilters = {
       chartFilter: playlogChartFilter,
       difficultyFilter: playlogDifficultyFilter,
-      includeUnknownDiff: playlogIncludeUnknownDiff,
-      newRecordOnly: playlogNewRecordOnly,
-      firstPlayOnly: playlogFirstPlayOnly,
       achievementMin: playlogAchievementMin,
       achievementMax: playlogAchievementMax,
     };
@@ -377,9 +364,6 @@ function App() {
     playlogAchievementMin,
     playlogChartFilter,
     playlogDifficultyFilter,
-    playlogFirstPlayOnly,
-    playlogIncludeUnknownDiff,
-    playlogNewRecordOnly,
   ]);
 
   useEffect(() => {
@@ -528,9 +512,6 @@ function App() {
         playlogQuery,
         playlogChartFilter,
         playlogDifficultyFilter,
-        playlogIncludeUnknownDiff,
-        playlogNewRecordOnly,
-        playlogFirstPlayOnly,
         playlogAchievementMin,
         playlogAchievementMax,
         playlogSortKey,
@@ -542,9 +523,6 @@ function App() {
       playlogChartFilter,
       playlogData,
       playlogDifficultyFilter,
-      playlogFirstPlayOnly,
-      playlogIncludeUnknownDiff,
-      playlogNewRecordOnly,
       playlogQuery,
       playlogSortDesc,
       playlogSortKey,
@@ -643,6 +621,7 @@ function App() {
 
           <ScoreExplorerSection
             scoreCountLabel={scoreCountLabel}
+            isLoading={isLoading}
             showJackets={showJackets}
             query={query}
             setQuery={setQuery}
@@ -703,12 +682,6 @@ function App() {
             setPlaylogAchievementMin={setPlaylogAchievementMin}
             playlogAchievementMax={playlogAchievementMax}
             setPlaylogAchievementMax={setPlaylogAchievementMax}
-            playlogIncludeUnknownDiff={playlogIncludeUnknownDiff}
-            setPlaylogIncludeUnknownDiff={setPlaylogIncludeUnknownDiff}
-            playlogNewRecordOnly={playlogNewRecordOnly}
-            setPlaylogNewRecordOnly={setPlaylogNewRecordOnly}
-            playlogFirstPlayOnly={playlogFirstPlayOnly}
-            setPlaylogFirstPlayOnly={setPlaylogFirstPlayOnly}
             filteredPlaylogRows={filteredPlaylogRows}
             songInfoUrl={songInfoUrl}
             playlogSortKey={playlogSortKey}

@@ -96,9 +96,8 @@ export interface PlayRecordApiResponse {
   sync: SyncStatus | null;
   dx_score: number | null;
   dx_score_max: number | null;
-  credit_play_count: number | null;
+  credit_id: number | null;
   achievement_new_record: number | null;
-  first_play: number | null;
   rating_points?: number | null;
 }
 
@@ -214,8 +213,7 @@ export interface PlaylogRow {
   dxScoreMax: number | null;
   dxRatio: number | null;
   ratingPoints: number | null;
-  creditPlayCount: number | null;
+  creditId: number | null;
   isNewRecord: boolean;
-  isFirstPlay: boolean;
   imageName: string | null;
 }
