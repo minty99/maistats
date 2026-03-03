@@ -6,9 +6,9 @@ export const SCORE_FILTERS_STORAGE_KEY = 'maistats.score-filters';
 export const PLAYLOG_FILTERS_STORAGE_KEY = 'maistats.playlog-filters';
 export const RANDOM_PICKER_FILTERS_STORAGE_KEY = 'maistats.random-picker-filters';
 
-const ENV_SONG_INFO_URL = import.meta.env.VITE_SONG_INFO_SERVER_URL?.trim();
+const ENV_SONG_INFO_URL = import.meta.env.SONG_INFO_SERVER_URL?.trim();
 const ENV_RECORD_COLLECTOR_URL =
-  import.meta.env.VITE_RECORD_COLLECTOR_SERVER_URL?.trim();
+  import.meta.env.RECORD_COLLECTOR_SERVER_URL?.trim();
 
 export const DEFAULT_SONG_INFO_URL =
   ENV_SONG_INFO_URL || 'http://localhost:3001';
