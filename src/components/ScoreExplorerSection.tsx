@@ -25,6 +25,7 @@ interface ScoreExplorerSectionProps {
   scoreCountLabel: string;
   isLoading: boolean;
   showJackets: boolean;
+  setShowJackets: Dispatch<SetStateAction<boolean>>;
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
   chartTypes: ChartType[];
@@ -69,6 +70,7 @@ export function ScoreExplorerSection({
   scoreCountLabel,
   isLoading,
   showJackets,
+  setShowJackets,
   query,
   setQuery,
   chartTypes,
@@ -300,7 +302,25 @@ export function ScoreExplorerSection({
               <h2>Charts</h2>
               <p>점수 데이터와 차트 메타데이터를 함께 확인합니다. 회색 소수점은 추정 내부레벨입니다.</p>
             </div>
-            <span className="panel-count">{scoreCountLabel}</span>
+            <div className="panel-heading-actions">
+              <div className="view-mode-switch" role="group" aria-label="Charts layout">
+                <button
+                  type="button"
+                  className={showJackets ? 'active' : ''}
+                  onClick={() => setShowJackets(true)}
+                >
+                  Jacket
+                </button>
+                <button
+                  type="button"
+                  className={!showJackets ? 'active' : ''}
+                  onClick={() => setShowJackets(false)}
+                >
+                  Compact
+                </button>
+              </div>
+              <span className="panel-count">{scoreCountLabel}</span>
+            </div>
           </div>
           <div className="table-wrap">
             {isLoading ? <div className="table-loading-state">Loading charts...</div> : null}

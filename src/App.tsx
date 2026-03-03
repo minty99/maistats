@@ -654,6 +654,7 @@ function App() {
               scoreCountLabel={scoreCountLabel}
               isLoading={isLoading}
               showJackets={showJackets}
+              setShowJackets={setShowJackets}
               query={query}
               setQuery={setQuery}
               chartTypes={CHART_TYPES}
@@ -701,6 +702,7 @@ function App() {
             <PlaylogExplorerSection
               playlogCountLabel={playlogCountLabel}
               showJackets={showJackets}
+              setShowJackets={setShowJackets}
               playlogQuery={playlogQuery}
               setPlaylogQuery={setPlaylogQuery}
               chartTypes={CHART_TYPES}

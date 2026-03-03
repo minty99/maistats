@@ -164,6 +164,14 @@ select {
   gap: 8px;
 }
 
+.panel-heading-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .panel-heading p {
   margin-top: 4px;
   color: var(--muted);
@@ -183,6 +191,36 @@ select {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.view-mode-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fbff;
+  gap: 2px;
+}
+
+.view-mode-switch button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.view-mode-switch button:hover {
+  border-color: transparent;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.view-mode-switch button.active {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--accent);
 }
 
 .explorer-layout {

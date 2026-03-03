@@ -17,6 +17,7 @@ import { ToggleGroup } from './ToggleGroup';
 interface PlaylogExplorerSectionProps {
   playlogCountLabel: string;
   showJackets: boolean;
+  setShowJackets: Dispatch<SetStateAction<boolean>>;
   playlogQuery: string;
   setPlaylogQuery: Dispatch<SetStateAction<string>>;
   chartTypes: ChartType[];
@@ -39,6 +40,7 @@ interface PlaylogExplorerSectionProps {
 export function PlaylogExplorerSection({
   playlogCountLabel,
   showJackets,
+  setShowJackets,
   playlogQuery,
   setPlaylogQuery,
   chartTypes,
@@ -167,7 +169,25 @@ export function PlaylogExplorerSection({
             <div>
               <h2>Playlogs</h2>
             </div>
-            <span className="panel-count">{playlogCountLabel}</span>
+            <div className="panel-heading-actions">
+              <div className="view-mode-switch" role="group" aria-label="Playlogs layout">
+                <button
+                  type="button"
+                  className={showJackets ? 'active' : ''}
+                  onClick={() => setShowJackets(true)}
+                >
+                  Jacket
+                </button>
+                <button
+                  type="button"
+                  className={!showJackets ? 'active' : ''}
+                  onClick={() => setShowJackets(false)}
+                >
+                  Compact
+                </button>
+              </div>
+              <span className="panel-count">{playlogCountLabel}</span>
+            </div>
           </div>
           <div className="table-wrap">
             <table className="playlog-table compact-table">
