@@ -6,6 +6,7 @@ import type {
   ScoreApiResponse,
   ScoreRow,
   SongInfoResponse,
+  SongSheetResponse,
 } from './types';
 import { normalizeTitleKey } from './api';
 
@@ -31,6 +32,20 @@ function findMatchingSheet(
   );
 
   return matches.find((item) => item.region.intl) ?? matches[0] ?? null;
+}
+
+function listPreferredSheets(songInfo: SongInfoResponse): SongSheetResponse[] {
+  const preferredSheets = new Map<string, SongSheetResponse>();
+
+  for (const sheet of songInfo.sheets) {
+    const key = `${sheet.chart_type}::${sheet.difficulty}`;
+    const existing = preferredSheets.get(key);
+    if (!existing || (!existing.region.intl && sheet.region.intl)) {
+      preferredSheets.set(key, sheet);
+    }
+  }
+
+  return Array.from(preferredSheets.values());
 }
 
 function toUnixMillis(unixtime: number): number {
@@ -184,49 +199,89 @@ export function buildScoreRows(
   scores: ScoreApiResponse[],
   songInfoByTitle: Map<string, SongInfoResponse>,
 ): ScoreRow[] {
-  return scores.map((score) => {
-    const normalizedTitle = normalizeTitleKey(score.title);
-    const key = chartKey(score.title, score.chart_type, score.diff_category);
+  const scoreByKey = new Map<string, ScoreApiResponse>();
+  for (const score of scores) {
+    scoreByKey.set(chartKey(score.title, score.chart_type, score.diff_category), score);
+  }
 
-    const songInfo = songInfoByTitle.get(normalizedTitle);
-    const sheet = findMatchingSheet(songInfo, score.chart_type, score.diff_category);
-    const estimatedInternalLevel = estimateInternalLevel(sheet?.level);
-    const internalLevel = sheet?.internal_level ?? estimatedInternalLevel;
-    const isInternalLevelEstimated = sheet?.internal_level === null && internalLevel !== null;
+  const rows: ScoreRow[] = [];
+  const includedKeys = new Set<string>();
 
-    const latestPlayedAtUnix = parseMaimaiPlayedAtToUnix(score.last_played_at);
+  const buildRow = (
+    title: string,
+    chartType: ChartType,
+    difficulty: DifficultyCategory,
+    songInfo?: SongInfoResponse,
+    sheet?: SongSheetResponse | null,
+  ): ScoreRow => {
+    const normalizedTitle = normalizeTitleKey(title);
+    const key = chartKey(title, chartType, difficulty);
+    const matchedSheet = sheet ?? findMatchingSheet(songInfo, chartType, difficulty);
+    const score = scoreByKey.get(key) ?? null;
+    const estimatedInternalLevel = estimateInternalLevel(matchedSheet?.level);
+    const internalLevel = matchedSheet?.internal_level ?? estimatedInternalLevel;
+    const isInternalLevelEstimated =
+      matchedSheet?.internal_level === null && internalLevel !== null;
+    const latestPlayedAtUnix = parseMaimaiPlayedAtToUnix(score?.last_played_at);
 
     return {
       key,
-      title: score.title,
+      title,
       normalizedTitle,
-      chartType: score.chart_type,
-      difficulty: score.diff_category,
-      achievementX10000: score.achievement_x10000,
-      achievementPercent: toAchievementPercent(score.achievement_x10000),
-      rank: score.rank,
-      fc: score.fc,
-      sync: score.sync,
-      dxScore: score.dx_score,
-      dxScoreMax: score.dx_score_max,
-      dxRatio: toDxRatio(score.dx_score, score.dx_score_max),
-      ratingPoints: score.rating_points ?? toRatingPoints(
+      chartType,
+      difficulty,
+      achievementX10000: score?.achievement_x10000 ?? null,
+      achievementPercent: toAchievementPercent(score?.achievement_x10000 ?? null),
+      rank: score?.rank ?? null,
+      fc: score?.fc ?? null,
+      sync: score?.sync ?? null,
+      dxScore: score?.dx_score ?? null,
+      dxScoreMax: score?.dx_score_max ?? null,
+      dxRatio: toDxRatio(score?.dx_score ?? null, score?.dx_score_max ?? null),
+      ratingPoints: score?.rating_points ?? toRatingPoints(
         internalLevel,
-        score.achievement_x10000,
-        score.fc,
+        score?.achievement_x10000 ?? null,
+        score?.fc ?? null,
       ),
-      level: sheet?.level ?? null,
+      level: matchedSheet?.level ?? null,
       internalLevel,
       isInternalLevelEstimated,
-      userLevel: sheet?.user_level ?? null,
-      version: sheet?.version ?? null,
+      userLevel: matchedSheet?.user_level ?? null,
+      version: matchedSheet?.version ?? null,
       imageName: songInfo?.image_name ?? null,
       latestPlayedAtUnix,
-      latestPlayedAtLabel: score.last_played_at ?? toDateLabel(latestPlayedAtUnix),
+      latestPlayedAtLabel: score?.last_played_at ?? toDateLabel(latestPlayedAtUnix),
       daysSinceLastPlayed: daysSince(latestPlayedAtUnix),
-      playCount: score.play_count ?? null,
+      playCount: score?.play_count ?? null,
     };
-  });
+  };
+
+  for (const songInfo of songInfoByTitle.values()) {
+    for (const sheet of listPreferredSheets(songInfo)) {
+      includedKeys.add(chartKey(songInfo.title, sheet.chart_type, sheet.difficulty));
+      rows.push(
+        buildRow(
+          songInfo.title,
+          sheet.chart_type,
+          sheet.difficulty,
+          songInfo,
+          sheet,
+        ),
+      );
+    }
+  }
+
+  for (const score of scores) {
+    const key = chartKey(score.title, score.chart_type, score.diff_category);
+    if (includedKeys.has(key)) {
+      continue;
+    }
+
+    includedKeys.add(key);
+    rows.push(buildRow(score.title, score.chart_type, score.diff_category));
+  }
+
+  return rows;
 }
 
 export function buildPlaylogRows(
