@@ -128,7 +128,6 @@ export function ScoreExplorerSection({
           <div className="panel-heading compact">
             <div>
               <h2>Filters</h2>
-              <p>달성률 없음은 0으로, 내부레벨 없음은 기본 레벨로 추정하며, 최근 로그가 없으면 경과일 필터를 건너뜁니다.</p>
             </div>
           </div>
           <div className="filter-grid">

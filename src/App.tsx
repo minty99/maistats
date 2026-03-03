@@ -96,7 +96,7 @@ function App() {
   const [recordCollectorUrlDraft, setRecordCollectorUrlDraft] =
     useState(recordCollectorUrl);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const [scoreRecords, setScoreRecords] = useState<ScoreApiResponse[]>([]);
@@ -598,15 +598,8 @@ function App() {
     setIsServerModalOpen(true);
   }, [recordCollectorUrl, songInfoUrl]);
 
-  const metadataCoverage = `${songMetadata.size.toLocaleString()}곡`;
   const scoreCountLabel = `${filteredScoreRows.length.toLocaleString()}/${scoreData.length.toLocaleString()}`;
   const playlogCountLabel = `${filteredPlaylogRows.length.toLocaleString()}/${playlogData.length.toLocaleString()}`;
-  const activeExplorerCountLabel = activePage === 'scores' ? scoreCountLabel : playlogCountLabel;
-  const activeViewDescription = activePage === 'scores'
-    ? '점수와 차트 데이터를 빠르게 정렬하고 재도전 대상을 찾는 뷰'
-    : activePage === 'playlogs'
-      ? '플레이 이력과 기록 변화를 시간순으로 살펴보는 뷰'
-      : '';
 
   return (
     <div className="app-shell">
@@ -614,7 +607,6 @@ function App() {
         <div className="app-toolbar-main">
           <div className="brand-copy">
             <h1>maistats</h1>
-            {activeViewDescription ? <p>{activeViewDescription}</p> : null}
           </div>
 
           <div className="toolbar-switches">
@@ -645,16 +637,6 @@ function App() {
         </div>
 
         <div className="app-toolbar-meta">
-          {activePage !== 'picker' ? (
-            <>
-              <span className="toolbar-pill">Metadata {metadataCoverage}</span>
-              <span className="toolbar-pill">
-                {activePage === 'scores' ? 'Scores' : 'Playlogs'} {activeExplorerCountLabel}
-              </span>
-              {isLoading ? <span className="toolbar-pill accent">Loading</span> : null}
-            </>
-          ) : null}
-
           <button type="button" className="server-open-button" onClick={openServerModal}>
             Connections
           </button>
