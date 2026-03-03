@@ -27,6 +27,7 @@ import { DifficultyLabel, getDifficultyToneClass } from './DifficultyLabel';
 import { Jacket } from './Jacket';
 
 interface RandomPickerPageProps {
+  sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   recordCollectorUrl: string;
 }
@@ -296,7 +297,11 @@ function FiltersMenu({
   );
 }
 
-export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPickerPageProps) {
+export function RandomPickerPage({
+  sidebarTopContent,
+  songInfoUrl,
+  recordCollectorUrl,
+}: RandomPickerPageProps) {
   const storedFilters = useMemo(
     () => readStoredJson<StoredRandomPickerFilters>(RANDOM_PICKER_FILTERS_STORAGE_KEY),
     [],
@@ -742,6 +747,7 @@ export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPick
     <>
       <section className="picker-layout">
         <div className="picker-control-column">
+          {sidebarTopContent}
           <section className="panel picker-control-panel">
             <div className="panel-heading">
               <div>

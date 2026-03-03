@@ -662,6 +662,29 @@ function App() {
   const activeNavItem = NAV_ITEMS.find((item) => item.page === activePage) ?? NAV_ITEMS[0];
   const ActiveNavIcon = activeNavItem.Icon;
   const mobileNavItems = NAV_ITEMS;
+  const desktopSidebarTopContent = (
+    <section className="panel app-sidebar-inline">
+      <div className="brand-copy">
+        <h1>maistats</h1>
+      </div>
+
+      <nav className="app-nav app-nav-inline" aria-label="Primary">
+        <div className="app-nav-list">
+          {NAV_ITEMS.map(({ page, label, Icon }) => (
+            <button
+              key={page}
+              type="button"
+              className={activePage === page ? 'active' : ''}
+              onClick={() => handleNavigatePage(page)}
+            >
+              <Icon />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+    </section>
+  );
 
   return (
     <div className="app-shell">
@@ -721,6 +744,7 @@ function App() {
             {loadingError ? <section className="error-banner">에러: {loadingError}</section> : null}
 
             <ScoreExplorerSection
+              sidebarTopContent={desktopSidebarTopContent}
               scoreCountLabel={scoreCountLabel}
               isLoading={isLoading}
               showJackets={showJackets}
@@ -770,6 +794,7 @@ function App() {
             {loadingError ? <section className="error-banner">에러: {loadingError}</section> : null}
 
             <PlaylogExplorerSection
+              sidebarTopContent={desktopSidebarTopContent}
               playlogCountLabel={playlogCountLabel}
               showJackets={showJackets}
               setShowJackets={setShowJackets}
@@ -794,11 +819,13 @@ function App() {
           </>
         ) : activePage === 'picker' ? (
           <RandomPickerPage
+            sidebarTopContent={desktopSidebarTopContent}
             songInfoUrl={songInfoUrl}
             recordCollectorUrl={recordCollectorUrl}
           />
         ) : (
           <SettingsPage
+            sidebarTopContent={desktopSidebarTopContent}
             songInfoUrl={songInfoUrl}
             recordCollectorUrl={recordCollectorUrl}
             songInfoUrlDraft={songInfoUrlDraft}

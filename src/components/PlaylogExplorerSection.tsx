@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 import type { PlaylogSortKey } from '../app/constants';
 import {
@@ -15,6 +15,7 @@ import { Jacket } from './Jacket';
 import { ToggleGroup } from './ToggleGroup';
 
 interface PlaylogExplorerSectionProps {
+  sidebarTopContent?: ReactNode;
   playlogCountLabel: string;
   showJackets: boolean;
   setShowJackets: Dispatch<SetStateAction<boolean>>;
@@ -38,6 +39,7 @@ interface PlaylogExplorerSectionProps {
 }
 
 export function PlaylogExplorerSection({
+  sidebarTopContent,
   playlogCountLabel,
   showJackets,
   setShowJackets,
@@ -100,6 +102,7 @@ export function PlaylogExplorerSection({
   return (
     <div className="explorer-layout">
       <aside className="sidebar-column">
+        {sidebarTopContent}
         <section className="panel filter-panel">
           <div className="panel-heading compact">
             <div>

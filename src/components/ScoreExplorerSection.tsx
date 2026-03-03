@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 import { toDateLabel } from '../derive';
 import type {
@@ -22,6 +22,7 @@ import { Jacket } from './Jacket';
 import { ToggleGroup } from './ToggleGroup';
 
 interface ScoreExplorerSectionProps {
+  sidebarTopContent?: ReactNode;
   scoreCountLabel: string;
   isLoading: boolean;
   showJackets: boolean;
@@ -67,6 +68,7 @@ interface ScoreExplorerSectionProps {
 }
 
 export function ScoreExplorerSection({
+  sidebarTopContent,
   scoreCountLabel,
   isLoading,
   showJackets,
@@ -151,6 +153,7 @@ export function ScoreExplorerSection({
   return (
     <div className="explorer-layout">
       <aside className="sidebar-column">
+        {sidebarTopContent}
         <section className="panel filter-panel">
           <div className="panel-heading compact">
             <div>
