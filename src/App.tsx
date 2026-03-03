@@ -96,7 +96,7 @@ function App() {
   const [recordCollectorUrlDraft, setRecordCollectorUrlDraft] =
     useState(recordCollectorUrl);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const [scoreRecords, setScoreRecords] = useState<ScoreApiResponse[]>([]);
@@ -598,10 +598,8 @@ function App() {
     setIsServerModalOpen(true);
   }, [recordCollectorUrl, songInfoUrl]);
 
-  const metadataCoverage = `${songMetadata.size.toLocaleString()}곡`;
   const scoreCountLabel = `${filteredScoreRows.length.toLocaleString()}/${scoreData.length.toLocaleString()}`;
   const playlogCountLabel = `${filteredPlaylogRows.length.toLocaleString()}/${playlogData.length.toLocaleString()}`;
-  const activeExplorerCountLabel = activePage === 'scores' ? scoreCountLabel : playlogCountLabel;
 
   return (
     <div className="app-shell">
@@ -639,16 +637,6 @@ function App() {
         </div>
 
         <div className="app-toolbar-meta">
-          {activePage !== 'picker' ? (
-            <>
-              <span className="toolbar-pill">Metadata {metadataCoverage}</span>
-              <span className="toolbar-pill">
-                {activePage === 'scores' ? 'Scores' : 'Playlogs'} {activeExplorerCountLabel}
-              </span>
-              {isLoading ? <span className="toolbar-pill accent">Loading</span> : null}
-            </>
-          ) : null}
-
           <button type="button" className="server-open-button" onClick={openServerModal}>
             Connections
           </button>
