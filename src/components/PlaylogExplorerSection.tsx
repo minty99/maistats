@@ -2,7 +2,6 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { PlaylogSortKey } from '../app/constants';
 import {
-  formatDifficultyShort,
   formatNumber,
   formatPercent,
   sortIndicator,
@@ -58,14 +57,32 @@ export function PlaylogExplorerSection({
   playlogSortDesc,
   onSortBy,
 }: PlaylogExplorerSectionProps) {
-  const renderDifficultyCell = (difficulty: DifficultyCategory | null) => {
-    if (!difficulty) {
-      return <span className="difficulty-badge diff-unknown">-</span>;
+  const renderInternalLevel = (row: PlaylogRow) => {
+    if (row.internalLevel === null) {
+      return '-';
+    }
+
+    const [whole, fraction = '0'] = row.internalLevel.toFixed(1).split('.');
+    if (!row.isInternalLevelEstimated) {
+      return `${whole}.${fraction}`;
     }
 
     return (
-      <span className={`difficulty-badge ${getDifficultyToneClass(difficulty)}`}>
-        {formatDifficultyShort(difficulty)}
+      <span className={`estimated-level ${getDifficultyToneClass(row.difficulty)}`}>
+        {whole}
+        <span className="estimated-level-fraction">.{fraction}</span>
+      </span>
+    );
+  };
+
+  const renderLevelCell = (row: PlaylogRow) => {
+    if (row.internalLevel === null) {
+      return '-';
+    }
+
+    return (
+      <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
+        {renderInternalLevel(row)}
       </span>
     );
   };
@@ -181,7 +198,7 @@ export function PlaylogExplorerSection({
                     </button>
                   </th>
                   <th className="chart-col">Chart</th>
-                  <th className="diff-col">Diff</th>
+                  <th className="level-col">Lv</th>
                   <th className="sortable achievement-col">
                     <button type="button" className="th-sort-button" onClick={() => onSortBy('achievement')}>
                       <span>Achv</span>
@@ -226,9 +243,7 @@ export function PlaylogExplorerSection({
                     <td className="chart-col">
                       <ChartTypeLabel chartType={row.chartType} />
                     </td>
-                    <td className="diff-col">
-                      {renderDifficultyCell(row.difficulty)}
-                    </td>
+                    <td className="level-col">{renderLevelCell(row)}</td>
                     <td className="achievement-col">{renderAchievementCell(row)}</td>
                     <td className="rating-col">{formatNumber(row.ratingPoints)}</td>
                     <td className="rank-col">{row.rank ?? '-'}</td>

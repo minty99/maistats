@@ -201,6 +201,9 @@ export interface PlaylogRow {
   normalizedTitle: string;
   chartType: ChartType;
   difficulty: DifficultyCategory | null;
+  level: string | null;
+  internalLevel: number | null;
+  isInternalLevelEstimated: boolean;
   playedAtUnix: number;
   playedAtLabel: string | null;
   track: number | null;

@@ -854,6 +854,10 @@ tbody tr:hover {
   width: 8ch;
 }
 
+.playlog-table .level-col {
+  width: 8ch;
+}
+
 .score-table .achievement-col,
 .playlog-table .achievement-col {
   width: 9ch;
@@ -900,10 +904,6 @@ tbody tr:hover {
   width: 5ch;
 }
 
-.playlog-table .diff-col {
-  width: 6.5ch;
-}
-
 .playlog-table .achievement-col {
   width: 15ch;
   text-align: center;
@@ -937,7 +937,7 @@ tbody tr:hover {
 .playlog-table .credit-col,
 .playlog-table .track-col,
 .playlog-table .chart-col,
-.playlog-table .diff-col,
+.playlog-table .level-col,
 .playlog-table .rating-col,
 .playlog-table .rank-col,
 .playlog-table .fc-col,

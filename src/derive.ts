@@ -297,6 +297,9 @@ export function buildPlaylogRows(
       log.diff_category === null
         ? null
         : findMatchingSheet(songInfo, log.chart_type, log.diff_category);
+    const estimatedInternalLevel = estimateInternalLevel(sheet?.level);
+    const internalLevel = sheet?.internal_level ?? estimatedInternalLevel;
+    const isInternalLevelEstimated = sheet?.internal_level === null && internalLevel !== null;
 
     return {
       key: `${log.played_at_unixtime}-${index}`,
@@ -304,6 +307,9 @@ export function buildPlaylogRows(
       normalizedTitle,
       chartType: log.chart_type,
       difficulty: log.diff_category,
+      level: sheet?.level ?? null,
+      internalLevel,
+      isInternalLevelEstimated,
       playedAtUnix: log.played_at_unixtime,
       playedAtLabel: log.played_at ?? toDateLabel(log.played_at_unixtime),
       track: log.track,
@@ -316,7 +322,7 @@ export function buildPlaylogRows(
       dxScoreMax: log.dx_score_max,
       dxRatio: toDxRatio(log.dx_score, log.dx_score_max),
       ratingPoints: log.rating_points ?? toRatingPoints(
-        sheet?.internal_level ?? null,
+        internalLevel,
         log.achievement_x10000,
         log.fc,
       ),
