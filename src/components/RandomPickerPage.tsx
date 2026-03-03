@@ -689,66 +689,96 @@ export function RandomPickerPage({ songInfoUrl, recordCollectorUrl }: RandomPick
     return null;
   })();
 
+  const pickerStatusLabel = isPicking
+    ? 'Picking'
+    : pickerError
+      ? 'Error'
+      : pickerEmpty
+        ? 'Empty'
+        : pickedSong
+          ? 'Picked'
+          : 'Ready';
+
   return (
     <>
-      <section className="picker-layout compact">
-        <section className="panel picker-control-panel compact">
-          <div className="picker-toolbar">
-            <h2>Random Picker</h2>
-            <button
-              type="button"
-              className="picker-filter-launcher"
-              onClick={() => setActiveModal('filters')}
-            >
-              설정
-            </button>
-          </div>
+      <section className="picker-layout">
+        <div className="picker-control-column">
+          <section className="panel picker-control-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Picker Controls</h2>
+              </div>
+              <button
+                type="button"
+                className="picker-filter-launcher"
+                onClick={() => setActiveModal('filters')}
+              >
+                Filters
+              </button>
+            </div>
 
-          <div className="picker-range-row">
-            <div className="picker-range-card">
-              <span>FROM</span>
-              <div className="picker-range-editor">
-                <button type="button" onClick={() => nudgeFrom(-RANDOM_PICKER_LEVEL_STEP)}>
-                  -
-                </button>
-                <input
-                  inputMode="decimal"
-                  value={fromDraft}
-                  onChange={handleFromInput}
-                  onBlur={commitFrom}
-                />
-                <button type="button" onClick={() => nudgeFrom(RANDOM_PICKER_LEVEL_STEP)}>
-                  +
-                </button>
+            <div className="picker-summary-row">
+              <span className="toolbar-pill">LV {rangeFrom.toFixed(1)} - {rangeTo.toFixed(1)}</span>
+              <span className="toolbar-pill">{chartSummary}</span>
+              <span className="toolbar-pill">{difficultySummary}</span>
+              <span className="toolbar-pill">{isLoadingVersions ? 'VER ...' : versionSummary}</span>
+            </div>
+
+            <div className="picker-range-row">
+              <div className="picker-range-card">
+                <span>FROM</span>
+                <div className="picker-range-editor">
+                  <button type="button" onClick={() => nudgeFrom(-RANDOM_PICKER_LEVEL_STEP)}>
+                    -
+                  </button>
+                  <input
+                    inputMode="decimal"
+                    value={fromDraft}
+                    onChange={handleFromInput}
+                    onBlur={commitFrom}
+                  />
+                  <button type="button" onClick={() => nudgeFrom(RANDOM_PICKER_LEVEL_STEP)}>
+                    +
+                  </button>
+                </div>
+              </div>
+              <div className="picker-range-card">
+                <span>TO</span>
+                <div className="picker-range-editor">
+                  <button type="button" onClick={() => nudgeTo(-RANDOM_PICKER_LEVEL_STEP)}>
+                    -
+                  </button>
+                  <input
+                    inputMode="decimal"
+                    value={toDraft}
+                    onChange={handleToInput}
+                    onBlur={commitTo}
+                  />
+                  <button type="button" onClick={() => nudgeTo(RANDOM_PICKER_LEVEL_STEP)}>
+                    +
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="picker-range-card">
-              <span>TO</span>
-              <div className="picker-range-editor">
-                <button type="button" onClick={() => nudgeTo(-RANDOM_PICKER_LEVEL_STEP)}>
-                  -
-                </button>
-                <input
-                  inputMode="decimal"
-                  value={toDraft}
-                  onChange={handleToInput}
-                  onBlur={commitTo}
-                />
-                <button type="button" onClick={() => nudgeTo(RANDOM_PICKER_LEVEL_STEP)}>
-                  +
-                </button>
-              </div>
+
+            {versionError ? <p className="muted">{versionError}</p> : null}
+          </section>
+
+          <button type="button" className="picker-random-button" onClick={() => void handlePickRandom()}>
+            {isPicking ? 'PICKING...' : 'RANDOM'}
+          </button>
+        </div>
+
+        <section className="panel picker-result-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Selection</h2>
             </div>
+            <span className="panel-count">{pickerStatusLabel}</span>
           </div>
 
-          {versionError ? <p className="muted">{versionError}</p> : null}
+          <div className="picker-result-stage">{resultView}</div>
         </section>
-
-        <button type="button" className="picker-random-button" onClick={() => void handlePickRandom()}>
-          {isPicking ? 'PICKING...' : 'RANDOM'}
-        </button>
-
-        <section className="panel picker-result-panel compact">{resultView}</section>
       </section>
 
       {modal}

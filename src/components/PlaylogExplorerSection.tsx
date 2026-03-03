@@ -71,7 +71,12 @@ export function PlaylogExplorerSection({
     <div className="explorer-layout">
       <aside className="sidebar-column">
         <section className="panel filter-panel">
-          <h2>Playlog Filters</h2>
+          <div className="panel-heading compact">
+            <div>
+              <h2>Filters</h2>
+              <p>플레이로그, 기록 변화, 달성률 조건으로 이력을 좁힙니다.</p>
+            </div>
+          </div>
           <div className="filter-grid">
             <label className="search-box">
               <span>검색 (곡명/시각)</span>
@@ -155,7 +160,13 @@ export function PlaylogExplorerSection({
 
       <div className="table-column">
         <section className="panel">
-          <h2>Playlog Table ({playlogCountLabel})</h2>
+          <div className="panel-heading">
+            <div>
+              <h2>Playlogs</h2>
+              <p>최근 플레이 흐름과 기록 상승 여부를 한 번에 확인합니다.</p>
+            </div>
+            <span className="panel-count">{playlogCountLabel}</span>
+          </div>
           <div className="table-wrap">
             <table className="playlog-table compact-table">
               <thead>

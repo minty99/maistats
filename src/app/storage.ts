@@ -9,9 +9,6 @@ export interface StoredScoreFilters {
   rankFilter?: ScoreRank[];
   fcFilter?: FcStatus[];
   syncFilter?: SyncStatus[];
-  includeNoAchievement?: boolean;
-  includeNoInternalLevel?: boolean;
-  includeNeverPlayed?: boolean;
   achievementMin?: number;
   achievementMax?: number;
   internalMin?: number;

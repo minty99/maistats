@@ -33,13 +33,10 @@ interface BuildFilteredScoreRowsParams {
   rankFilter: ScoreRank[];
   fcFilter: FcStatus[];
   syncFilter: SyncStatus[];
-  includeNoAchievement: boolean;
   achievementMin: number;
   achievementMax: number;
-  includeNoInternalLevel: boolean;
   internalMin: number;
   internalMax: number;
-  includeNeverPlayed: boolean;
   daysMin: number;
   daysMax: number;
   scoreSortKey: ScoreSortKey;
@@ -56,13 +53,10 @@ export function buildFilteredScoreRows({
   rankFilter,
   fcFilter,
   syncFilter,
-  includeNoAchievement,
   achievementMin,
   achievementMax,
-  includeNoInternalLevel,
   internalMin,
   internalMax,
-  includeNeverPlayed,
   daysMin,
   daysMax,
   scoreSortKey,
@@ -112,27 +106,19 @@ export function buildFilteredScoreRows({
       return false;
     }
 
-    if (row.achievementPercent === null) {
-      if (!includeNoAchievement) {
-        return false;
-      }
-    } else if (row.achievementPercent < achievementMin || row.achievementPercent > achievementMax) {
+    const achievementPercent = row.achievementPercent ?? 0;
+    if (achievementPercent < achievementMin || achievementPercent > achievementMax) {
       return false;
     }
 
-    if (row.internalLevel === null) {
-      if (!includeNoInternalLevel) {
-        return false;
-      }
-    } else if (row.internalLevel < internalMin || row.internalLevel > internalMax) {
+    if (row.internalLevel === null || row.internalLevel < internalMin || row.internalLevel > internalMax) {
       return false;
     }
 
-    if (row.daysSinceLastPlayed === null) {
-      if (!includeNeverPlayed) {
-        return false;
-      }
-    } else if (row.daysSinceLastPlayed < daysMin || row.daysSinceLastPlayed > daysMax) {
+    if (
+      row.daysSinceLastPlayed !== null &&
+      (row.daysSinceLastPlayed < daysMin || row.daysSinceLastPlayed > daysMax)
+    ) {
       return false;
     }
 

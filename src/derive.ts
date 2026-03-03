@@ -74,6 +74,26 @@ export function toDxRatio(dxScore: number | null, dxScoreMax: number | null): nu
   return dxScore / dxScoreMax;
 }
 
+function estimateInternalLevel(level: string | null | undefined): number | null {
+  const normalized = level?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const match = /^(\d+)(\+)?$/.exec(normalized);
+  if (!match) {
+    return null;
+  }
+
+  const [, baseText, plus] = match;
+  const base = Number(baseText);
+  if (!Number.isFinite(base)) {
+    return null;
+  }
+
+  return base + (plus ? 0.5 : 0);
+}
+
 function coefficientForAchievement(achievementPercent: number): number {
   const achievement = Math.min(achievementPercent, 100.5);
 
@@ -170,6 +190,9 @@ export function buildScoreRows(
 
     const songInfo = songInfoByTitle.get(normalizedTitle);
     const sheet = findMatchingSheet(songInfo, score.chart_type, score.diff_category);
+    const estimatedInternalLevel = estimateInternalLevel(sheet?.level);
+    const internalLevel = sheet?.internal_level ?? estimatedInternalLevel;
+    const isInternalLevelEstimated = sheet?.internal_level === null && internalLevel !== null;
 
     const latestPlayedAtUnix = parseMaimaiPlayedAtToUnix(score.last_played_at);
 
@@ -188,12 +211,13 @@ export function buildScoreRows(
       dxScoreMax: score.dx_score_max,
       dxRatio: toDxRatio(score.dx_score, score.dx_score_max),
       ratingPoints: score.rating_points ?? toRatingPoints(
-        sheet?.internal_level ?? null,
+        internalLevel,
         score.achievement_x10000,
         score.fc,
       ),
       level: sheet?.level ?? null,
-      internalLevel: sheet?.internal_level ?? null,
+      internalLevel,
+      isInternalLevelEstimated,
       userLevel: sheet?.user_level ?? null,
       version: sheet?.version ?? null,
       imageName: songInfo?.image_name ?? null,

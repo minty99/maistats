@@ -54,12 +54,6 @@ interface ScoreExplorerSectionProps {
   setDaysMin: Dispatch<SetStateAction<number>>;
   daysMax: number;
   setDaysMax: Dispatch<SetStateAction<number>>;
-  includeNoAchievement: boolean;
-  setIncludeNoAchievement: Dispatch<SetStateAction<boolean>>;
-  includeNoInternalLevel: boolean;
-  setIncludeNoInternalLevel: Dispatch<SetStateAction<boolean>>;
-  includeNeverPlayed: boolean;
-  setIncludeNeverPlayed: Dispatch<SetStateAction<boolean>>;
   filteredScoreRows: ScoreRow[];
   songInfoUrl: string;
   onOpenSongDetail: (title: string) => Promise<void>;
@@ -102,12 +96,6 @@ export function ScoreExplorerSection({
   setDaysMin,
   daysMax,
   setDaysMax,
-  includeNoAchievement,
-  setIncludeNoAchievement,
-  includeNoInternalLevel,
-  setIncludeNoInternalLevel,
-  includeNeverPlayed,
-  setIncludeNeverPlayed,
   filteredScoreRows,
   songInfoUrl,
   onOpenSongDetail,
@@ -115,11 +103,34 @@ export function ScoreExplorerSection({
   scoreSortDesc,
   onSortBy,
 }: ScoreExplorerSectionProps) {
+  const renderInternalLevel = (row: ScoreRow) => {
+    if (row.internalLevel === null) {
+      return '-';
+    }
+
+    const [whole, fraction = '0'] = row.internalLevel.toFixed(1).split('.');
+    if (!row.isInternalLevelEstimated) {
+      return `${whole}.${fraction}`;
+    }
+
+    return (
+      <span className="estimated-level">
+        {whole}
+        <span className="estimated-level-fraction">.{fraction}</span>
+      </span>
+    );
+  };
+
   return (
     <div className="explorer-layout">
       <aside className="sidebar-column">
         <section className="panel filter-panel">
-          <h2>Score Filters</h2>
+          <div className="panel-heading compact">
+            <div>
+              <h2>Filters</h2>
+              <p>달성률 없음은 0으로, 내부레벨 없음은 기본 레벨로 추정하며, 최근 로그가 없으면 경과일 필터를 건너뜁니다.</p>
+            </div>
+          </div>
           <div className="filter-grid">
             <label className="search-box">
               <span>검색 (곡명/버전/레벨)</span>
@@ -252,39 +263,19 @@ export function ScoreExplorerSection({
               </label>
             </div>
 
-            <div className="toggle-grid">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={includeNoAchievement}
-                  onChange={(event) => setIncludeNoAchievement(event.target.checked)}
-                />
-                달성률 없는 차트 포함
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={includeNoInternalLevel}
-                  onChange={(event) => setIncludeNoInternalLevel(event.target.checked)}
-                />
-                내부레벨 없는 차트 포함
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={includeNeverPlayed}
-                  onChange={(event) => setIncludeNeverPlayed(event.target.checked)}
-                />
-                최근 로그에 없는 차트 포함
-              </label>
-            </div>
           </div>
         </section>
       </aside>
 
       <div className="table-column">
         <section className="panel">
-          <h2>Score Table ({scoreCountLabel})</h2>
+          <div className="panel-heading">
+            <div>
+              <h2>Charts</h2>
+              <p>점수 데이터와 차트 메타데이터를 함께 확인합니다. 회색 소수점은 추정 내부레벨입니다.</p>
+            </div>
+            <span className="panel-count">{scoreCountLabel}</span>
+          </div>
           <div className="table-wrap">
             <table className="score-table compact-table">
               <thead>
@@ -374,7 +365,7 @@ export function ScoreExplorerSection({
                     <td>{row.chartType}</td>
                     <td>{formatDifficultyShort(row.difficulty)}</td>
                     <td>{row.level ?? '-'}</td>
-                    <td>{row.internalLevel?.toFixed(1) ?? '-'}</td>
+                    <td>{renderInternalLevel(row)}</td>
                     <td>{formatPercent(row.achievementPercent)}</td>
                     <td>{formatNumber(row.ratingPoints)}</td>
                     <td>{row.rank ?? '-'}</td>

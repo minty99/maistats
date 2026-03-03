@@ -165,6 +165,7 @@ export interface ScoreRow {
   ratingPoints: number | null;
   level: string | null;
   internalLevel: number | null;
+  isInternalLevelEstimated: boolean;
   userLevel: string | null;
   version: string | null;
   imageName: string | null;
