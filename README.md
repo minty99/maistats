@@ -1,70 +1,69 @@
 # maistats
 
-`song-info-server` + `record-collector-server`를 연결해, score/playlog를 고자유도로 탐색하는 웹 프론트엔드입니다.
+`song-info-server`와 `record-collector-server` 데이터를 탐색하는 Vite + React 기반 웹 프론트엔드입니다.
 
-## 요구사항
+## Requirements
 
 - Node.js 20+ (권장: 20 LTS 이상)
 - npm 10+
 
-## 특징
+## What It Does
 
-- `maimai-bot`과 분리된 독립 프로젝트
-- 서버 URL을 환경 변수(`VITE_*`)와 UI 설정으로 주입 가능
-- score/playlog 통합 분석
-  - 곡/차트별 마지막 플레이 관측 시각(최근 500 로그 기준)
-  - 달성률, DX 비율, 재킷 이미지
-  - 곡 클릭 시 상세 페이지 기반 chart별 `play_count` 조회
-- 다양한 필터/정렬
-  - 곡명 검색, 차트 타입, 난이도, 버전
-  - 랭크/FC/SYNC
-  - 달성률/내부레벨/경과일 범위
+- 점수 목록과 플레이 로그 탐색
+- 곡명, 차트 타입, 난이도, 버전, 랭크, FC, SYNC 기준 필터링
+- 달성률, 내부 레벨, 경과일 기준 정렬 및 범위 검색
+- 곡별 상세 조회와 chart별 `play_count` 확인
+- 배포 환경 변수와 브라우저 UI 설정을 통한 API origin 전환
 
-## 환경 셋업
+## Quick Start
 
-### 1. 프로젝트 디렉토리 이동
-
-```bash
-cd maistats
-```
-
-### 2. 환경 변수 파일 생성
-
-```bash
-cp .env.example .env
-```
-
-`.env` 예시 (로컬 개발 기본값):
-
-```env
-VITE_SONG_INFO_SERVER_URL=http://localhost:3001
-VITE_RECORD_COLLECTOR_SERVER_URL=http://localhost:3000
-```
-
-원격/배포 서버를 사용하려면 해당 서비스 URL로 바꿔주세요:
-
-```env
-VITE_SONG_INFO_SERVER_URL=https://<your-song-info-server>
-VITE_RECORD_COLLECTOR_SERVER_URL=https://<your-record-collector-server>
-```
-
-### 3. 의존성 설치
+1. 의존성 설치:
 
 ```bash
 npm install
 ```
 
-## 실행 방법
+2. 환경 변수 파일 생성:
 
-### 개발 모드
+```bash
+cp .env.example .env
+```
+
+3. 필요하면 `.env` 값을 수정:
+
+```env
+SONG_INFO_SERVER_URL=<your-song-info-server-origin>
+RECORD_COLLECTOR_SERVER_URL=<your-record-collector-server-origin>
+```
+
+로컬 기본값은 [.env.example](/Users/muhwan/workspace/maimai/maistats/.env.example)에 들어 있습니다.
+
+4. 개발 서버 실행:
 
 ```bash
 npm run dev
 ```
 
-브라우저에서 `http://localhost:5174`로 접속합니다.
+접속 가능한 로컬 주소는 Vite가 터미널에 출력합니다.
 
-### 프로덕션 빌드
+## Environment Variables
+
+- `SONG_INFO_SERVER_URL`
+  - `song-info-server` origin
+- `RECORD_COLLECTOR_SERVER_URL`
+  - `record-collector-server` origin
+
+이 값들은 앱의 기본 API 연결 주소로 사용됩니다. 실행 중에는 UI의 `Server Connection`에서 브라우저별로 덮어쓸 수 있습니다.
+
+Cloudflare Pages에 배포할 때는 이 값을 저장소에 커밋하지 말고 Pages 환경 변수로 설정하세요.
+
+## Scripts
+
+- `npm run dev`: 개발 서버 실행
+- `npm run build`: TypeScript 체크 후 프로덕션 빌드 생성
+- `npm run preview`: 빌드 결과 로컬 프리뷰
+
+## Build
 
 ```bash
 npm run build
@@ -72,42 +71,41 @@ npm run build
 
 빌드 결과물은 `dist/`에 생성됩니다.
 
-### 빌드 결과 로컬 확인
+프리뷰가 필요하면 다음을 실행합니다.
 
 ```bash
 npm run preview
 ```
 
-기본적으로 `http://localhost:4173`에서 프리뷰할 수 있습니다.
+프리뷰 주소는 Vite가 터미널에 출력합니다.
 
-## npm 스크립트
+## Deploying With Cloudflare Pages
 
-- `npm run dev`: 개발 서버 실행 (Vite, 포트 5174)
-- `npm run build`: TypeScript 체크 + 프로덕션 빌드
-- `npm run preview`: 빌드 결과 프리뷰 서버 실행
+권장 배포 대상은 Cloudflare Pages입니다.
 
-## CI/CD (arm64 Linux)
+기본 설정:
 
-- `main` 브랜치에 push하면 GitHub Actions가 `linux/arm64` 대상 assets 이미지를 빌드해 GHCR에 업로드합니다.
-- 워크플로 파일: `.github/workflows/build-and-push.yml`
-- 이미지 태그:
-  - `ghcr.io/<owner>/maistats-assets:latest`
-  - `ghcr.io/<owner>/maistats-assets:sha-<short_sha>`
+- GitHub 저장소 연결
+- Production branch: `main`
+- Framework preset: `Vite` 또는 `None`
+- Build command: `npm ci && npm run build`
+- Build output directory: `dist`
+- Root directory: `/`
+- `NODE_VERSION=20`
 
-### 서버 배포 예시
+환경 변수:
 
-```bash
-docker run --rm -v /var/www/maistats:/dst ghcr.io/<owner>/maistats-assets:latest /dst
-```
+- Production과 Preview 모두에 `SONG_INFO_SERVER_URL`, `RECORD_COLLECTOR_SERVER_URL` 설정
+- 필요하면 custom domain 연결
 
-위 명령은 `/var/www/maistats`를 최신 정적 파일로 갱신합니다.  
-그 경로를 Nginx/Apache/Caddy의 document root로 연결해 서비스하면 됩니다.
+운영 방식:
 
-## 참고
+- `main` push 시 production 배포
+- PR 생성/업데이트 시 preview 배포
+
+## Data Notes
 
 - Score 화면의 Last Played/Days는 `record-collector-server`의 `/api/scores/rated` (`scores` 테이블 `last_played_at`) 기준입니다.
 - Playlog 화면은 `record-collector-server`의 `/api/recent?limit=10000` (`playlogs` 테이블) 기준입니다.
 - chart별 `play_count`는 playlog에서 추정하지 않고, 곡별 `/api/scores/detail/{title}` 조회 결과만 사용합니다.
 - 더 긴 기간 분석이 필요하면 record collector에 추가 API(예: 전체 playlog 조회)가 필요합니다.
-- UI의 `Server Connection` 섹션에서 실행 중에도 API URL을 변경할 수 있으며, 변경값은 브라우저 `localStorage`에 저장됩니다.
-- `.env` 파일에는 민감한 정보가 포함될 수 있으므로 저장소에 커밋하지 마세요.
