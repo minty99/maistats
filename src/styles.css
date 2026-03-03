@@ -98,6 +98,7 @@ select {
 }
 
 .app-nav {
+  position: relative;
   display: grid;
   gap: 8px;
 }
@@ -145,6 +146,10 @@ select {
 .app-nav-list {
   display: grid;
   gap: 8px;
+}
+
+.app-nav-list-mobile {
+  display: none;
 }
 
 .app-nav-list button.active {
@@ -747,6 +752,12 @@ table {
   table-layout: fixed;
 }
 
+.score-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
 thead {
   position: sticky;
   top: 0;
@@ -887,6 +898,11 @@ tbody tr:hover {
   width: 22%;
 }
 
+.score-table .title-col {
+  min-width: 50ch;
+  width: 50ch;
+}
+
 .score-table .jacket-col,
 .playlog-table .jacket-col {
   width: 60px;
@@ -952,7 +968,7 @@ tbody tr:hover {
 }
 
 .playlog-table .achievement-col {
-  width: 15ch;
+  width: 16ch;
   text-align: center;
   white-space: nowrap;
 }
@@ -972,6 +988,23 @@ tbody tr:hover {
 
 .score-table .version-col {
   width: 11ch;
+}
+
+.score-table th:not(.title-col),
+.score-table td:not(.title-col),
+.score-table th:not(.title-col) .th-sort-button {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.score-table th.title-col,
+.score-table td.title-col,
+.score-table .title-col .th-sort-button,
+.score-table .title-col .link-button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .score-table .chart-col,
@@ -996,8 +1029,9 @@ tbody tr:hover {
 .achievement-value {
   display: inline-flex;
   justify-content: flex-start;
-  width: 9ch;
+  width: 10ch;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .achievement-value--empty {
@@ -1557,15 +1591,30 @@ tbody tr:hover {
     display: grid;
   }
 
-  .app-nav-list {
+  .app-nav-list-desktop {
     display: none;
   }
 
-  .app-nav-list.is-open {
+  .app-nav-list-mobile {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.96)),
+      var(--panel);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+  }
+
+  .app-nav-list-mobile.is-open {
     display: grid;
   }
 
-  .app-nav-list button {
+  .app-nav-list-mobile button {
     min-height: 34px;
   }
 

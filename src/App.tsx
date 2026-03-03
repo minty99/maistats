@@ -142,6 +142,7 @@ const NAV_ITEMS: Array<{ page: AppPage; label: string; Icon: () => JSX.Element }
 ];
 
 function App() {
+  const mobileNavRef = useRef<HTMLElement | null>(null);
   const savedScoreFilters = useMemo(
     () => readStoredJson<StoredScoreFilters>(SCORE_FILTERS_STORAGE_KEY),
     [],
@@ -448,6 +449,32 @@ function App() {
     setIsMobileNavOpen(false);
   }, [activePage]);
 
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (mobileNavRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      setIsMobileNavOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMobileNavOpen]);
+
   const handleOpenSongDetail = useCallback((title: string) => {
     setSelectedDetailTitle(title);
   }, []);
@@ -634,6 +661,7 @@ function App() {
   const playlogCountLabel = `${filteredPlaylogRows.length.toLocaleString()}/${playlogData.length.toLocaleString()}`;
   const activeNavItem = NAV_ITEMS.find((item) => item.page === activePage) ?? NAV_ITEMS[0];
   const ActiveNavIcon = activeNavItem.Icon;
+  const mobileNavItems = NAV_ITEMS;
 
   return (
     <div className="app-shell">
@@ -642,7 +670,7 @@ function App() {
           <h1>maistats</h1>
         </div>
 
-        <nav className="app-nav" aria-label="Primary">
+        <nav ref={mobileNavRef} className="app-nav" aria-label="Primary">
           <button
             type="button"
             className="app-nav-trigger"
@@ -658,8 +686,21 @@ function App() {
               <ChevronDownIcon />
             </span>
           </button>
-          <div className={`app-nav-list ${isMobileNavOpen ? 'is-open' : ''}`}>
-            {NAV_ITEMS.filter(({ page }) => page !== activePage).map(({ page, label, Icon }) => (
+          <div className="app-nav-list app-nav-list-desktop">
+            {NAV_ITEMS.map(({ page, label, Icon }) => (
+              <button
+                key={page}
+                type="button"
+                className={activePage === page ? 'active' : ''}
+                onClick={() => handleNavigatePage(page)}
+              >
+                <Icon />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          <div className={`app-nav-list app-nav-list-mobile ${isMobileNavOpen ? 'is-open' : ''}`}>
+            {mobileNavItems.map(({ page, label, Icon }) => (
               <button
                 key={page}
                 type="button"
