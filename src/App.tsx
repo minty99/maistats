@@ -48,7 +48,7 @@ import {
 import { PlaylogExplorerSection } from './components/PlaylogExplorerSection';
 import { RandomPickerPage } from './components/RandomPickerPage';
 import { ScoreExplorerSection } from './components/ScoreExplorerSection';
-import { ServerConnectionModal } from './components/ServerConnectionModal';
+import { SettingsPage } from './components/SettingsPage';
 import { SongDetailModal } from './components/SongDetailModal';
 import type {
   ChartType,
@@ -61,7 +61,7 @@ import type {
   SyncStatus,
 } from './types';
 
-type AppPage = 'scores' | 'playlogs' | 'picker';
+type AppPage = 'scores' | 'playlogs' | 'picker' | 'settings';
 
 function readPageFromHash(hash: string): AppPage {
   if (hash === '#playlogs') {
@@ -70,6 +70,9 @@ function readPageFromHash(hash: string): AppPage {
   if (hash === '#picker') {
     return 'picker';
   }
+  if (hash === '#settings') {
+    return 'settings';
+  }
   return 'scores';
 }
 
@@ -77,19 +80,48 @@ function readShowJacketsPreference(): boolean {
   return localStorage.getItem(TABLE_LAYOUT_STORAGE_KEY) !== 'compact';
 }
 
-function LayoutToggleIcon({ showJackets }: { showJackets: boolean }) {
-  if (showJackets) {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3" y="5" width="6" height="14" rx="1.5" />
-        <path d="M12 7h9M12 12h9M12 17h9" />
-      </svg>
-    );
-  }
-
+function ScoresIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 7h16M4 12h16M4 17h16" />
+      <path d="M4 19V5" />
+      <path d="M8 19V11" />
+      <path d="M12 19V8" />
+      <path d="M16 19V13" />
+      <path d="M20 19V6" />
+    </svg>
+  );
+}
+
+function PlaylogsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+      <circle cx="7" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="18" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function PickerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 4h12" />
+      <path d="M9 4v4" />
+      <path d="M15 4v4" />
+      <path d="M12 8v4" />
+      <path d="M7 20c0-2.8 2.2-5 5-5s5 2.2 5 5" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.9.6Z" />
     </svg>
   );
 }
@@ -180,7 +212,6 @@ function App() {
   const [scoreSortDesc, setScoreSortDesc] = useState(true);
 
   const [selectedDetailTitle, setSelectedDetailTitle] = useState<string | null>(null);
-  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [showJackets, setShowJackets] = useState<boolean>(readShowJacketsPreference);
 
   const [playlogQuery, setPlaylogQuery] = useState('');
@@ -230,7 +261,7 @@ function App() {
   }, [scoreData, versionsResponse]);
 
   const loadData = useCallback(async () => {
-    if (activePage === 'picker') {
+    if (activePage === 'picker' || activePage === 'settings') {
       loadAbortRef.current?.abort();
       setIsLoading(false);
       setLoadingError(null);
@@ -377,6 +408,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem(TABLE_LAYOUT_STORAGE_KEY, showJackets ? 'jacket' : 'compact');
   }, [showJackets]);
+
+  useEffect(() => {
+    if (activePage !== 'settings') {
+      return;
+    }
+    setSongInfoUrlDraft(songInfoUrl);
+    setRecordCollectorUrlDraft(recordCollectorUrl);
+  }, [activePage, recordCollectorUrl, songInfoUrl]);
 
   const handleOpenSongDetail = useCallback((title: string) => {
     setSelectedDetailTitle(title);
@@ -539,22 +578,25 @@ function App() {
 
     setSongInfoUrl(nextSongInfoUrl);
     setRecordCollectorUrl(nextRecordUrl);
-    setIsServerModalOpen(false);
   };
 
   const handleNavigatePage = useCallback((page: AppPage) => {
-    const nextHash = page === 'playlogs' ? '#playlogs' : page === 'picker' ? '#picker' : '#scores';
+    if (page === 'settings') {
+      setSongInfoUrlDraft(songInfoUrl);
+      setRecordCollectorUrlDraft(recordCollectorUrl);
+    }
+    const nextHash = page === 'playlogs'
+      ? '#playlogs'
+      : page === 'picker'
+        ? '#picker'
+        : page === 'settings'
+          ? '#settings'
+          : '#scores';
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
       return;
     }
     setActivePage(page);
-  }, []);
-
-  const openServerModal = useCallback(() => {
-    setSongInfoUrlDraft(songInfoUrl);
-    setRecordCollectorUrlDraft(recordCollectorUrl);
-    setIsServerModalOpen(true);
   }, [recordCollectorUrl, songInfoUrl]);
 
   const scoreCountLabel = `${filteredScoreRows.length.toLocaleString()}/${scoreData.length.toLocaleString()}`;
@@ -562,151 +604,139 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-toolbar panel">
-        <div className="app-toolbar-main">
-          <div className="brand-copy">
-            <h1>maistats</h1>
-          </div>
-
-          <div className="toolbar-switches">
-            <section className="tabs toolbar-tabs">
-              <button
-                type="button"
-                className={activePage === 'scores' ? 'active' : ''}
-                onClick={() => handleNavigatePage('scores')}
-              >
-                Scores
-              </button>
-              <button
-                type="button"
-                className={activePage === 'playlogs' ? 'active' : ''}
-                onClick={() => handleNavigatePage('playlogs')}
-              >
-                Playlogs
-              </button>
-              <button
-                type="button"
-                className={activePage === 'picker' ? 'active' : ''}
-                onClick={() => handleNavigatePage('picker')}
-              >
-                Picker
-              </button>
-            </section>
-          </div>
+      <aside className="app-sidebar panel">
+        <div className="brand-copy">
+          <h1>maistats</h1>
         </div>
 
-        <div className="app-toolbar-meta">
-          {activePage !== 'picker' ? (
-            <button
-              type="button"
-              className="toolbar-icon-button"
-              aria-label={showJackets ? 'Jacket 숨기기' : 'Jacket 표시하기'}
-              aria-pressed={!showJackets}
-              title={showJackets ? 'Compact mode' : 'Jacket mode'}
-              onClick={() => setShowJackets((current) => !current)}
-            >
-              <LayoutToggleIcon showJackets={showJackets} />
-              <span className="sr-only">{showJackets ? 'Jacket 숨기기' : 'Jacket 표시하기'}</span>
-            </button>
-          ) : null}
-          <button type="button" className="server-open-button" onClick={openServerModal}>
-            Connections
+        <nav className="app-nav" aria-label="Primary">
+          <button
+            type="button"
+            className={activePage === 'scores' ? 'active' : ''}
+            onClick={() => handleNavigatePage('scores')}
+          >
+            <ScoresIcon />
+            <span>Scores</span>
           </button>
-        </div>
-      </header>
+          <button
+            type="button"
+            className={activePage === 'playlogs' ? 'active' : ''}
+            onClick={() => handleNavigatePage('playlogs')}
+          >
+            <PlaylogsIcon />
+            <span>Playlogs</span>
+          </button>
+          <button
+            type="button"
+            className={activePage === 'picker' ? 'active' : ''}
+            onClick={() => handleNavigatePage('picker')}
+          >
+            <PickerIcon />
+            <span>Picker</span>
+          </button>
+          <button
+            type="button"
+            className={activePage === 'settings' ? 'active' : ''}
+            onClick={() => handleNavigatePage('settings')}
+          >
+            <SettingsIcon />
+            <span>Settings</span>
+          </button>
+        </nav>
+      </aside>
 
-      {activePage === 'scores' ? (
-        <>
-          {loadingError ? <section className="error-banner">에러: {loadingError}</section> : null}
+      <main className="app-main">
+        {activePage === 'scores' ? (
+          <>
+            {loadingError ? <section className="error-banner">에러: {loadingError}</section> : null}
 
-          <ScoreExplorerSection
-            scoreCountLabel={scoreCountLabel}
-            isLoading={isLoading}
-            showJackets={showJackets}
-            query={query}
-            setQuery={setQuery}
-            chartTypes={CHART_TYPES}
-            chartFilter={chartFilter}
-            setChartFilter={setChartFilter}
-            difficulties={DIFFICULTIES}
-            difficultyFilter={difficultyFilter}
-            setDifficultyFilter={setDifficultyFilter}
-            versionOptions={versionOptions}
-            versionSelection={versionSelection}
-            setVersionSelection={setVersionSelection}
-            scoreRankOptions={rankFilterOptions}
-            rankFilter={selectedRankFilterOptions}
-            onToggleRankFilter={handleRankFilterToggle}
-            fcOptions={fcOptions}
-            fcFilter={fcFilter}
-            setFcFilter={setFcFilter}
-            syncOptions={syncOptions}
-            syncFilter={syncFilter}
-            setSyncFilter={setSyncFilter}
-            achievementMin={achievementMin}
-            setAchievementMin={setAchievementMin}
-            achievementMax={achievementMax}
-            setAchievementMax={setAchievementMax}
-            internalMin={internalMin}
-            setInternalMin={setInternalMin}
-            internalMax={internalMax}
-            setInternalMax={setInternalMax}
-            daysMin={daysMin}
-            setDaysMin={setDaysMin}
-            daysMax={daysMax}
-            setDaysMax={setDaysMax}
-            filteredScoreRows={filteredScoreRows}
+            <ScoreExplorerSection
+              scoreCountLabel={scoreCountLabel}
+              isLoading={isLoading}
+              showJackets={showJackets}
+              query={query}
+              setQuery={setQuery}
+              chartTypes={CHART_TYPES}
+              chartFilter={chartFilter}
+              setChartFilter={setChartFilter}
+              difficulties={DIFFICULTIES}
+              difficultyFilter={difficultyFilter}
+              setDifficultyFilter={setDifficultyFilter}
+              versionOptions={versionOptions}
+              versionSelection={versionSelection}
+              setVersionSelection={setVersionSelection}
+              scoreRankOptions={rankFilterOptions}
+              rankFilter={selectedRankFilterOptions}
+              onToggleRankFilter={handleRankFilterToggle}
+              fcOptions={fcOptions}
+              fcFilter={fcFilter}
+              setFcFilter={setFcFilter}
+              syncOptions={syncOptions}
+              syncFilter={syncFilter}
+              setSyncFilter={setSyncFilter}
+              achievementMin={achievementMin}
+              setAchievementMin={setAchievementMin}
+              achievementMax={achievementMax}
+              setAchievementMax={setAchievementMax}
+              internalMin={internalMin}
+              setInternalMin={setInternalMin}
+              internalMax={internalMax}
+              setInternalMax={setInternalMax}
+              daysMin={daysMin}
+              setDaysMin={setDaysMin}
+              daysMax={daysMax}
+              setDaysMax={setDaysMax}
+              filteredScoreRows={filteredScoreRows}
+              songInfoUrl={songInfoUrl}
+              onOpenSongDetail={handleOpenSongDetail}
+              scoreSortKey={scoreSortKey}
+              scoreSortDesc={scoreSortDesc}
+              onSortBy={handleScoreSortBy}
+            />
+          </>
+        ) : activePage === 'playlogs' ? (
+          <>
+            {loadingError ? <section className="error-banner">에러: {loadingError}</section> : null}
+
+            <PlaylogExplorerSection
+              playlogCountLabel={playlogCountLabel}
+              showJackets={showJackets}
+              playlogQuery={playlogQuery}
+              setPlaylogQuery={setPlaylogQuery}
+              chartTypes={CHART_TYPES}
+              playlogChartFilter={playlogChartFilter}
+              setPlaylogChartFilter={setPlaylogChartFilter}
+              difficulties={DIFFICULTIES}
+              playlogDifficultyFilter={playlogDifficultyFilter}
+              setPlaylogDifficultyFilter={setPlaylogDifficultyFilter}
+              playlogAchievementMin={playlogAchievementMin}
+              setPlaylogAchievementMin={setPlaylogAchievementMin}
+              playlogAchievementMax={playlogAchievementMax}
+              setPlaylogAchievementMax={setPlaylogAchievementMax}
+              filteredPlaylogRows={filteredPlaylogRows}
+              songInfoUrl={songInfoUrl}
+              playlogSortKey={playlogSortKey}
+              playlogSortDesc={playlogSortDesc}
+              onSortBy={handlePlaylogSortBy}
+            />
+          </>
+        ) : activePage === 'picker' ? (
+          <RandomPickerPage
             songInfoUrl={songInfoUrl}
-            onOpenSongDetail={handleOpenSongDetail}
-            scoreSortKey={scoreSortKey}
-            scoreSortDesc={scoreSortDesc}
-            onSortBy={handleScoreSortBy}
+            recordCollectorUrl={recordCollectorUrl}
           />
-        </>
-      ) : activePage === 'playlogs' ? (
-        <>
-          {loadingError ? <section className="error-banner">에러: {loadingError}</section> : null}
-
-          <PlaylogExplorerSection
-            playlogCountLabel={playlogCountLabel}
-            showJackets={showJackets}
-            playlogQuery={playlogQuery}
-            setPlaylogQuery={setPlaylogQuery}
-            chartTypes={CHART_TYPES}
-            playlogChartFilter={playlogChartFilter}
-            setPlaylogChartFilter={setPlaylogChartFilter}
-            difficulties={DIFFICULTIES}
-            playlogDifficultyFilter={playlogDifficultyFilter}
-            setPlaylogDifficultyFilter={setPlaylogDifficultyFilter}
-            playlogAchievementMin={playlogAchievementMin}
-            setPlaylogAchievementMin={setPlaylogAchievementMin}
-            playlogAchievementMax={playlogAchievementMax}
-            setPlaylogAchievementMax={setPlaylogAchievementMax}
-            filteredPlaylogRows={filteredPlaylogRows}
+        ) : (
+          <SettingsPage
             songInfoUrl={songInfoUrl}
-            playlogSortKey={playlogSortKey}
-            playlogSortDesc={playlogSortDesc}
-            onSortBy={handlePlaylogSortBy}
+            recordCollectorUrl={recordCollectorUrl}
+            songInfoUrlDraft={songInfoUrlDraft}
+            setSongInfoUrlDraft={setSongInfoUrlDraft}
+            recordCollectorUrlDraft={recordCollectorUrlDraft}
+            setRecordCollectorUrlDraft={setRecordCollectorUrlDraft}
+            onApply={handleApplyUrls}
           />
-        </>
-      ) : (
-        <RandomPickerPage
-          songInfoUrl={songInfoUrl}
-          recordCollectorUrl={recordCollectorUrl}
-        />
-      )}
-
-      <ServerConnectionModal
-        isOpen={isServerModalOpen}
-        onClose={() => setIsServerModalOpen(false)}
-        songInfoUrl={songInfoUrl}
-        recordCollectorUrl={recordCollectorUrl}
-        songInfoUrlDraft={songInfoUrlDraft}
-        setSongInfoUrlDraft={setSongInfoUrlDraft}
-        recordCollectorUrlDraft={recordCollectorUrlDraft}
-        setRecordCollectorUrlDraft={setRecordCollectorUrlDraft}
-        onApply={handleApplyUrls}
-      />
+        )}
+      </main>
 
       <SongDetailModal
         selectedDetailTitle={selectedDetailTitle}
