@@ -36,7 +36,7 @@ SONG_INFO_SERVER_URL=<your-song-info-server-origin>
 RECORD_COLLECTOR_SERVER_URL=<your-record-collector-server-origin>
 ```
 
-로컬 기본값은 [.env.example](/Users/muhwan/workspace/maimai/maistats/.env.example)에 들어 있습니다.
+로컬 기본값은 [.env.example](./.env.example)에 들어 있습니다.
 
 4. 개발 서버 실행:
 
