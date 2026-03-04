@@ -1,4 +1,4 @@
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 
 import { toDateLabel } from '../derive';
 import type {
@@ -68,6 +68,18 @@ interface ScoreExplorerSectionProps {
   onSortBy: (key: ScoreSortKey) => void;
 }
 
+function normalizeNumberDraft(value: string, fallback: number): number {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export function ScoreExplorerSection({
   sidebarTopContent,
   scoreCountLabel,
@@ -114,6 +126,32 @@ export function ScoreExplorerSection({
   scoreSortDesc,
   onSortBy,
 }: ScoreExplorerSectionProps) {
+  const [achievementMinDraft, setAchievementMinDraft] = useState(() => String(achievementMin));
+  const [achievementMaxDraft, setAchievementMaxDraft] = useState(() => String(achievementMax));
+  const [internalMinDraft, setInternalMinDraft] = useState(() => String(internalMin));
+  const [internalMaxDraft, setInternalMaxDraft] = useState(() => String(internalMax));
+  const [daysMinDraft, setDaysMinDraft] = useState(() => String(daysMin));
+  const [daysMaxDraft, setDaysMaxDraft] = useState(() => String(daysMax));
+
+  useEffect(() => {
+    setAchievementMinDraft(String(achievementMin));
+  }, [achievementMin]);
+  useEffect(() => {
+    setAchievementMaxDraft(String(achievementMax));
+  }, [achievementMax]);
+  useEffect(() => {
+    setInternalMinDraft(String(internalMin));
+  }, [internalMin]);
+  useEffect(() => {
+    setInternalMaxDraft(String(internalMax));
+  }, [internalMax]);
+  useEffect(() => {
+    setDaysMinDraft(String(daysMin));
+  }, [daysMin]);
+  useEffect(() => {
+    setDaysMaxDraft(String(daysMax));
+  }, [daysMax]);
+
   const renderInternalLevel = (row: ScoreRow) => {
     if (row.internalLevel === null) {
       return '-';
@@ -232,66 +270,96 @@ export function ScoreExplorerSection({
                 <span>달성률 최소</span>
                 <input
                   type="number"
-                  value={achievementMin}
+                  value={achievementMinDraft}
                   min={0}
                   max={101}
                   step={0.0001}
-                  onChange={(event) => setAchievementMin(Number(event.target.value))}
+                  onChange={(event) => setAchievementMinDraft(event.target.value)}
+                  onBlur={() => {
+                    const next = normalizeNumberDraft(achievementMinDraft, 0);
+                    setAchievementMin(next);
+                    setAchievementMinDraft(String(next));
+                  }}
                 />
               </label>
               <label>
                 <span>달성률 최대</span>
                 <input
                   type="number"
-                  value={achievementMax}
+                  value={achievementMaxDraft}
                   min={0}
                   max={101}
                   step={0.0001}
-                  onChange={(event) => setAchievementMax(Number(event.target.value))}
+                  onChange={(event) => setAchievementMaxDraft(event.target.value)}
+                  onBlur={() => {
+                    const next = normalizeNumberDraft(achievementMaxDraft, 101);
+                    setAchievementMax(next);
+                    setAchievementMaxDraft(String(next));
+                  }}
                 />
               </label>
               <label>
                 <span>내부레벨 최소</span>
                 <input
                   type="number"
-                  value={internalMin}
+                  value={internalMinDraft}
                   min={1}
                   max={15.5}
                   step={0.1}
-                  onChange={(event) => setInternalMin(Number(event.target.value))}
+                  onChange={(event) => setInternalMinDraft(event.target.value)}
+                  onBlur={() => {
+                    const next = normalizeNumberDraft(internalMinDraft, 1);
+                    setInternalMin(next);
+                    setInternalMinDraft(String(next));
+                  }}
                 />
               </label>
               <label>
                 <span>내부레벨 최대</span>
                 <input
                   type="number"
-                  value={internalMax}
+                  value={internalMaxDraft}
                   min={1}
                   max={15.5}
                   step={0.1}
-                  onChange={(event) => setInternalMax(Number(event.target.value))}
+                  onChange={(event) => setInternalMaxDraft(event.target.value)}
+                  onBlur={() => {
+                    const next = normalizeNumberDraft(internalMaxDraft, 15.5);
+                    setInternalMax(next);
+                    setInternalMaxDraft(String(next));
+                  }}
                 />
               </label>
               <label>
                 <span>경과일 최소</span>
                 <input
                   type="number"
-                  value={daysMin}
+                  value={daysMinDraft}
                   min={0}
                   max={5000}
                   step={1}
-                  onChange={(event) => setDaysMin(Number(event.target.value))}
+                  onChange={(event) => setDaysMinDraft(event.target.value)}
+                  onBlur={() => {
+                    const next = Math.max(0, Math.trunc(normalizeNumberDraft(daysMinDraft, 0)));
+                    setDaysMin(next);
+                    setDaysMinDraft(String(next));
+                  }}
                 />
               </label>
               <label>
                 <span>경과일 최대</span>
                 <input
                   type="number"
-                  value={daysMax}
+                  value={daysMaxDraft}
                   min={0}
                   max={5000}
                   step={1}
-                  onChange={(event) => setDaysMax(Number(event.target.value))}
+                  onChange={(event) => setDaysMaxDraft(event.target.value)}
+                  onBlur={() => {
+                    const next = Math.max(0, Math.trunc(normalizeNumberDraft(daysMaxDraft, 2000)));
+                    setDaysMax(next);
+                    setDaysMaxDraft(String(next));
+                  }}
                 />
               </label>
             </div>

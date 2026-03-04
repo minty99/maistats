@@ -215,6 +215,8 @@ function FiltersMenu({
   versionSummary,
   isVersionLoading,
   versionError,
+  minDaysSinceLastPlayed,
+  onChangeMinDaysSinceLastPlayed,
   onToggleChartType,
   onToggleDifficulty,
   onOpenVersions,
@@ -225,6 +227,8 @@ function FiltersMenu({
   versionSummary: string;
   isVersionLoading: boolean;
   versionError: string | null;
+  minDaysSinceLastPlayed: number;
+  onChangeMinDaysSinceLastPlayed: (value: number) => void;
   onToggleChartType: (value: ChartType) => void;
   onToggleDifficulty: (value: number) => void;
   onOpenVersions: () => void;
@@ -300,6 +304,20 @@ function FiltersMenu({
             </button>
             {versionError ? <p className="picker-filter-error">{versionError}</p> : null}
           </section>
+
+          <section className="picker-filter-section">
+            <div className="filter-label">Last played</div>
+            <label>
+              <span>최소 경과일</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={minDaysSinceLastPlayed}
+                onChange={(event) => onChangeMinDaysSinceLastPlayed(Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+              />
+            </label>
+          </section>
         </div>
       </section>
     </div>
@@ -350,6 +368,9 @@ export function RandomPickerPage({
     }
     return coerceNumberArray(storedFilters.includeVersionIndices).sort((left, right) => left - right);
   });
+  const [minDaysSinceLastPlayed, setMinDaysSinceLastPlayed] = useState(() =>
+    Math.max(0, Math.trunc(coerceNumber(storedFilters?.minDaysSinceLastPlayed, 0))),
+  );
   const [activeModal, setActiveModal] = useState<ModalKind>(null);
   const [pickedSong, setPickedSong] = useState<RandomPickerSong | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -365,9 +386,10 @@ export function RandomPickerPage({
       chartTypes,
       difficultyIndices,
       includeVersionIndices,
+      minDaysSinceLastPlayed,
     };
     localStorage.setItem(RANDOM_PICKER_FILTERS_STORAGE_KEY, JSON.stringify(payload));
-  }, [chartTypes, difficultyIndices, includeVersionIndices, rangeFrom, rangeTo]);
+  }, [chartTypes, difficultyIndices, includeVersionIndices, minDaysSinceLastPlayed, rangeFrom, rangeTo]);
 
   const sortedVersionOptions = useMemo(() => {
     return [...versionOptions].sort((left, right) => {
@@ -527,6 +549,30 @@ export function RandomPickerPage({
           }
 
           const score = scoreMap.get(key);
+          const lastPlayedAtText = score?.last_played_at?.trim() ?? '';
+          const match = /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/.exec(lastPlayedAtText);
+          const parsedLastPlayedMs = match
+            ? new Date(
+              Number(match[1]),
+              Number(match[2]) - 1,
+              Number(match[3]),
+              Number(match[4]),
+              Number(match[5]),
+              0,
+              0,
+            ).getTime()
+            : null;
+          const lastPlayedMs = parsedLastPlayedMs !== null && Number.isFinite(parsedLastPlayedMs)
+            ? parsedLastPlayedMs
+            : null;
+          const daysSinceLastPlayed = lastPlayedMs === null
+            ? null
+            : Math.max(0, Math.floor((Date.now() - lastPlayedMs) / (1000 * 60 * 60 * 24)));
+
+          if (minDaysSinceLastPlayed > 0 && (daysSinceLastPlayed === null || daysSinceLastPlayed < minDaysSinceLastPlayed)) {
+            continue;
+          }
+
           candidates.push({
             title: song.title,
             version: sheet.version,
@@ -587,6 +633,7 @@ export function RandomPickerPage({
     songInfoUrl,
     songMetadata,
     sortedVersionOptions,
+    minDaysSinceLastPlayed,
   ]);
 
   const chartSummary = useMemo(() => buildChartSummary(chartTypes), [chartTypes]);
@@ -717,10 +764,10 @@ export function RandomPickerPage({
 
           {pickedSong.filteredSongCount !== null && pickedSong.levelSongCount !== null ? (
             <p className="picker-pool-line">
-              Picked from {formatNumber(pickedSong.filteredSongCount)} / {formatNumber(pickedSong.levelSongCount)} songs
+              Picked from {formatNumber(pickedSong.filteredSongCount)} songs
             </p>
           ) : (
-            <p className="picker-pool-line">Picked from No Data / No Data songs</p>
+            <p className="picker-pool-line">Picked from No Data songs</p>
           )}
 
           <div className={hasPersonal ? 'picker-achievement-row' : 'picker-achievement-row is-empty'}>
@@ -749,6 +796,8 @@ export function RandomPickerPage({
           versionSummary={versionSummary}
           isVersionLoading={false}
           versionError={null}
+          minDaysSinceLastPlayed={minDaysSinceLastPlayed}
+          onChangeMinDaysSinceLastPlayed={setMinDaysSinceLastPlayed}
           onToggleChartType={toggleChartType}
           onToggleDifficulty={toggleDifficulty}
           onOpenVersions={() => setActiveModal('versions')}
