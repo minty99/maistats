@@ -35,7 +35,10 @@ interface PlaylogExplorerSectionProps {
   setIsPlaylogDateFilterDisabled: Dispatch<SetStateAction<boolean>>;
   selectedPlaylogDayKey: string | null;
   setSelectedPlaylogDayKey: Dispatch<SetStateAction<string | null>>;
-  availablePlaylogDayKeys: string[];
+  playlogDayOptions: Array<{
+    key: string;
+    creditCount: number | null;
+  }>;
   selectedPlaylogDayCreditCount: number | null;
   selectedPlaylogDaySongCount: number;
   filteredPlaylogRows: PlaylogRow[];
@@ -66,7 +69,7 @@ export function PlaylogExplorerSection({
   setIsPlaylogDateFilterDisabled,
   selectedPlaylogDayKey,
   setSelectedPlaylogDayKey,
-  availablePlaylogDayKeys,
+  playlogDayOptions,
   selectedPlaylogDayCreditCount,
   selectedPlaylogDaySongCount,
   filteredPlaylogRows,
@@ -117,11 +120,13 @@ export function PlaylogExplorerSection({
     if (!value) {
       return;
     }
-    if (!availablePlaylogDayKeys.includes(value)) {
+    if (!playlogDayOptions.some((option) => option.key === value)) {
       return;
     }
     setSelectedPlaylogDayKey(value);
   };
+
+  const formatDayLabel = (dayKey: string) => dayKey.replace(/-/g, '/');
 
   const playlogDaySummary = isPlaylogDateFilterDisabled
     ? `전체: ${selectedPlaylogDaySongCount.toLocaleString()}곡`
@@ -159,20 +164,17 @@ export function PlaylogExplorerSection({
               </label>
               <label className="search-box">
                 <span>플레이 날짜 (maimai day 04:00 기준)</span>
-                <input
-                  type="date"
+                <select
                   value={selectedPlaylogDayKey ?? ''}
                   onChange={(event) => handlePlaylogDayInputChange(event.target.value)}
-                  disabled={isPlaylogDateFilterDisabled || availablePlaylogDayKeys.length === 0}
-                  min={availablePlaylogDayKeys[0]}
-                  max={availablePlaylogDayKeys[availablePlaylogDayKeys.length - 1]}
-                  list="playlog-day-options"
-                />
-                <datalist id="playlog-day-options">
-                  {availablePlaylogDayKeys.map((dayKey) => (
-                    <option key={dayKey} value={dayKey} />
+                  disabled={isPlaylogDateFilterDisabled || playlogDayOptions.length === 0}
+                >
+                  {playlogDayOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {formatDayLabel(option.key)} ({option.creditCount === null ? '-' : option.creditCount.toLocaleString()} credits)
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </label>
               <p className="playlog-day-filter-summary">{playlogDaySummary}</p>
             </div>

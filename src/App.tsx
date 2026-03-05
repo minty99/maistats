@@ -58,6 +58,7 @@ import type {
   DifficultyCategory,
   FcStatus,
   PlayRecordApiResponse,
+  PlaylogRow,
   ScoreApiResponse,
   ScoreRow,
   ScoreRank,
@@ -117,6 +118,18 @@ function toMaimaiDayStartUnix(dayKey: string): number | null {
   );
   const unix = Math.floor(start.getTime() / 1000);
   return Number.isFinite(unix) ? unix : null;
+}
+
+function countCredits(rows: PlaylogRow[]): number | null {
+  const creditIds = rows
+    .map((row) => row.creditId)
+    .filter((creditId): creditId is number => creditId !== null);
+
+  if (creditIds.length === 0) {
+    return null;
+  }
+
+  return new Set(creditIds).size;
 }
 
 function ScoresIcon() {
@@ -712,17 +725,21 @@ function App() {
   }, [playlogData, selectedPlaylogDayEndUnix, selectedPlaylogDayStartUnix]);
 
   const selectedPlaylogDayCreditCount = useMemo(() => {
-    const creditIds = selectedPlaylogDayRows
-      .map((row) => row.creditId)
-      .filter((creditId): creditId is number => creditId !== null);
-    if (creditIds.length === 0) {
-      return null;
-    }
-
-    const minCreditId = Math.min(...creditIds);
-    const maxCreditId = Math.max(...creditIds);
-    return maxCreditId - minCreditId + 1;
+    return countCredits(selectedPlaylogDayRows);
   }, [selectedPlaylogDayRows]);
+
+  const playlogDayOptions = useMemo(() => {
+    return availablePlaylogDayKeys.map((dayKey) => {
+      const dayStartUnix = toMaimaiDayStartUnix(dayKey);
+      if (dayStartUnix === null) {
+        return { key: dayKey, creditCount: null };
+      }
+
+      const dayEndUnix = dayStartUnix + 24 * 60 * 60;
+      const dayRows = playlogData.filter((row) => row.playedAtUnix >= dayStartUnix && row.playedAtUnix < dayEndUnix);
+      return { key: dayKey, creditCount: countCredits(dayRows) };
+    });
+  }, [availablePlaylogDayKeys, playlogData]);
 
   const selectedPlaylogDaySongCount = selectedPlaylogDayRows.length;
 
@@ -974,7 +991,7 @@ function App() {
               setIsPlaylogDateFilterDisabled={setIsPlaylogDateFilterDisabled}
               selectedPlaylogDayKey={selectedPlaylogDayKey}
               setSelectedPlaylogDayKey={setSelectedPlaylogDayKey}
-              availablePlaylogDayKeys={availablePlaylogDayKeys}
+              playlogDayOptions={playlogDayOptions}
               selectedPlaylogDayCreditCount={selectedPlaylogDayCreditCount}
               selectedPlaylogDaySongCount={selectedPlaylogDaySongCount}
               filteredPlaylogRows={filteredPlaylogRows}
