@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 import { useI18n } from '../app/i18n';
 import { formatVersionLabel } from '../app/utils';
@@ -20,12 +20,14 @@ interface UserTierGroup {
 }
 
 interface UserTierPageProps {
+  sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   groups: UserTierGroup[];
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }
 
 export function UserTierPage({
+  sidebarTopContent,
   songInfoUrl,
   groups,
   onOpenSongDetail,
@@ -55,6 +57,7 @@ export function UserTierPage({
   return (
     <div className="explorer-layout user-tier-layout">
       <aside className="sidebar-column">
+        {sidebarTopContent}
         <section className="panel filter-panel">
           <div className="panel-heading compact">
             <div>
@@ -62,22 +65,22 @@ export function UserTierPage({
             </div>
           </div>
           <div className="user-tier-filter-actions">
-            <button
-              type="button"
-              className={`user-tier-filter-button ${hideNoData ? 'is-active' : ''}`}
-              aria-pressed={hideNoData}
-              onClick={() => setHideNoData((value) => !value)}
-            >
-              {t('tiers.hideNoData')}
-            </button>
-            <button
-              type="button"
-              className={`user-tier-filter-button ${hideBelow90 ? 'is-active' : ''}`}
-              aria-pressed={hideBelow90}
-              onClick={() => setHideBelow90((value) => !value)}
-            >
-              {t('tiers.hideBelow90')}
-            </button>
+            <label className="user-tier-filter-toggle">
+              <input
+                type="checkbox"
+                checked={hideNoData}
+                onChange={(event) => setHideNoData(event.target.checked)}
+              />
+              <span>{t('tiers.hideNoData')}</span>
+            </label>
+            <label className="user-tier-filter-toggle">
+              <input
+                type="checkbox"
+                checked={hideBelow90}
+                onChange={(event) => setHideBelow90(event.target.checked)}
+              />
+              <span>{t('tiers.hideBelow90')}</span>
+            </label>
           </div>
         </section>
       </aside>

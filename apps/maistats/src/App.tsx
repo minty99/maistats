@@ -1739,6 +1739,7 @@ function App() {
           <>
             {loadingErrorMessage ? <section className="error-banner">{t('common.error')}: {loadingErrorMessage}</section> : null}
             <UserTierPage
+              sidebarTopContent={desktopSidebarTopContent}
               songInfoUrl={songInfoUrl}
               groups={userTierGroups}
               onOpenSongDetail={handleOpenSongDetail}
