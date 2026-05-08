@@ -1,5 +1,3 @@
-DELETE FROM updown_sessions;
-
 ALTER TABLE updown_sessions
 RENAME COLUMN current_level_tenths TO current_step;
 
