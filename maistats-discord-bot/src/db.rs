@@ -108,7 +108,31 @@ pub(crate) struct PersistedUpdownSession {
     pub(crate) discord_user_id: serenity::UserId,
     pub(crate) thread_channel_id: serenity::ChannelId,
     pub(crate) pick_message_id: serenity::MessageId,
-    pub(crate) current_level_tenths: i16,
+    pub(crate) mode: UpdownMode,
+    pub(crate) current_step: isize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UpdownMode {
+    InternalLevel,
+    UserTier,
+}
+
+impl UpdownMode {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::InternalLevel => "internal_level",
+            Self::UserTier => "user_tier",
+        }
+    }
+
+    fn from_db(value: &str) -> eyre::Result<Self> {
+        match value {
+            "internal_level" => Ok(Self::InternalLevel),
+            "user_tier" => Ok(Self::UserTier),
+            _ => Err(eyre::eyre!("unknown updown mode: {value}")),
+        }
+    }
 }
 
 pub(crate) async fn upsert_updown_session(
@@ -116,7 +140,8 @@ pub(crate) async fn upsert_updown_session(
     discord_user_id: serenity::UserId,
     thread_channel_id: serenity::ChannelId,
     pick_message_id: serenity::MessageId,
-    current_level_tenths: i16,
+    mode: UpdownMode,
+    current_step: isize,
     now_unix: i64,
 ) -> eyre::Result<()> {
     sqlx::query(
@@ -125,22 +150,25 @@ INSERT INTO updown_sessions (
   discord_user_id,
   thread_channel_id,
   pick_message_id,
-  current_level_tenths,
+  current_step,
+  mode,
   created_at,
   updated_at
 )
-VALUES (?1, ?2, ?3, ?4, ?5, ?5)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
 ON CONFLICT(discord_user_id) DO UPDATE SET
   thread_channel_id = excluded.thread_channel_id,
   pick_message_id = excluded.pick_message_id,
-  current_level_tenths = excluded.current_level_tenths,
+  current_step = excluded.current_step,
+  mode = excluded.mode,
   updated_at = excluded.updated_at
 "#,
     )
     .bind(discord_user_id.to_string())
     .bind(thread_channel_id.to_string())
     .bind(pick_message_id.to_string())
-    .bind(i64::from(current_level_tenths))
+    .bind(current_step as i64)
+    .bind(mode.as_str())
     .bind(now_unix)
     .execute(pool)
     .await
@@ -152,9 +180,9 @@ pub(crate) async fn get_updown_session(
     pool: &SqlitePool,
     discord_user_id: serenity::UserId,
 ) -> eyre::Result<Option<PersistedUpdownSession>> {
-    let row = sqlx::query_as::<_, (String, String, String, i64)>(
+    let row = sqlx::query_as::<_, (String, String, String, String, i64)>(
         r#"
-SELECT discord_user_id, thread_channel_id, pick_message_id, current_level_tenths
+SELECT discord_user_id, thread_channel_id, pick_message_id, mode, current_step
 FROM updown_sessions
 WHERE discord_user_id = ?1
 "#,
@@ -172,21 +200,21 @@ pub(crate) async fn update_updown_session_progress(
     discord_user_id: serenity::UserId,
     thread_channel_id: serenity::ChannelId,
     new_pick_message_id: serenity::MessageId,
-    new_level_tenths: i16,
+    new_step: isize,
     now_unix: i64,
 ) -> eyre::Result<u64> {
     let result = sqlx::query(
         r#"
 UPDATE updown_sessions
 SET pick_message_id = ?1,
-    current_level_tenths = ?2,
+    current_step = ?2,
     updated_at = ?3
 WHERE discord_user_id = ?4
   AND thread_channel_id = ?5
 "#,
     )
     .bind(new_pick_message_id.to_string())
-    .bind(i64::from(new_level_tenths))
+    .bind(new_step as i64)
     .bind(now_unix)
     .bind(discord_user_id.to_string())
     .bind(thread_channel_id.to_string())
@@ -209,9 +237,9 @@ pub(crate) async fn delete_updown_session_by_thread(
 }
 
 fn parse_updown_session_row(
-    row: (String, String, String, i64),
+    row: (String, String, String, String, i64),
 ) -> eyre::Result<PersistedUpdownSession> {
-    let (user_id, thread_id, message_id, level_tenths) = row;
+    let (user_id, thread_id, message_id, mode, current_step) = row;
     let parsed_user = user_id
         .parse::<u64>()
         .wrap_err("parse discord_user_id from updown_sessions")?;
@@ -221,15 +249,16 @@ fn parse_updown_session_row(
     let parsed_message = message_id
         .parse::<u64>()
         .wrap_err("parse pick_message_id from updown_sessions")?;
-    let parsed_level: i16 = level_tenths
+    let parsed_step: isize = current_step
         .try_into()
-        .wrap_err("parse current_level_tenths from updown_sessions")?;
+        .wrap_err("parse current_step from updown_sessions")?;
 
     Ok(PersistedUpdownSession {
         discord_user_id: serenity::UserId::new(parsed_user),
         thread_channel_id: serenity::ChannelId::new(parsed_thread),
         pick_message_id: serenity::MessageId::new(parsed_message),
-        current_level_tenths: parsed_level,
+        mode: UpdownMode::from_db(&mode).wrap_err("parse mode from updown_sessions")?,
+        current_step: parsed_step,
     })
 }
 
@@ -303,13 +332,23 @@ mod tests {
 
         assert!(get_updown_session(&pool, user_id).await?.is_none());
 
-        upsert_updown_session(&pool, user_id, thread_id, pick_id, 130, 100).await?;
+        upsert_updown_session(
+            &pool,
+            user_id,
+            thread_id,
+            pick_id,
+            UpdownMode::InternalLevel,
+            130,
+            100,
+        )
+        .await?;
         let stored = get_updown_session(&pool, user_id)
             .await?
             .expect("session should exist");
         assert_eq!(stored.thread_channel_id, thread_id);
         assert_eq!(stored.pick_message_id, pick_id);
-        assert_eq!(stored.current_level_tenths, 130);
+        assert_eq!(stored.mode, UpdownMode::InternalLevel);
+        assert_eq!(stored.current_step, 130);
 
         let new_pick_id = serenity::MessageId::new(2002);
         let affected =
@@ -321,7 +360,8 @@ mod tests {
             .await?
             .expect("session should still exist");
         assert_eq!(stored.pick_message_id, new_pick_id);
-        assert_eq!(stored.current_level_tenths, 131);
+        assert_eq!(stored.mode, UpdownMode::InternalLevel);
+        assert_eq!(stored.current_step, 131);
 
         let other_thread_id = serenity::ChannelId::new(1002);
         let affected = update_updown_session_progress(
@@ -339,7 +379,23 @@ mod tests {
             .await?
             .expect("session should remain unchanged");
         assert_eq!(stored.pick_message_id, new_pick_id);
-        assert_eq!(stored.current_level_tenths, 131);
+        assert_eq!(stored.current_step, 131);
+
+        upsert_updown_session(
+            &pool,
+            user_id,
+            thread_id,
+            new_pick_id,
+            UpdownMode::UserTier,
+            1345,
+            400,
+        )
+        .await?;
+        let stored = get_updown_session(&pool, user_id)
+            .await?
+            .expect("session should update mode");
+        assert_eq!(stored.mode, UpdownMode::UserTier);
+        assert_eq!(stored.current_step, 1345);
 
         Ok(())
     }
@@ -353,7 +409,16 @@ mod tests {
         let thread_id = serenity::ChannelId::new(1001);
         let pick_id = serenity::MessageId::new(2001);
 
-        upsert_updown_session(&pool, user_id, thread_id, pick_id, 130, 100).await?;
+        upsert_updown_session(
+            &pool,
+            user_id,
+            thread_id,
+            pick_id,
+            UpdownMode::InternalLevel,
+            130,
+            100,
+        )
+        .await?;
         assert!(get_updown_session(&pool, user_id).await?.is_some());
 
         delete_updown_session_by_thread(&pool, serenity::ChannelId::new(9999)).await?;

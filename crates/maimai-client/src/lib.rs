@@ -109,6 +109,31 @@ struct CachedSongCatalog {
     fetched_at: Instant,
 }
 
+#[derive(Debug, Clone)]
+struct CachedRaveilleUserTierEntries {
+    entries: Vec<RaveilleUserTierEntry>,
+    fetched_at: Instant,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RaveilleUserTierEntry {
+    pub title: String,
+    pub genre: String,
+    pub artist: String,
+    #[serde(rename = "chartType")]
+    pub chart_type: ChartType,
+    pub difficulty: DifficultyCategory,
+    #[serde(rename = "internalLevel")]
+    pub internal_level: Option<String>,
+    #[serde(rename = "userTier")]
+    pub user_tier: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RaveilleUserTierResponse {
+    entries: Vec<RaveilleUserTierEntry>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SongMetadataSearchRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -136,6 +161,7 @@ pub struct SongDatabaseClient {
     client: Client,
     base_url: String,
     cache: Arc<RwLock<Option<CachedSongCatalog>>>,
+    raveille_user_tier_cache: Arc<RwLock<Option<CachedRaveilleUserTierEntries>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -245,6 +271,7 @@ impl SongDatabaseClient {
             client,
             base_url,
             cache: Arc::new(RwLock::new(None)),
+            raveille_user_tier_cache: Arc::new(RwLock::new(None)),
         })
     }
 
@@ -288,6 +315,47 @@ impl SongDatabaseClient {
         });
 
         Ok(songs)
+    }
+
+    pub async fn list_raveille_user_tiers(&self) -> Result<Vec<RaveilleUserTierEntry>> {
+        const RAVEILLE_USER_TIER_CACHE_TTL: Duration = Duration::from_secs(3600);
+
+        {
+            let cache = self.raveille_user_tier_cache.read().await;
+            if let Some(cached) = cache.as_ref()
+                && cached.fetched_at.elapsed() < RAVEILLE_USER_TIER_CACHE_TTL
+            {
+                return Ok(cached.entries.clone());
+            }
+        }
+
+        let url = format!("{}/raveille_user_tier.json", self.base_url);
+        let resp = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .wrap_err("fetch Raveille user tier database")?;
+
+        if !resp.status().is_success() {
+            return Err(eyre::eyre!(
+                "Failed to fetch Raveille user tier database: HTTP {}",
+                resp.status()
+            ));
+        }
+
+        let response = resp
+            .json::<RaveilleUserTierResponse>()
+            .await
+            .wrap_err("parse Raveille user tier response")?;
+
+        let mut cache = self.raveille_user_tier_cache.write().await;
+        *cache = Some(CachedRaveilleUserTierEntries {
+            entries: response.entries.clone(),
+            fetched_at: Instant::now(),
+        });
+
+        Ok(response.entries)
     }
 
     pub fn cover_url(&self, image_name: &str) -> String {

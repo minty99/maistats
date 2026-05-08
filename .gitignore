@@ -16,6 +16,7 @@
 
 # Fetched Data
 fetched_data/
+raveille_user_tier.json
 
 # macOS
 .DS_Store

@@ -80,6 +80,7 @@ async fn main() -> eyre::Result<()> {
                 commands::mai_recent(),
                 commands::mai_today(),
                 commands::mai_updown(),
+                commands::mai_updown_user_tier(),
                 commands::mai_plot(),
             ],
             event_handler: |ctx, event, _framework, data| {
