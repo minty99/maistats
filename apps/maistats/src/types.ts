@@ -186,6 +186,20 @@ export interface SongVersionsListResponse {
   versions: SongVersionResponse[];
 }
 
+export interface RaveilleUserTierEntry {
+  title: string;
+  genre: string;
+  artist: string;
+  chartType: ChartType | string;
+  difficulty: DifficultyCategory | string;
+  internalLevel?: string | null;
+  userTier: string;
+}
+
+export interface RaveilleUserTierResponse {
+  entries: RaveilleUserTierEntry[];
+}
+
 export interface RandomPickerSong {
   title: string;
   genre: string;

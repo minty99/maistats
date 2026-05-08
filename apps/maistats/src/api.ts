@@ -5,6 +5,8 @@ import type {
   CollectorLogsResponse,
   CollectorVersionResponse,
   PlayRecordApiResponse,
+  RaveilleUserTierEntry,
+  RaveilleUserTierResponse,
   ScoreApiResponse,
   SongDatabaseChartResponse,
   SongDatabaseResponse,
@@ -39,6 +41,7 @@ export function formatApiErrorMessage(
 export interface ExplorerPayload {
   ratedScores: ScoreApiResponse[];
   songMetadata: Map<string, SongInfoResponse>;
+  userTiers: RaveilleUserTierEntry[];
   versions: SongVersionResponse[] | null;
   playerProfile: PlayerProfile | null;
 }
@@ -270,6 +273,17 @@ async function fetchSongDatabase(
   );
 }
 
+async function fetchRaveilleUserTiers(
+  songDatabaseBaseUrl: string,
+  signal?: AbortSignal,
+): Promise<RaveilleUserTierEntry[]> {
+  const response = await getJson<RaveilleUserTierResponse>(
+    `${normalizeBaseUrl(songDatabaseBaseUrl)}/raveille_user_tier.json`,
+    signal,
+  );
+  return response.entries;
+}
+
 export async function fetchAllSongMetadata(
   songDatabaseBaseUrl: string,
   signal?: AbortSignal,
@@ -291,9 +305,10 @@ export async function fetchExplorerPayload(
   const songDatabaseBase = normalizeBaseUrl(songDatabaseBaseUrl);
   const recordBase = normalizeBaseUrl(recordCollectorBaseUrl);
 
-  const [ratedScores, songDatabase, playerProfile] = await Promise.all([
+  const [ratedScores, songDatabase, userTiers, playerProfile] = await Promise.all([
     getJson<ScoreApiResponse[]>(`${recordBase}/api/scores/rated`, signal),
     songDatabaseBase ? fetchSongDatabase(songDatabaseBase, signal).catch(() => null) : null,
+    songDatabaseBase ? fetchRaveilleUserTiers(songDatabaseBase, signal).catch(() => []) : [],
     fetchPlayerProfile(recordBase, signal),
   ]);
   const songs = songDatabase?.songs.map(toSongInfoResponse) ?? [];
@@ -301,6 +316,7 @@ export async function fetchExplorerPayload(
   return {
     ratedScores,
     songMetadata: indexSongMetadata(songs),
+    userTiers,
     versions: songDatabase ? deriveSongVersions(songs) : null,
     playerProfile,
   };

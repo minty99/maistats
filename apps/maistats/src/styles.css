@@ -1381,6 +1381,58 @@ select:focus-visible {
   color: var(--ink-dim);
 }
 
+.user-tier-layout {
+  align-items: start;
+}
+
+.user-tier-table-column {
+  display: grid;
+  gap: 14px;
+}
+
+.user-tier-intro-panel {
+  border-top: 2px solid var(--accent);
+}
+
+.user-tier-top-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.user-tier-no-data-toggle {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: var(--chip);
+  color: var(--ink-dim);
+}
+
+.empty-state-panel {
+  padding: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.user-tier-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.user-tier-section-panel {
+  align-self: start;
+  min-width: 0;
+}
+
+.user-tier-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(128px, 16vw, 188px), 1fr));
+  gap: 10px;
+}
+
 .table-wrap {
   border: 1px solid var(--line);
   border-radius: 2px;
@@ -3227,6 +3279,10 @@ tbody tr:last-child td {
 
   .rating-song-info {
     min-height: 0;
+  }
+
+  .user-tier-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   }
 
   .rating-song-stat-grid {
