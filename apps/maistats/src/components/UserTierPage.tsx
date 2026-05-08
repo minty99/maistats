@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { useI18n } from '../app/i18n';
-import { formatNumber, formatVersionLabel } from '../app/utils';
+import { formatVersionLabel } from '../app/utils';
 import type { ScoreRow } from '../types';
 import { SongRecordCard } from './SongRecordCard';
 import type { SongDetailTarget } from './TableActionCells';
@@ -30,7 +30,7 @@ export function UserTierPage({
   groups,
   onOpenSongDetail,
 }: UserTierPageProps) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const [hideNoData, setHideNoData] = useState(false);
   const [hideBelow90, setHideBelow90] = useState(false);
   const visibleGroups = useMemo(
@@ -51,7 +51,6 @@ export function UserTierPage({
         .filter((group) => group.rows.length > 0),
     [groups, hideBelow90, hideNoData],
   );
-  const visibleCount = visibleGroups.reduce((sum, group) => sum + group.rows.length, 0);
 
   return (
     <div className="explorer-layout user-tier-layout">
@@ -90,7 +89,6 @@ export function UserTierPage({
               <h2>{t('tiers.heading')}</h2>
               <p>{t('tiers.description')}</p>
             </div>
-            <span className="panel-count">{t('units.songs', { count: visibleCount })}</span>
           </div>
         </section>
 
@@ -100,33 +98,27 @@ export function UserTierPage({
           </section>
         ) : (
           <div className="user-tier-stack">
-            {visibleGroups.map((group) => {
-              const playedInGroup = group.rows.filter((item) => item.score.rank !== null).length;
-              return (
-                <section key={group.label} className="panel user-tier-section-panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>{group.label}</h2>
-                    </div>
-                    <span className="panel-count">
-                      {formatNumber(playedInGroup, locale)}/{formatNumber(group.rows.length, locale)}
-                    </span>
+            {visibleGroups.map((group) => (
+              <section key={group.label} className="panel user-tier-section-panel">
+                <div className="panel-heading">
+                  <div>
+                    <h2>{group.label}</h2>
                   </div>
-                  <div className="user-tier-card-grid">
-                    {group.rows.map((item) => (
-                      <SongRecordCard
-                        key={item.key}
-                        row={item.score}
-                        songInfoUrl={songInfoUrl}
-                        topLeft={item.userTier}
-                        topRight={formatVersionLabel(item.score.version)}
-                        onOpenSongDetail={onOpenSongDetail}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+                </div>
+                <div className="user-tier-card-grid">
+                  {group.rows.map((item) => (
+                    <SongRecordCard
+                      key={item.key}
+                      row={item.score}
+                      songInfoUrl={songInfoUrl}
+                      topLeft={item.userTier}
+                      topRight={formatVersionLabel(item.score.version)}
+                      onOpenSongDetail={onOpenSongDetail}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </div>
