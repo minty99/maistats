@@ -1,0 +1,100 @@
+name: Raveille User Tier
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/raveille-user-tier.yml
+      - .github/scripts/upload-raveille-user-tier.sh
+      - scripts/user_tier/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/raveille-user-tier.yml
+      - .github/scripts/upload-raveille-user-tier.sh
+      - scripts/user_tier/**
+  schedule:
+    - cron: "45 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate Raveille user tier
+        run: python scripts/user_tier/build_raveille_user_levels.py
+
+      - name: Validate generated artifact
+        run: |
+          test -f raveille_user_tier.json
+          python -m json.tool raveille_user_tier.json > /dev/null
+
+  publish:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    env:
+      HAS_PUBLISH_SECRETS: ${{ secrets.R2_BUCKET_NAME != '' && secrets.R2_ENDPOINT != '' && secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_PUBLIC_BASE_URL != '' }}
+
+    steps:
+      - name: Skip when required secrets are missing
+        if: ${{ env.HAS_PUBLISH_SECRETS != 'true' }}
+        run: echo "Skipping publish because required R2 secrets are not configured."
+
+      - name: Checkout
+        if: ${{ env.HAS_PUBLISH_SECRETS == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: ${{ env.HAS_PUBLISH_SECRETS == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AWS CLI
+        if: ${{ env.HAS_PUBLISH_SECRETS == 'true' }}
+        run: |
+          arch="$(uname -m)"
+          case "${arch}" in
+            x86_64) awscli_arch="x86_64" ;;
+            aarch64|arm64) awscli_arch="aarch64" ;;
+            *)
+              echo "Unsupported architecture for AWS CLI installer: ${arch}" >&2
+              exit 1
+              ;;
+          esac
+
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "${workdir}"' EXIT
+
+          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${awscli_arch}.zip" -o "${workdir}/awscliv2.zip"
+          unzip -q "${workdir}/awscliv2.zip" -d "${workdir}"
+          sudo "${workdir}/aws/install" --update
+          aws --version
+
+      - name: Generate Raveille user tier
+        if: ${{ env.HAS_PUBLISH_SECRETS == 'true' }}
+        run: python scripts/user_tier/build_raveille_user_levels.py
+
+      - name: Upload to R2
+        if: ${{ env.HAS_PUBLISH_SECRETS == 'true' }}
+        env:
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: bash ./.github/scripts/upload-raveille-user-tier.sh
+
+      - name: Smoke check public raveille_user_tier.json
+        if: ${{ env.HAS_PUBLISH_SECRETS == 'true' }}
+        env:
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: curl -fsSL "${R2_PUBLIC_BASE_URL}/raveille_user_tier.json" > /dev/null
