@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useI18n } from '../app/i18n';
 import { formatNumber, formatVersionLabel } from '../app/utils';
@@ -20,61 +20,65 @@ interface UserTierGroup {
 }
 
 interface UserTierPageProps {
-  sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   groups: UserTierGroup[];
-  totalCount: number;
-  playedCount: number;
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }
 
 export function UserTierPage({
-  sidebarTopContent,
   songInfoUrl,
   groups,
-  totalCount,
-  playedCount,
   onOpenSongDetail,
 }: UserTierPageProps) {
   const { locale, t } = useI18n();
   const [hideNoData, setHideNoData] = useState(false);
+  const [hideBelow90, setHideBelow90] = useState(false);
   const visibleGroups = useMemo(
     () =>
-      hideNoData
-        ? groups
-            .map((group) => ({
-              ...group,
-              rows: group.rows.filter((item) => item.score.rank !== null),
-            }))
-            .filter((group) => group.rows.length > 0)
-        : groups,
-    [groups, hideNoData],
+      groups
+        .map((group) => ({
+          ...group,
+          rows: group.rows.filter((item) => {
+            if (hideNoData && item.score.rank === null) {
+              return false;
+            }
+            if (hideBelow90 && (item.score.achievementPercent === null || item.score.achievementPercent < 90)) {
+              return false;
+            }
+            return true;
+          }),
+        }))
+        .filter((group) => group.rows.length > 0),
+    [groups, hideBelow90, hideNoData],
   );
   const visibleCount = visibleGroups.reduce((sum, group) => sum + group.rows.length, 0);
-  const topGroup = visibleGroups[0] ?? null;
-  const bottomGroup = visibleGroups[visibleGroups.length - 1] ?? null;
 
   return (
     <div className="explorer-layout user-tier-layout">
       <aside className="sidebar-column">
-        {sidebarTopContent}
         <section className="panel filter-panel">
           <div className="panel-heading compact">
             <div>
-              <h2>{t('tiers.title')}</h2>
+              <h2>{t('tiers.filters')}</h2>
             </div>
           </div>
-          <div className="rating-stat-grid">
-            <div className="rating-stat-card">
-              <span>{t('tiers.coverage')}</span>
-              <strong>{formatNumber(playedCount, locale)}/{formatNumber(totalCount, locale)}</strong>
-              <small className="rating-stat-sub">{t('tiers.coverageHelp')}</small>
-            </div>
-            <div className="rating-stat-card">
-              <span>{t('tiers.range')}</span>
-              <strong>{bottomGroup && topGroup ? `${bottomGroup.label} - ${topGroup.label}` : '-'}</strong>
-              <small className="rating-stat-sub">{t('tiers.rangeHelp')}</small>
-            </div>
+          <div className="user-tier-filter-actions">
+            <button
+              type="button"
+              className={`user-tier-filter-button ${hideNoData ? 'is-active' : ''}`}
+              aria-pressed={hideNoData}
+              onClick={() => setHideNoData((value) => !value)}
+            >
+              {t('tiers.hideNoData')}
+            </button>
+            <button
+              type="button"
+              className={`user-tier-filter-button ${hideBelow90 ? 'is-active' : ''}`}
+              aria-pressed={hideBelow90}
+              onClick={() => setHideBelow90((value) => !value)}
+            >
+              {t('tiers.hideBelow90')}
+            </button>
           </div>
         </section>
       </aside>
@@ -86,23 +90,13 @@ export function UserTierPage({
               <h2>{t('tiers.heading')}</h2>
               <p>{t('tiers.description')}</p>
             </div>
-            <div className="user-tier-top-actions">
-              <label className="score-special-toggle user-tier-no-data-toggle">
-                <input
-                  type="checkbox"
-                  checked={hideNoData}
-                  onChange={(event) => setHideNoData(event.target.checked)}
-                />
-                <span>{t('tiers.hideNoData')}</span>
-              </label>
-              <span className="panel-count">{t('units.songs', { count: visibleCount })}</span>
-            </div>
+            <span className="panel-count">{t('units.songs', { count: visibleCount })}</span>
           </div>
         </section>
 
         {visibleGroups.length === 0 ? (
           <section className="panel empty-state-panel">
-            <p>{hideNoData && groups.length > 0 ? t('tiers.emptyAfterFilter') : t('tiers.empty')}</p>
+            <p>{groups.length > 0 ? t('tiers.emptyAfterFilter') : t('tiers.empty')}</p>
           </section>
         ) : (
           <div className="user-tier-stack">

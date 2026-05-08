@@ -1394,21 +1394,35 @@ select:focus-visible {
   border-top: 2px solid var(--accent);
 }
 
-.user-tier-top-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
+.user-tier-filter-actions {
+  display: grid;
+  gap: 8px;
 }
 
-.user-tier-no-data-toggle {
-  min-height: 26px;
-  padding: 0 10px;
+.user-tier-filter-button {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 2px;
   background: var(--chip);
   color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-tier-filter-button:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.user-tier-filter-button.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  color: var(--ink);
 }
 
 .empty-state-panel {

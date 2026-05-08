@@ -1333,7 +1333,7 @@ function App() {
     };
   }, [locale, scoreData, versionOptions]);
 
-  const { userTierGroups, userTierTotalCount, userTierPlayedCount } = useMemo(() => {
+  const userTierGroups = useMemo(() => {
     const scoreByKey = new Map(scoreData.map((row) => [row.key, row]));
     const grouped = new Map<string, { label: string; step: number; rows: UserTierSongRow[] }>();
 
@@ -1384,17 +1384,7 @@ function App() {
       }))
       .sort((left, right) => right.step - left.step);
 
-    const totalCount = groups.reduce((sum, group) => sum + group.rows.length, 0);
-    const playedCount = groups.reduce(
-      (sum, group) => sum + group.rows.filter((item) => item.score.rank !== null).length,
-      0,
-    );
-
-    return {
-      userTierGroups: groups,
-      userTierTotalCount: totalCount,
-      userTierPlayedCount: playedCount,
-    };
+    return groups;
   }, [locale, scoreData, userTierRecords]);
 
   const handleApplySongInfoUrl = () => {
@@ -1749,11 +1739,8 @@ function App() {
           <>
             {loadingErrorMessage ? <section className="error-banner">{t('common.error')}: {loadingErrorMessage}</section> : null}
             <UserTierPage
-              sidebarTopContent={desktopSidebarTopContent}
               songInfoUrl={songInfoUrl}
               groups={userTierGroups}
-              totalCount={userTierTotalCount}
-              playedCount={userTierPlayedCount}
               onOpenSongDetail={handleOpenSongDetail}
             />
           </>
