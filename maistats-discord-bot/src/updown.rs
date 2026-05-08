@@ -4,7 +4,7 @@ use crate::db;
 use crate::embeds::{embed_base, format_level_with_internal};
 use crate::emoji::{format_fc, format_rank, format_sync};
 use eyre::WrapErr;
-use maimai_client::{RecordCollectorClient, SongCatalogSong};
+use maimai_client::{RaveilleUserTierEntry, RecordCollectorClient, SongCatalogSong};
 use models::{ChartType, DifficultyCategory, ScoreApiResponse};
 use poise::serenity_prelude as serenity;
 use rand::seq::SliceRandom;
@@ -21,8 +21,10 @@ type PoiseContext<'a> = poise::Context<'a, BotData, Error>;
 /// processed. Session metadata itself lives in SQLite (`updown_sessions`).
 pub(crate) type UpdownInFlightLocks = Arc<Mutex<HashMap<serenity::UserId, serenity::MessageId>>>;
 
-const MIN_LEVEL_TENTHS: i16 = 10;
-const MAX_LEVEL_TENTHS: i16 = 150;
+const MIN_INTERNAL_LEVEL_STEP: isize = 10;
+const MAX_INTERNAL_LEVEL_STEP: isize = 150;
+const MIN_USER_TIER_STEP: isize = 1300;
+const MAX_USER_TIER_STEP: isize = 1450;
 const REACTION_DOWN: &str = "⬇️";
 const REACTION_STAY: &str = "⏺️";
 const REACTION_UP: &str = "⬆️";
@@ -36,14 +38,36 @@ struct UpdownCandidate {
     diff_category: DifficultyCategory,
     level: String,
     internal_level: f32,
+    user_tier: Option<String>,
     score: Option<ScoreApiResponse>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UpdownStart {
+    InternalLevel(isize),
+    UserTier(isize),
+}
+
+impl UpdownStart {
+    fn mode(self) -> db::UpdownMode {
+        match self {
+            Self::InternalLevel(_) => db::UpdownMode::InternalLevel,
+            Self::UserTier(_) => db::UpdownMode::UserTier,
+        }
+    }
+
+    fn step(self) -> isize {
+        match self {
+            Self::InternalLevel(step) | Self::UserTier(step) => step,
+        }
+    }
 }
 
 pub(crate) fn new_in_flight_locks() -> UpdownInFlightLocks {
     Arc::new(Mutex::new(HashMap::new()))
 }
 
-pub(crate) fn parse_level_tenths(value: f64) -> eyre::Result<i16> {
+pub(crate) fn parse_level_tenths(value: f64) -> eyre::Result<isize> {
     eyre::ensure!(value.is_finite(), "Internal level must be a number.");
 
     let scaled = value * 10.0;
@@ -53,29 +77,55 @@ pub(crate) fn parse_level_tenths(value: f64) -> eyre::Result<i16> {
         "Internal level must use 0.1 increments, for example `13.0`."
     );
 
-    let tenths = rounded as i16;
+    let tenths = rounded as isize;
     eyre::ensure!(
-        (MIN_LEVEL_TENTHS..=MAX_LEVEL_TENTHS).contains(&tenths),
+        (MIN_INTERNAL_LEVEL_STEP..=MAX_INTERNAL_LEVEL_STEP).contains(&tenths),
         "Internal level must be between 1.0 and 15.0."
     );
 
     Ok(tenths)
 }
 
+pub(crate) fn parse_user_tier_step(value: f64) -> eyre::Result<isize> {
+    eyre::ensure!(value.is_finite(), "User tier must be a number.");
+
+    let scaled = value * 100.0;
+    let rounded = scaled.round();
+    eyre::ensure!(
+        (scaled - rounded).abs() < 1e-6 && (rounded as isize) % 5 == 0,
+        "User tier must use 0.05 increments, for example `13.45`."
+    );
+
+    let step = rounded as isize;
+    eyre::ensure!(
+        (MIN_USER_TIER_STEP..=MAX_USER_TIER_STEP).contains(&step),
+        "User tier must be between 13.00 and 14.50."
+    );
+
+    Ok(step)
+}
+
 pub(crate) async fn start_session(
     ctx: PoiseContext<'_>,
     record_collector_client: RecordCollectorClient,
-    start_level_tenths: i16,
+    start: UpdownStart,
 ) -> Result<(), Error> {
     ensure_start_channel_supported(ctx).await?;
 
-    let pools =
-        build_candidate_pools(&ctx.data().song_database_client, &record_collector_client).await?;
+    let mode = start.mode();
+    let start_step = start.step();
+    let pools = build_candidate_pools(
+        &ctx.data().song_database_client,
+        &record_collector_client,
+        mode,
+    )
+    .await?;
 
-    let Some(candidate) = choose_candidate_at_level(&pools, start_level_tenths) else {
+    let Some(candidate) = choose_candidate_at_step(&pools, start_step) else {
         return Err(eyre::eyre!(
-            "No eligible charts found at internal level **{}** with the current filters.",
-            format_level_tenths(start_level_tenths)
+            "No eligible charts found at {} **{}** with the current filters.",
+            mode.subject_label(),
+            mode.format_step(start_step)
         )
         .into());
     };
@@ -86,14 +136,15 @@ pub(crate) async fn start_session(
             ctx.serenity_context(),
             CreateMessage::new().embed(build_session_intro_embed(
                 ctx.author().id,
-                start_level_tenths,
+                mode,
+                start_step,
             )),
         )
         .await
         .inspect_err(|err| tracing::error!("{err:?}"))
         .wrap_err("send mai-updown root message")?;
 
-    let thread_name = format!("mai-updown {}", format_level_tenths(start_level_tenths));
+    let thread_name = format!("{} {}", mode.thread_prefix(), mode.format_step(start_step));
     let thread = ctx
         .channel_id()
         .create_thread_from_message(
@@ -129,7 +180,8 @@ pub(crate) async fn start_session(
         ctx.author().id,
         thread.id,
         pick_message.id,
-        start_level_tenths,
+        mode,
+        start_step,
         OffsetDateTime::now_utc().unix_timestamp(),
     )
     .await
@@ -223,7 +275,7 @@ async fn process_reaction(
     ctx: &serenity::Context,
     data: &BotData,
     session: &db::PersistedUpdownSession,
-    delta: i16,
+    delta: isize,
 ) -> Result<(), Error> {
     let registration = db::get_registration(&data.db_pool, session.discord_user_id)
         .await
@@ -233,7 +285,9 @@ async fn process_reaction(
         RecordCollectorClient::new(registration.record_collector_server_url)
             .wrap_err("build record collector client")?;
 
-    let pools = build_candidate_pools(&data.song_database_client, &record_collector_client).await?;
+    let mode = session.mode;
+    let pools =
+        build_candidate_pools(&data.song_database_client, &record_collector_client, mode).await?;
 
     if !session_is_current(&data.db_pool, session).await? {
         tracing::info!(
@@ -244,8 +298,9 @@ async fn process_reaction(
         return Ok(());
     }
 
-    let (new_level_tenths, candidate, note) =
-        match pick_next_candidate(&pools, session.current_level_tenths, delta) {
+    let step_delta = mode.step_size() * delta;
+    let (new_step, candidate, note) =
+        match pick_next_candidate(&pools, mode, session.current_step, step_delta) {
             Ok(result) => result,
             Err(notice_msg) => {
                 announce_session_notice(ctx, session.thread_channel_id, &notice_msg).await?;
@@ -261,7 +316,7 @@ async fn process_reaction(
         session.discord_user_id,
         session.thread_channel_id,
         pick_message.id,
-        new_level_tenths,
+        new_step,
         OffsetDateTime::now_utc().unix_timestamp(),
     )
     .await
@@ -280,7 +335,8 @@ async fn process_reaction(
 async fn build_candidate_pools(
     song_database_client: &maimai_client::SongDatabaseClient,
     record_collector_client: &RecordCollectorClient,
-) -> eyre::Result<HashMap<i16, Vec<UpdownCandidate>>> {
+    mode: db::UpdownMode,
+) -> eyre::Result<HashMap<isize, Vec<UpdownCandidate>>> {
     let scores = record_collector_client
         .get_all_rated_scores()
         .await
@@ -304,9 +360,24 @@ async fn build_candidate_pools(
         .await
         .wrap_err("load song catalog")?;
 
-    let mut pools: HashMap<i16, Vec<UpdownCandidate>> = HashMap::new();
-    for song in songs {
-        append_song_candidates(&mut pools, &song, &score_map);
+    let mut pools: HashMap<isize, Vec<UpdownCandidate>> = HashMap::new();
+    match mode {
+        db::UpdownMode::InternalLevel => {
+            for song in songs {
+                append_internal_level_candidates(&mut pools, &song, &score_map);
+            }
+        }
+        db::UpdownMode::UserTier => {
+            let user_tier_map = build_user_tier_map(
+                song_database_client
+                    .list_raveille_user_tiers()
+                    .await
+                    .wrap_err("load Raveille user tiers")?,
+            )?;
+            for song in songs {
+                append_user_tier_candidates(&mut pools, &song, &score_map, &user_tier_map);
+            }
+        }
     }
 
     Ok(pools)
@@ -333,8 +404,8 @@ async fn ensure_start_channel_supported(ctx: PoiseContext<'_>) -> Result<(), Err
     Ok(())
 }
 
-fn append_song_candidates(
-    pools: &mut HashMap<i16, Vec<UpdownCandidate>>,
+fn append_internal_level_candidates(
+    pools: &mut HashMap<isize, Vec<UpdownCandidate>>,
     song: &SongCatalogSong,
     score_map: &HashMap<String, ScoreApiResponse>,
 ) {
@@ -368,65 +439,144 @@ fn append_song_candidates(
                 diff_category: sheet.diff_category,
                 level: sheet.level.clone(),
                 internal_level,
+                user_tier: None,
                 score,
             });
     }
 }
 
-fn choose_candidate_at_level(
-    pools: &HashMap<i16, Vec<UpdownCandidate>>,
-    level_tenths: i16,
+fn append_user_tier_candidates(
+    pools: &mut HashMap<isize, Vec<UpdownCandidate>>,
+    song: &SongCatalogSong,
+    score_map: &HashMap<String, ScoreApiResponse>,
+    user_tier_map: &HashMap<String, UserTierAssignment>,
+) {
+    for sheet in &song.sheets {
+        if !sheet.region.intl {
+            continue;
+        }
+
+        let Some(internal_level) = sheet.internal_level else {
+            continue;
+        };
+
+        let score_key = chart_identity_key(
+            &song.title,
+            &song.genre,
+            &song.artist,
+            sheet.chart_type,
+            sheet.diff_category,
+        );
+        let Some(user_tier) = user_tier_map.get(&score_key) else {
+            continue;
+        };
+        let score = score_map.get(&score_key).cloned();
+
+        pools
+            .entry(user_tier.step)
+            .or_default()
+            .push(UpdownCandidate {
+                title: song.title.clone(),
+                image_name: song.image_name.clone(),
+                version: sheet.version.clone(),
+                chart_type: sheet.chart_type,
+                diff_category: sheet.diff_category,
+                level: sheet.level.clone(),
+                internal_level,
+                user_tier: Some(user_tier.label.clone()),
+                score,
+            });
+    }
+}
+
+#[derive(Debug, Clone)]
+struct UserTierAssignment {
+    step: isize,
+    label: String,
+}
+
+fn build_user_tier_map(
+    entries: Vec<RaveilleUserTierEntry>,
+) -> eyre::Result<HashMap<String, UserTierAssignment>> {
+    let mut map = HashMap::with_capacity(entries.len());
+    for entry in entries {
+        let step = parse_user_tier_label(&entry.user_tier)?;
+        let key = chart_identity_key(
+            &entry.title,
+            &entry.genre,
+            &entry.artist,
+            entry.chart_type,
+            entry.difficulty,
+        );
+        map.insert(
+            key,
+            UserTierAssignment {
+                step,
+                label: entry.user_tier,
+            },
+        );
+    }
+    Ok(map)
+}
+
+fn choose_candidate_at_step(
+    pools: &HashMap<isize, Vec<UpdownCandidate>>,
+    step: isize,
 ) -> Option<UpdownCandidate> {
-    let candidates = pools.get(&level_tenths)?;
+    let candidates = pools.get(&step)?;
     let mut rng = rand::thread_rng();
     candidates.choose(&mut rng).cloned()
 }
 
 fn pick_next_candidate(
-    pools: &HashMap<i16, Vec<UpdownCandidate>>,
-    current_level_tenths: i16,
-    delta: i16,
-) -> Result<(i16, UpdownCandidate, Option<String>), String> {
-    if delta == 0 {
-        return match choose_candidate_at_level(pools, current_level_tenths) {
-            Some(candidate) => Ok((current_level_tenths, candidate, None)),
+    pools: &HashMap<isize, Vec<UpdownCandidate>>,
+    mode: db::UpdownMode,
+    current_step: isize,
+    step_delta: isize,
+) -> Result<(isize, UpdownCandidate, Option<String>), String> {
+    if step_delta == 0 {
+        return match choose_candidate_at_step(pools, current_step) {
+            Some(candidate) => Ok((current_step, candidate, None)),
             None => Err(format!(
-                "No eligible charts found at **{}** with the current filters. Keeping the current level.",
-                format_level_tenths(current_level_tenths)
+                "No eligible charts found at **{}** with the current filters. Keeping the current {}.",
+                mode.format_step(current_step),
+                mode.subject_label()
             )),
         };
     }
 
-    let requested_level = current_level_tenths + delta;
-    match choose_candidate_in_direction(pools, current_level_tenths, delta) {
-        Some((found_level_tenths, candidate)) => {
-            let note = (found_level_tenths != requested_level).then(|| {
+    let requested_step = current_step + step_delta;
+    match choose_candidate_in_direction(pools, mode, current_step, step_delta) {
+        Some((found_step, candidate)) => {
+            let note = (found_step != requested_step).then(|| {
                 format!(
                     "No eligible chart at **{}**. Jumped to **{}** instead.",
-                    format_level_tenths(requested_level),
-                    format_level_tenths(found_level_tenths)
+                    mode.format_step(requested_step),
+                    mode.format_step(found_step)
                 )
             });
-            Ok((found_level_tenths, candidate, note))
+            Ok((found_step, candidate, note))
         }
         None => Err(format!(
-            "No eligible chart found before leaving the 1.0-15.0 range. Keeping **{}**.",
-            format_level_tenths(current_level_tenths)
+            "No eligible chart found before leaving the {} range. Keeping **{}**.",
+            mode.range_label(),
+            mode.format_step(current_step)
         )),
     }
 }
 
 fn choose_candidate_in_direction(
-    pools: &HashMap<i16, Vec<UpdownCandidate>>,
-    current_level_tenths: i16,
-    delta: i16,
-) -> Option<(i16, UpdownCandidate)> {
-    let mut next_level = current_level_tenths + delta;
-    while (MIN_LEVEL_TENTHS..=MAX_LEVEL_TENTHS).contains(&next_level) {
-        if let Some(candidate) = choose_candidate_at_level(pools, next_level) {
-            return Some((next_level, candidate));
+    pools: &HashMap<isize, Vec<UpdownCandidate>>,
+    mode: db::UpdownMode,
+    current_step: isize,
+    step_delta: isize,
+) -> Option<(isize, UpdownCandidate)> {
+    let mut next_step = current_step + step_delta;
+    while mode.contains_step(next_step) {
+        if let Some(candidate) = choose_candidate_at_step(pools, next_step) {
+            return Some((next_step, candidate));
         }
-        next_level += delta;
+        next_step += step_delta;
     }
 
     None
@@ -434,14 +584,29 @@ fn choose_candidate_in_direction(
 
 fn build_session_intro_embed(
     user_id: serenity::UserId,
-    start_level_tenths: i16,
+    mode: db::UpdownMode,
+    start_step: isize,
 ) -> serenity::CreateEmbed {
-    embed_base("mai-updown started").description(format!(
+    let source_note = match mode {
+        db::UpdownMode::InternalLevel => None,
+        db::UpdownMode::UserTier => {
+            Some("Uses Raveille's tier list converted through Lomo's internal-level mapping.")
+        }
+    };
+    let source_line = source_note
+        .map(|note| format!("{note}\n"))
+        .unwrap_or_default();
+    embed_base(mode.started_title()).description(format!(
         "Started by <@{}>\n\
-         Start level: **{}**\n\
-         Controls: {REACTION_DOWN} `-0.1` • {REACTION_STAY} `±0.0` • {REACTION_UP} `+0.1`",
+         {source_line}\
+         Start {}: **{}**\n\
+         Controls: {REACTION_DOWN} `{}` • {REACTION_STAY} `{}` • {REACTION_UP} `{}`",
         user_id.get(),
-        format_level_tenths(start_level_tenths),
+        mode.subject_label(),
+        mode.format_step(start_step),
+        mode.format_delta(-mode.step_size()),
+        mode.format_zero_delta(),
+        mode.format_delta(mode.step_size()),
     ))
 }
 
@@ -467,6 +632,10 @@ fn build_pick_embed(data: &BotData, candidate: &UpdownCandidate) -> serenity::Cr
     let fc = format_fc(&data.status_emojis, score.and_then(|s| s.fc), "-");
     let sync = format_sync(&data.status_emojis, score.and_then(|s| s.sync), "-");
     let meta = [
+        candidate
+            .user_tier
+            .as_deref()
+            .map(|value| format!("User tier: {value}")),
         score
             .and_then(|s| s.last_played_at.as_deref())
             .map(|value| format!("Last: {value}")),
@@ -602,8 +771,82 @@ fn lock_in_flight(
     locks.lock().expect("mai-updown in-flight lock")
 }
 
-fn internal_level_tenths(value: f32) -> i16 {
-    (value as f64 * 10.0).round() as i16
+fn internal_level_tenths(value: f32) -> isize {
+    (value as f64 * 10.0).round() as isize
+}
+
+fn parse_user_tier_label(value: &str) -> eyre::Result<isize> {
+    value
+        .parse::<f64>()
+        .wrap_err("parse user tier label")
+        .and_then(parse_user_tier_step)
+}
+
+impl db::UpdownMode {
+    fn started_title(self) -> &'static str {
+        match self {
+            Self::InternalLevel => "mai-updown started",
+            Self::UserTier => "mai-updown-user-tier started",
+        }
+    }
+
+    fn thread_prefix(self) -> &'static str {
+        match self {
+            Self::InternalLevel => "mai-updown",
+            Self::UserTier => "mai-updown-user-tier",
+        }
+    }
+
+    fn subject_label(self) -> &'static str {
+        match self {
+            Self::InternalLevel => "internal level",
+            Self::UserTier => "user tier",
+        }
+    }
+
+    fn range_label(self) -> &'static str {
+        match self {
+            Self::InternalLevel => "1.0-15.0",
+            Self::UserTier => "13.00-14.50",
+        }
+    }
+
+    fn step_size(self) -> isize {
+        match self {
+            Self::InternalLevel => 1,
+            Self::UserTier => 5,
+        }
+    }
+
+    fn contains_step(self, step: isize) -> bool {
+        match self {
+            Self::InternalLevel => {
+                (MIN_INTERNAL_LEVEL_STEP..=MAX_INTERNAL_LEVEL_STEP).contains(&step)
+            }
+            Self::UserTier => (MIN_USER_TIER_STEP..=MAX_USER_TIER_STEP).contains(&step),
+        }
+    }
+
+    fn format_step(self, step: isize) -> String {
+        match self {
+            Self::InternalLevel => format_level_tenths(step),
+            Self::UserTier => format_user_tier_step(step),
+        }
+    }
+
+    fn format_delta(self, delta: isize) -> String {
+        match self {
+            Self::InternalLevel => format!("{:+.1}", delta as f64 / 10.0),
+            Self::UserTier => format!("{:+.2}", delta as f64 / 100.0),
+        }
+    }
+
+    fn format_zero_delta(self) -> &'static str {
+        match self {
+            Self::InternalLevel => "±0.0",
+            Self::UserTier => "±0.00",
+        }
+    }
 }
 
 fn chart_identity_key(
@@ -620,15 +863,19 @@ fn chart_identity_key(
     )
 }
 
-fn format_level_tenths(level_tenths: i16) -> String {
+fn format_level_tenths(level_tenths: isize) -> String {
     format!("{:.1}", level_tenths as f64 / 10.0)
+}
+
+fn format_user_tier_step(step: isize) -> String {
+    format!("{:.2}", step as f64 / 100.0)
 }
 
 fn format_rate_x10000(value: i64) -> String {
     format!("{:.4}%", value as f64 / 10000.0)
 }
 
-fn reaction_delta(emoji: &serenity::ReactionType) -> Option<i16> {
+fn reaction_delta(emoji: &serenity::ReactionType) -> Option<isize> {
     if emoji.unicode_eq(REACTION_DOWN) {
         Some(-1)
     } else if emoji.unicode_eq(REACTION_STAY) {
@@ -642,15 +889,27 @@ fn reaction_delta(emoji: &serenity::ReactionType) -> Option<i16> {
 
 #[cfg(test)]
 mod tests {
-    use super::{MIN_LEVEL_TENTHS, parse_level_tenths, reaction_delta};
+    use super::{
+        MIN_INTERNAL_LEVEL_STEP, parse_level_tenths, parse_user_tier_step, reaction_delta,
+    };
     use poise::serenity_prelude as serenity;
 
     #[test]
     fn parse_level_requires_one_decimal_step() {
         assert_eq!(parse_level_tenths(13.0).unwrap(), 130);
-        assert_eq!(parse_level_tenths(1.0).unwrap(), MIN_LEVEL_TENTHS);
+        assert_eq!(parse_level_tenths(1.0).unwrap(), MIN_INTERNAL_LEVEL_STEP);
         assert!(parse_level_tenths(13.05).is_err());
         assert!(parse_level_tenths(15.1).is_err());
+    }
+
+    #[test]
+    fn parse_user_tier_requires_five_hundredths_step() {
+        assert_eq!(parse_user_tier_step(13.00).unwrap(), 1300);
+        assert_eq!(parse_user_tier_step(13.45).unwrap(), 1345);
+        assert_eq!(parse_user_tier_step(14.50).unwrap(), 1450);
+        assert!(parse_user_tier_step(12.95).is_err());
+        assert!(parse_user_tier_step(13.03).is_err());
+        assert!(parse_user_tier_step(14.55).is_err());
     }
 
     #[test]
