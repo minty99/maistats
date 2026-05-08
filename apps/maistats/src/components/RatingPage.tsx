@@ -1,13 +1,9 @@
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { useI18n } from '../app/i18n';
-import { toIntegerRating } from '../derive';
-import { formatNumber, formatPercent, formatVersionLabel } from '../app/utils';
+import { formatNumber, formatVersionLabel } from '../app/utils';
 import type { ScoreRow } from '../types';
-import { ChartTypeLabel } from './ChartTypeLabel';
-import { DifficultyLabel, getDifficultyToneClass } from './DifficultyLabel';
-import { Jacket } from './Jacket';
-import { LevelCell } from './LevelCell';
+import { SongRecordCard } from './SongRecordCard';
 import type { SongDetailTarget } from './TableActionCells';
 
 interface RatingPageProps {
@@ -32,15 +28,6 @@ function formatRatingProjection(total: number, count: number, locale: string): s
   return Math.round(avg * 50).toLocaleString(locale);
 }
 
-function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenSongDetail: () => void) {
-  if (event.key !== 'Enter' && event.key !== ' ') {
-    return;
-  }
-
-  event.preventDefault();
-  onOpenSongDetail();
-}
-
 function RatingCardSection({
   title,
   summary,
@@ -54,7 +41,6 @@ function RatingCardSection({
   songInfoUrl: string;
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }) {
-  const { locale, t } = useI18n();
   return (
     <section className="panel rating-section-panel">
       <div className="panel-heading">
@@ -64,66 +50,16 @@ function RatingCardSection({
         <span className="panel-count">{summary}</span>
       </div>
       <div className="rating-card-grid">
-        {rows.map((row, index) => {
-          const handleOpenDetail = () => onOpenSongDetail(row);
-
-          return (
-            <article
-              key={row.key}
-              className={`rating-song-card ${getDifficultyToneClass(row.difficulty)}`}
-              role="button"
-              tabIndex={0}
-              aria-label={t('rating.openSongDetail', { title: row.title })}
-              onClick={handleOpenDetail}
-              onKeyDown={(event) => handleCardKeyDown(event, handleOpenDetail)}
-            >
-              <div className={`rating-song-stage ${getDifficultyToneClass(row.difficulty)}`}>
-                <div className="rating-song-jacket-wrap">
-                  <Jacket
-                    songInfoUrl={songInfoUrl}
-                    imageName={row.imageName}
-                    title={row.title}
-                    className="rating-song-jacket"
-                  />
-                </div>
-                <div className="rating-song-stage-gradient" />
-                <div className="rating-song-stage-topline">
-                  <span>#{index + 1}</span>
-                  <span>{formatVersionLabel(row.version)}</span>
-                </div>
-                <div className="rating-song-stage-badges">
-                  <ChartTypeLabel chartType={row.chartType} />
-                  <DifficultyLabel difficulty={row.difficulty} short className="rating-difficulty-chip" />
-                </div>
-                <div className="rating-song-rating-chip">
-                  <strong>{formatNumber(toIntegerRating(row.rating), locale)}</strong>
-                </div>
-              </div>
-              <div className="rating-song-info">
-                <h3>{row.title}</h3>
-                <div className="rating-song-level-row">
-                  <span>{row.level ? `Lv ${row.level}` : 'Lv -'}</span>
-                  <LevelCell
-                    internalLevel={row.internalLevel}
-                    isInternalLevelEstimated={row.isInternalLevelEstimated}
-                    difficulty={row.difficulty}
-                  />
-                </div>
-                <div className="rating-song-stat-grid">
-                  <div className="rating-song-stat">
-                    <strong>{formatPercent(row.achievementPercent)}</strong>
-                  </div>
-                  <div className="rating-song-stat">
-                    <strong>{row.rank ?? '-'}</strong>
-                  </div>
-                  <div className="rating-song-stat">
-                    <strong>{row.fc ?? '-'}</strong>
-                  </div>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+        {rows.map((row, index) => (
+          <SongRecordCard
+            key={row.key}
+            row={row}
+            songInfoUrl={songInfoUrl}
+            topLeft={`#${index + 1}`}
+            topRight={formatVersionLabel(row.version)}
+            onOpenSongDetail={onOpenSongDetail}
+          />
+        ))}
       </div>
     </section>
   );

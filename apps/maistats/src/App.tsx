@@ -75,12 +75,14 @@ import { SetupGuidePage } from './components/SetupGuidePage';
 import { SongDetailModal } from './components/SongDetailModal';
 import { ScatterPlotPage } from './components/ScatterPlotPage';
 import { ScoreHistoryModal } from './components/ScoreHistoryModal';
+import { UserTierPage, type UserTierSongRow } from './components/UserTierPage';
 import type { SongDetailTarget } from './components/TableActionCells';
-import { songIdentityKey } from './songIdentity';
+import { chartIdentityKey, songIdentityKey } from './songIdentity';
 import type {
   ChartType,
   DifficultyCategory,
   PlayRecordApiResponse,
+  RaveilleUserTierEntry,
   PlaylogRow,
   ScoreApiResponse,
   ScoreRow,
@@ -89,7 +91,7 @@ import type {
 } from './types';
 import logoUrl from './assets/logo.png';
 
-type AppPage = 'home' | 'setup' | 'scores' | 'rating' | 'playlogs' | 'picker' | 'plot' | 'settings';
+type AppPage = 'home' | 'setup' | 'scores' | 'rating' | 'tiers' | 'playlogs' | 'picker' | 'plot' | 'settings';
 type RatedScoreRow = ScoreRow & { rating: number; version: string };
 type ThemePreference = 'system' | 'light' | 'dark';
 type LoadingErrorState =
@@ -102,6 +104,9 @@ function readPageFromHash(hash: string): AppPage {
   }
   if (hash === '#rating') {
     return 'rating';
+  }
+  if (hash === '#tiers') {
+    return 'tiers';
   }
   if (hash === '#setup') {
     return 'setup';
@@ -136,6 +141,45 @@ function compareRatingPageRows(
   }
 
   return left.title.localeCompare(right.title, locale);
+}
+
+function parseUserTierStep(value: string): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return Math.round(parsed * 100);
+}
+
+function parseTierChartType(value: string): ChartType | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'std' || normalized === 'standard') {
+    return 'STD';
+  }
+  if (normalized === 'dx') {
+    return 'DX';
+  }
+  return null;
+}
+
+function parseTierDifficulty(value: string): DifficultyCategory | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'basic') return 'BASIC';
+  if (normalized === 'advanced') return 'ADVANCED';
+  if (normalized === 'expert') return 'EXPERT';
+  if (normalized === 'master') return 'MASTER';
+  if (normalized === 'remaster' || normalized === 're:master') return 'Re:MASTER';
+  return null;
+}
+
+function userTierEntryKey(entry: RaveilleUserTierEntry): string | null {
+  const chartType = parseTierChartType(entry.chartType);
+  const difficulty = parseTierDifficulty(entry.difficulty);
+  if (!chartType || !difficulty) {
+    return null;
+  }
+
+  return chartIdentityKey(entry.title, entry.genre, entry.artist, chartType, difficulty);
 }
 
 const MAIMAI_DAY_START_HOUR = 4;
@@ -221,6 +265,17 @@ function RatingIcon() {
       <path d="M4 20h16" />
       <path d="M7 16 10.2 9.8 13.4 14.2 17 7" />
       <circle cx="17" cy="7" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function TiersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 19h14" />
+      <path d="M7 15h10" />
+      <path d="M9 11h6" />
+      <path d="M11 7h2" />
     </svg>
   );
 }
@@ -353,6 +408,7 @@ function App() {
   const [playlogLoadingError, setPlaylogLoadingError] = useState<LoadingErrorState | null>(null);
 
   const [scoreRecords, setScoreRecords] = useState<ScoreApiResponse[]>([]);
+  const [userTierRecords, setUserTierRecords] = useState<RaveilleUserTierEntry[]>([]);
   const [playlogRecords, setPlaylogRecords] = useState<PlayRecordApiResponse[]>([]);
   const [songMetadata, setSongMetadata] = useState<Map<string, SongInfoResponse>>(
     () => new Map(),
@@ -550,6 +606,7 @@ function App() {
       setIsLoading(false);
       setIsPlaylogsLoading(false);
       setScoreRecords([]);
+      setUserTierRecords([]);
       setPlaylogRecords([]);
       setVersionsResponse([]);
       setPickerVersionOptions([]);
@@ -589,6 +646,7 @@ function App() {
       }
 
       setScoreRecords(payload.ratedScores);
+      setUserTierRecords(payload.userTiers);
       setSongMetadata(payload.songMetadata);
       const availableVersions = filterAvailableVersions(payload.versions ?? []);
       setVersionsResponse(availableVersions.map((version) => version.version_name));
@@ -603,6 +661,7 @@ function App() {
       const message = error instanceof Error ? error.message : String(error);
       setLoadingError({ kind: 'message', message });
       setScoreRecords([]);
+      setUserTierRecords([]);
       setSongMetadata(new Map<string, SongInfoResponse>());
       setVersionsResponse([]);
       setPickerVersionOptions([]);
@@ -1274,6 +1333,60 @@ function App() {
     };
   }, [locale, scoreData, versionOptions]);
 
+  const userTierGroups = useMemo(() => {
+    const scoreByKey = new Map(scoreData.map((row) => [row.key, row]));
+    const grouped = new Map<string, { label: string; step: number; rows: UserTierSongRow[] }>();
+
+    for (const entry of userTierRecords) {
+      const key = userTierEntryKey(entry);
+      const step = parseUserTierStep(entry.userTier);
+      if (key === null || step === null) {
+        continue;
+      }
+
+      const score = scoreByKey.get(key);
+      if (!score) {
+        continue;
+      }
+
+      const group = grouped.get(entry.userTier) ?? {
+        label: entry.userTier,
+        step,
+        rows: [],
+      };
+      group.rows.push({
+        key: `${entry.userTier}:${key}`,
+        userTier: entry.userTier,
+        userTierStep: step,
+        score,
+      });
+      grouped.set(entry.userTier, group);
+    }
+
+    const groups = Array.from(grouped.values())
+      .map((group) => ({
+        ...group,
+        rows: group.rows.sort((left, right) => {
+          const achievementDiff =
+            (right.score.achievementPercent ?? -1) - (left.score.achievementPercent ?? -1);
+          if (achievementDiff !== 0) {
+            return achievementDiff;
+          }
+
+          const levelDiff =
+            (right.score.internalLevel ?? -1) - (left.score.internalLevel ?? -1);
+          if (levelDiff !== 0) {
+            return levelDiff;
+          }
+
+          return left.score.title.localeCompare(right.score.title, locale);
+        }),
+      }))
+      .sort((left, right) => right.step - left.step);
+
+    return groups;
+  }, [locale, scoreData, userTierRecords]);
+
   const handleApplySongInfoUrl = () => {
     const next = songInfoUrlDraft.trim();
     if (!next) return;
@@ -1309,13 +1422,15 @@ function App() {
         ? '#playlogs'
         : page === 'rating'
           ? '#rating'
-          : page === 'picker'
-            ? '#picker'
-            : page === 'plot'
-              ? '#plot'
-              : page === 'settings'
-                ? '#settings'
-                : '#scores';
+          : page === 'tiers'
+            ? '#tiers'
+            : page === 'picker'
+              ? '#picker'
+              : page === 'plot'
+                ? '#plot'
+                : page === 'settings'
+                  ? '#settings'
+                  : '#scores';
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
       return;
@@ -1344,6 +1459,7 @@ function App() {
       { page: 'setup', label: t('nav.setup'), Icon: SetupIcon },
       { page: 'scores', label: t('nav.scores'), Icon: ScoresIcon },
       { page: 'rating', label: t('nav.rating'), Icon: RatingIcon },
+      { page: 'tiers', label: t('nav.tiers'), Icon: TiersIcon },
       { page: 'playlogs', label: t('nav.playlogs'), Icon: PlaylogsIcon },
       { page: 'picker', label: t('nav.picker'), Icon: PickerIcon },
       { page: 'plot', label: t('nav.plot'), Icon: PlotIcon },
@@ -1616,6 +1732,15 @@ function App() {
               oldRatingTotal={oldRatingTotal}
               newRows={newRatingRows}
               oldRows={oldRatingRows}
+              onOpenSongDetail={handleOpenSongDetail}
+            />
+          </>
+        ) : activePage === 'tiers' ? (
+          <>
+            {loadingErrorMessage ? <section className="error-banner">{t('common.error')}: {loadingErrorMessage}</section> : null}
+            <UserTierPage
+              songInfoUrl={songInfoUrl}
+              groups={userTierGroups}
               onOpenSongDetail={handleOpenSongDetail}
             />
           </>
