@@ -89,7 +89,7 @@ def parse_raveille_level_sheet(
                 f"missing Raveille tier label in {source_level} row {row}"
             )
 
-        user_tier = tier_rules[(source_level, source_grade)]
+        source_tier = tier_rules[(source_level, source_grade)]
         base_name = os.path.basename(file_name)
         slug = EXCEPTIONS.get(base_name, os.path.splitext(base_name)[0])
         lookup_slug, genre_hint = split_slug_genre_hint(slug)
@@ -104,7 +104,7 @@ def parse_raveille_level_sheet(
                 genre_hint=genre_hint,
                 source_internal_level_tenths=source_internal_level_tenths,
                 source_grade=source_grade,
-                user_tier=user_tier,
+                source_tier=source_tier,
                 source_url=source_url,
             )
         )

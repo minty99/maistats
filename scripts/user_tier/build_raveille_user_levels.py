@@ -16,13 +16,13 @@ if __package__ is None or __package__ == "":
 
 from scripts.user_tier.constants import (  # noqa: E402
     DEFAULT_SONG_DATABASE_URL,
-    MIN_USER_TIER_CHARTS,
     RAVEILLE_TIER_SPREADSHEET_ID,
+    TARGET_USER_TIER_COUNT,
     load_tier_rules,
 )
 from scripts.user_tier.io_utils import fetch_json, read_xlsx  # noqa: E402
 from scripts.user_tier.matching import match_entries  # noqa: E402
-from scripts.user_tier.merge import merge_sparse_user_tiers  # noqa: E402
+from scripts.user_tier.merge import merge_to_target_user_tiers  # noqa: E402
 from scripts.user_tier.models import (  # noqa: E402
     IssueEntry,
     OutputEntry,
@@ -62,13 +62,13 @@ def main() -> int:
         print_issue_report(unresolved, ambiguous)
         return 1
 
-    matched = merge_sparse_user_tiers(matched, MIN_USER_TIER_CHARTS)
+    matched = merge_to_target_user_tiers(matched, TARGET_USER_TIER_COUNT)
     output: UserLevelsOutput = {
         "source": {
             "raveilleSpreadsheetId": RAVEILLE_TIER_SPREADSHEET_ID,
             "raveilleUrl": f"https://docs.google.com/spreadsheets/d/{RAVEILLE_TIER_SPREADSHEET_ID}",
             "songDatabaseUrl": args.song_database_url.rstrip("/"),
-            "minUserTierCharts": MIN_USER_TIER_CHARTS,
+            "targetUserTierCount": TARGET_USER_TIER_COUNT,
         },
         "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "entries": matched,
@@ -126,7 +126,7 @@ def print_issue_report(
 def print_user_tier_summary(entries: list[OutputEntry]) -> None:
     by_user_tier: dict[UserTier, list[OutputEntry]] = defaultdict(list)
     for entry in entries:
-        by_user_tier[entry["userTier"]].append(entry)
+        by_user_tier[str(entry["userTier"])].append(entry)
 
     print(
         f"classified {len(entries)} resolved charts into {len(by_user_tier)} user tiers:",

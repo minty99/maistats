@@ -6,13 +6,14 @@ from typing import TypedDict
 
 type InternalLevel = str
 type RaveilleGrade = str
-type UserTier = int
+type SourceTier = int
+type UserTier = str
 type ChartCategory = str
 type ImageFileName = str
 type SongSlug = str
 
 type LevelGrade = tuple[InternalLevel, RaveilleGrade]
-type TierRules = dict[LevelGrade, UserTier]
+type TierRules = dict[LevelGrade, SourceTier]
 type CellAddress = tuple[int, int]
 type WorkbookSheet = tuple[str, str]
 type InternalLevelValue = str | int | float | None
@@ -65,7 +66,7 @@ class OutputEntry(TypedDict):
     chartType: str
     difficulty: str
     internalLevel: InternalLevelValue
-    userTier: UserTier
+    userTier: SourceTier | UserTier
 
 
 class IssueEntry(TypedDict, total=False):
@@ -78,7 +79,7 @@ class IssueEntry(TypedDict, total=False):
     genreHint: str | None
     raveilleInternalLevel: str
     raveilleGrade: RaveilleGrade
-    userTier: UserTier
+    userTier: SourceTier
     raveilleUrl: str
     candidates: list[CandidateIssue]
 
@@ -87,7 +88,7 @@ class UserLevelsSource(TypedDict):
     raveilleSpreadsheetId: str
     raveilleUrl: str
     songDatabaseUrl: str
-    minUserTierCharts: int
+    targetUserTierCount: int
 
 
 class UserLevelsOutput(TypedDict):
@@ -107,5 +108,5 @@ class SheetEntry:
     genre_hint: str | None
     source_internal_level_tenths: int
     source_grade: RaveilleGrade
-    user_tier: UserTier
+    source_tier: SourceTier
     source_url: str

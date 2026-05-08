@@ -103,7 +103,7 @@ def match_entries(
 
     matched.sort(
         key=lambda item: (
-            item["userTier"],
+            int(item["userTier"]),
             item["title"],
             item["chartType"],
             item["difficulty"],
@@ -258,7 +258,7 @@ def build_output_entry(
         "chartType": sheet["type"],
         "difficulty": sheet["difficulty"],
         "internalLevel": sheet.get("internalLevel"),
-        "userTier": entry.user_tier,
+        "userTier": entry.source_tier,
     }
 
 
@@ -275,7 +275,7 @@ def build_issue_entry(
         "genreHint": entry.genre_hint,
         "raveilleInternalLevel": f"{entry.source_internal_level_tenths / 10:.1f}",
         "raveilleGrade": entry.source_grade,
-        "userTier": entry.user_tier,
+        "userTier": entry.source_tier,
         "raveilleUrl": entry.source_url,
     }
     if candidates is not None:

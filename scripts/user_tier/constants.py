@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .models import LevelGrade, TierRules, UserTier
+from .models import LevelGrade, SourceTier, TierRules
 
 
 RAVEILLE_TIER_SPREADSHEET_ID = "19jn6ZFmg_aMRXKK90y58IUQE-4P32wUC7XkwwnEs7Oo"
@@ -9,7 +9,7 @@ RAVEILLE_TIER_SPREADSHEET_XLSX_URL = (
 )
 DEFAULT_SONG_DATABASE_URL = "https://maimai-charts.muhwan.dev"
 
-LOMO_TIER_RULES: tuple[tuple[UserTier, tuple[LevelGrade, ...]], ...] = (
+LOMO_TIER_RULES: tuple[tuple[SourceTier, tuple[LevelGrade, ...]], ...] = (
     (0, (
         ("13.0", "E-"),
         ("13.0", "F"),
@@ -428,7 +428,7 @@ LABELS_HARD_TO_EASY = [
     "F",
 ]
 LABEL_SET = set(LABELS_HARD_TO_EASY)
-MIN_USER_TIER_CHARTS = 15
+TARGET_USER_TIER_COUNT = 31
 
 
 def source_levels() -> list[str]:

@@ -1,57 +1,52 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 
-from .models import OutputEntry, UserTier
+from .models import OutputEntry, SourceTier, UserTier
 
 
-def merge_sparse_user_tiers(
-    entries: list[OutputEntry], min_charts: int
+USER_TIER_LABEL_START = 13.00
+USER_TIER_LABEL_STEP = 0.05
+
+
+@dataclass
+class TierGroup:
+    source_tiers: list[SourceTier]
+    chart_count: int
+
+
+def merge_to_target_user_tiers(
+    entries: list[OutputEntry], target_tier_count: int
 ) -> list[OutputEntry]:
-    counts: dict[UserTier, int] = defaultdict(int)
-    for entry in entries:
-        counts[int(entry["userTier"])] += 1
+    groups = initial_tier_groups(entries)
+    if len(groups) < target_tier_count:
+        raise ValueError(
+            f"cannot split {len(groups)} source tiers into {target_tier_count} user tiers"
+        )
 
-    groups: list[list[UserTier]] = []
-    current_group: list[UserTier] = []
-    current_count = 0
-    for user_tier in sorted(counts):
-        current_group.append(user_tier)
-        current_count += counts[user_tier]
-        if current_count >= min_charts:
-            groups.append(current_group)
-            current_group = []
-            current_count = 0
-
-    if current_group:
-        if groups:
-            groups[-1].extend(current_group)
-        else:
-            groups.append(current_group)
+    while len(groups) > target_tier_count:
+        merge_index = sparsest_adjacent_pair_index(groups)
+        groups[merge_index] = TierGroup(
+            source_tiers=groups[merge_index].source_tiers
+            + groups[merge_index + 1].source_tiers,
+            chart_count=groups[merge_index].chart_count
+            + groups[merge_index + 1].chart_count,
+        )
+        del groups[merge_index + 1]
 
     tier_mapping = {
-        original_tier: merged_tier
-        for merged_tier, group in enumerate(groups)
-        for original_tier in group
+        source_tier: user_tier_label(group_index)
+        for group_index, group in enumerate(groups)
+        for source_tier in group.source_tiers
     }
-    merged_entries = [
+    merged_entries: list[OutputEntry] = [
         {
             **entry,
             "userTier": tier_mapping[int(entry["userTier"])],
         }
         for entry in entries
     ]
-
-    merged_counts: dict[UserTier, int] = defaultdict(int)
-    for entry in merged_entries:
-        merged_counts[int(entry["userTier"])] += 1
-    too_small = {
-        user_tier: count
-        for user_tier, count in merged_counts.items()
-        if count < min_charts
-    }
-    if too_small:
-        raise ValueError(f"user tiers below {min_charts} charts after merge: {too_small}")
 
     merged_entries.sort(
         key=lambda item: (
@@ -62,3 +57,27 @@ def merge_sparse_user_tiers(
         )
     )
     return merged_entries
+
+
+def initial_tier_groups(entries: list[OutputEntry]) -> list[TierGroup]:
+    counts: dict[SourceTier, int] = defaultdict(int)
+    for entry in entries:
+        counts[int(entry["userTier"])] += 1
+
+    return [
+        TierGroup(source_tiers=[source_tier], chart_count=counts[source_tier])
+        for source_tier in sorted(counts)
+    ]
+
+
+def sparsest_adjacent_pair_index(groups: list[TierGroup]) -> int:
+    pair_counts = [
+        (groups[index].chart_count + groups[index + 1].chart_count, index)
+        for index in range(len(groups) - 1)
+    ]
+    smallest_pair_count = min(count for count, _index in pair_counts)
+    return max(index for count, index in pair_counts if count == smallest_pair_count)
+
+
+def user_tier_label(index: int) -> UserTier:
+    return f"{USER_TIER_LABEL_START + index * USER_TIER_LABEL_STEP:.2f}"
