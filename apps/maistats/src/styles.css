@@ -1399,30 +1399,42 @@ select:focus-visible {
   gap: 8px;
 }
 
-.user-tier-filter-button {
-  width: 100%;
+.user-tier-filter-toggle {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
   min-height: 34px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 2px;
   background: var(--chip);
   color: var(--ink-dim);
-  font: inherit;
   font-size: 0.82rem;
   font-weight: 600;
-  text-align: left;
   cursor: pointer;
 }
 
-.user-tier-filter-button:hover {
+.user-tier-filter-toggle:hover {
   border-color: var(--accent);
   color: var(--ink);
 }
 
-.user-tier-filter-button.is-active {
+.user-tier-filter-toggle:has(input:checked) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, var(--panel));
   color: var(--ink);
+}
+
+.user-tier-filter-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+}
+
+.user-tier-filter-toggle span {
+  min-width: 0;
+  line-height: 1.25;
 }
 
 .empty-state-panel {
