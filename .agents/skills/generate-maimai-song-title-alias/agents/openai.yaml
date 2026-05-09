@@ -1,0 +1,6 @@
+interface:
+  display_name: "Maimai Song Title Alias"
+  short_description: "Generate Korean and English maimai aliases"
+  default_prompt: "Use $generate-maimai-song-title-alias to generate aliases for maimai song titles."
+policy:
+  allow_implicit_invocation: false
