@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .build_lomo_tier_rules import LOMO_TIER_RULES
 from .models import TierRules
 
 
@@ -37,16 +36,20 @@ def source_levels() -> list[str]:
     return [f"{13 + index // 10}.{index % 10}" for index in range(16)]
 
 
-def load_tier_rules() -> TierRules:
+def load_tier_rules(lomo_xlsx_path: str | None = None) -> TierRules:
+    from .build_lomo_tier_rules import load_lomo_tier_rules
+
     tier_rules: TierRules = {}
-    for user_tier, entries in LOMO_TIER_RULES:
+    for user_tier, entries in load_lomo_tier_rules(lomo_xlsx_path):
         for level, grade in entries:
             key = (level, grade)
             if key in tier_rules:
                 raise ValueError(f"duplicate Lomo mapping rule for {key}")
             tier_rules[key] = user_tier
 
-    expected_entries = {(level, grade) for level in source_levels() for grade in LABEL_SET}
+    expected_entries = {
+        (level, grade) for level in source_levels() for grade in LABEL_SET
+    }
     missing_entries = sorted(expected_entries - set(tier_rules))
     if missing_entries:
         formatted = ", ".join(f"{level} {grade}" for level, grade in missing_entries)

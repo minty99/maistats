@@ -16,6 +16,7 @@ if __package__ is None or __package__ == "":
 
 from scripts.user_tier.constants import (  # noqa: E402
     DEFAULT_SONG_DATABASE_URL,
+    RAVEILLE_TIER_SPREADSHEET_XLSX_URL,
     RAVEILLE_TIER_SPREADSHEET_ID,
     TARGET_USER_TIER_COUNT,
     load_tier_rules,
@@ -49,10 +50,15 @@ def main() -> int:
         "--xlsx-path",
         help="Use a local exported XLSX instead of downloading the Google Sheet",
     )
+    parser.add_argument(
+        "--lomo-xlsx-path",
+        help="Use a local exported Lomo XLSX instead of downloading the Google Sheet",
+    )
     args = parser.parse_args()
 
-    xlsx_bytes = read_xlsx(args.xlsx_path)
-    sheet_entries = parse_raveille_sheet(xlsx_bytes, load_tier_rules())
+    xlsx_bytes = read_xlsx(args.xlsx_path, RAVEILLE_TIER_SPREADSHEET_XLSX_URL)
+    tier_rules = load_tier_rules(args.lomo_xlsx_path)
+    sheet_entries = parse_raveille_sheet(xlsx_bytes, tier_rules)
     song_database = fetch_json(args.song_database_url.rstrip("/") + "/data.json")
     songs = cast(list[SongRecord], song_database["songs"])
     matched, unresolved, ambiguous = match_entries(sheet_entries, songs)

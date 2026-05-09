@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-import io
 import os
 import re
 import urllib.parse
-import zipfile
 from xml.etree import ElementTree as ET
 
 from .constants import LABEL_SET, source_levels
+from .io_utils import (
+    NS,
+    parse_cell_ref,
+    parse_cell_value,
+    parse_shared_strings,
+    workbook_sheets,
+    zip_xlsx,
+)
 from .matching import EXCEPTIONS, split_slug_genre_hint
 from .models import (
     CellAddress,
@@ -15,22 +21,14 @@ from .models import (
     ImageFileName,
     SheetEntry,
     TierRules,
-    WorkbookSheet,
 )
-
-
-NS = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
-REL_NS = {
-    "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    "p": "http://schemas.openxmlformats.org/package/2006/relationships",
-}
 
 
 type FormulaCell = tuple[int, int, ChartCategory, ImageFileName, str]
 
 
 def parse_raveille_sheet(xlsx_bytes: bytes, tier_rules: TierRules) -> list[SheetEntry]:
-    with zipfile.ZipFile(io.BytesIO(xlsx_bytes)) as zf:
+    with zip_xlsx(xlsx_bytes) as zf:
         shared_strings = parse_shared_strings(zf)
         sheets = workbook_sheets(zf)
 
@@ -110,54 +108,3 @@ def parse_raveille_level_sheet(
         )
 
     return entries
-
-
-def workbook_sheets(zf: zipfile.ZipFile) -> list[WorkbookSheet]:
-    workbook = ET.fromstring(zf.read("xl/workbook.xml"))
-    relationships = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
-    rel_targets = {
-        rel.attrib["Id"]: rel.attrib["Target"]
-        for rel in relationships.findall("p:Relationship", REL_NS)
-    }
-
-    sheets = []
-    for sheet in workbook.findall(".//x:sheet", NS):
-        rel_id = sheet.attrib[
-            "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
-        ]
-        target = rel_targets[rel_id].lstrip("/")
-        sheet_path = target if target.startswith("xl/") else f"xl/{target}"
-        sheets.append((sheet.attrib["name"], sheet_path))
-    return sheets
-
-
-def parse_shared_strings(zf: zipfile.ZipFile) -> list[str]:
-    root = ET.fromstring(zf.read("xl/sharedStrings.xml"))
-    return ["".join(t.text or "" for t in item.findall(".//x:t", NS)) for item in root]
-
-
-def parse_cell_ref(value: str) -> CellAddress:
-    match = re.fullmatch(r"([A-Z]+)(\d+)", value)
-    if match is None:
-        raise ValueError(f"unsupported cell reference: {value}")
-    return int(match.group(2)), column_to_number(match.group(1))
-
-
-def column_to_number(value: str) -> int:
-    number = 0
-    for ch in value:
-        number = number * 26 + ord(ch) - ord("A") + 1
-    return number
-
-
-def parse_cell_value(cell: ET.Element, shared_strings: list[str]) -> str:
-    cell_type = cell.attrib.get("t")
-    if cell_type == "s":
-        value = cell.find("x:v", NS)
-        return (
-            shared_strings[int(value.text)] if value is not None and value.text else ""
-        )
-    if cell_type == "inlineStr":
-        return "".join(t.text or "" for t in cell.findall(".//x:t", NS))
-    value = cell.find("x:v", NS)
-    return value.text if value is not None and value.text else ""
