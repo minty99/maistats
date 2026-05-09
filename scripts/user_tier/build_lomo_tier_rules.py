@@ -32,9 +32,7 @@ from scripts.user_tier.models import (  # noqa: E402
 
 
 LOMO_TIER_SPREADSHEET_ID = "1SlploeLf6BseGDe97DftuBqTHQK8h16rk8M6EgnXG3s"
-LOMO_TIER_SPREADSHEET_XLSX_URL = (
-    f"https://docs.google.com/spreadsheets/d/{LOMO_TIER_SPREADSHEET_ID}/export?format=xlsx"
-)
+LOMO_TIER_SPREADSHEET_XLSX_URL = f"https://docs.google.com/spreadsheets/d/{LOMO_TIER_SPREADSHEET_ID}/export?format=xlsx"
 LOMO_SOURCE_TIER_ROW_BASE = 69
 
 

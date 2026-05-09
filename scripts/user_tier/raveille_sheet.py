@@ -83,9 +83,7 @@ def parse_raveille_level_sheet(
     for row, col, category, file_name, source_url in formulas:
         source_grade = values.get((row, 2))
         if source_grade not in LABEL_SET:
-            raise ValueError(
-                f"missing Raveille tier label in {source_level} row {row}"
-            )
+            raise ValueError(f"missing Raveille tier label in {source_level} row {row}")
 
         source_tier = tier_rules[(source_level, source_grade)]
         base_name = os.path.basename(file_name)

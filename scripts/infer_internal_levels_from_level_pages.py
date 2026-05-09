@@ -179,7 +179,9 @@ def supported_level_params() -> range:
         return None
 
 
-def build_catalog_lookup(catalog: dict[str, Any]) -> dict[tuple[str, str, str], list[CatalogEntry]]:
+def build_catalog_lookup(
+    catalog: dict[str, Any],
+) -> dict[tuple[str, str, str], list[CatalogEntry]]:
     lookup: dict[tuple[str, str, str], list[CatalogEntry]] = defaultdict(list)
 
     for song in catalog.get("songs", []):
@@ -300,7 +302,9 @@ def bucket_cost(genre_indexes: list[int], start: int, end: int) -> int:
     return drops
 
 
-def partition_page(entries: list[ParsedPageEntry], genre_order: list[str]) -> list[ScoredPageEntry]:
+def partition_page(
+    entries: list[ParsedPageEntry], genre_order: list[str]
+) -> list[ScoredPageEntry]:
     if not entries:
         return []
 
@@ -450,7 +454,8 @@ def print_summary(
                         str(scored_entry.bucket_index),
                         scored_entry.entry.title,
                         CHART_TYPE_OUTPUT.get(
-                            scored_entry.entry.chart_type, scored_entry.entry.chart_type.upper()
+                            scored_entry.entry.chart_type,
+                            scored_entry.entry.chart_type.upper(),
                         ),
                         DIFFICULTY_OUTPUT.get(
                             scored_entry.entry.difficulty,

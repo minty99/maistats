@@ -4,9 +4,7 @@ from .models import TierRules
 
 
 RAVEILLE_TIER_SPREADSHEET_ID = "19jn6ZFmg_aMRXKK90y58IUQE-4P32wUC7XkwwnEs7Oo"
-RAVEILLE_TIER_SPREADSHEET_XLSX_URL = (
-    f"https://docs.google.com/spreadsheets/d/{RAVEILLE_TIER_SPREADSHEET_ID}/export?format=xlsx"
-)
+RAVEILLE_TIER_SPREADSHEET_XLSX_URL = f"https://docs.google.com/spreadsheets/d/{RAVEILLE_TIER_SPREADSHEET_ID}/export?format=xlsx"
 DEFAULT_SONG_DATABASE_URL = "https://maimai-charts.muhwan.dev"
 
 LABELS_HARD_TO_EASY = [
