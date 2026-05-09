@@ -95,6 +95,7 @@ def load_rank_icon_data_uri(stem: str) -> str | None:
         return None
     return f"data:image/png;base64,{encoded}"
 
+
 # Hand-picked palette — vivid but not neon, readable on dark background
 PALETTE: list[str] = [
     "#5b9ef5",  # blue

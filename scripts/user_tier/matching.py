@@ -28,9 +28,7 @@ EXCEPTIONS = {
     "dadc9d2b98ecf1c8.png": "trust-gv",
 }
 
-MANUAL_MATCH_OVERRIDES: dict[
-    tuple[SongSlug, ChartCategory], ManualMatchIdentity
-] = {
+MANUAL_MATCH_OVERRIDES: dict[tuple[SongSlug, ChartCategory], ManualMatchIdentity] = {
     # (slug, source category): (title, genre, artist, chart type, difficulty)
 }
 
