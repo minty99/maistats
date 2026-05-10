@@ -144,7 +144,12 @@ function compareRatingPageRows(
 }
 
 function parseUserTierStep(value: string): number | null {
-  const parsed = Number(value);
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
   if (!Number.isFinite(parsed)) {
     return null;
   }

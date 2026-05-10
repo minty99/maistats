@@ -494,8 +494,6 @@ const PLOT_Y_MAX = 101.0;
 const PLOT_JITTER = 0.35;
 const PLOT_FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
 const MISSING_LAST_PLAYED_LABEL = '-';
-const TIER_PLOT_X_MIN = 13.0;
-const TIER_PLOT_X_MAX = 14.5;
 
 function mulberry32(seed: number): () => number {
   let s = seed | 0;
@@ -601,13 +599,10 @@ export function PlotPage({
     return userTierGroups.flatMap((group) => group.rows.flatMap((item) => {
       const achievementPercent = item.score.achievementPercent;
       const daysElapsed = item.score.daysSinceLastPlayed;
-      const tierValue = item.userTierStep / 100;
       if (
         achievementPercent === null
         || daysElapsed === null
         || !isInPlotWindow(achievementPercent, daysElapsed, daysWindow)
-        || tierValue < TIER_PLOT_X_MIN
-        || tierValue > TIER_PLOT_X_MAX
       ) {
         return [];
       }
@@ -633,10 +628,7 @@ export function PlotPage({
   const userTierLanes = useMemo<PlotLane[]>(() => {
     const ticks = new Map<number, string>();
     for (const group of userTierGroups) {
-      const value = group.step / 100;
-      if (value >= TIER_PLOT_X_MIN && value <= TIER_PLOT_X_MAX) {
-        ticks.set(group.step, group.label);
-      }
+      ticks.set(group.step, group.label);
     }
     return Array.from(ticks.entries())
       .map(([key, label]) => ({ key, label }))

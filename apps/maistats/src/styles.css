@@ -1398,37 +1398,6 @@ select:focus-visible {
   gap: 14px;
 }
 
-.user-tier-plot-button {
-  min-width: 104px;
-  background: var(--accent);
-  border-color: var(--accent-2);
-  color: var(--accent-fg);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.user-tier-plot-button:hover {
-  background: var(--accent-2);
-  border-color: var(--accent-2);
-  color: var(--accent-fg);
-}
-
-.user-tier-plot-modal {
-  width: min(1360px, calc(100vw - 24px));
-}
-
-.user-tier-plot-empty {
-  padding: 42px 0;
-  text-align: center;
-}
-
-.user-tier-plot-chart-container {
-  min-height: 560px;
-  border-radius: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
 .user-tier-filter-actions {
   display: grid;
   gap: 8px;
