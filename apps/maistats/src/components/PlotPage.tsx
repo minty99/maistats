@@ -10,7 +10,7 @@ import type {
 import type { SongDetailTarget } from './TableActionCells';
 import type { UserTierGroup } from './UserTierPage';
 
-interface ScatterPlotPageProps {
+interface PlotPageProps {
   sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   scoreRecords: ScoreApiResponse[];
@@ -20,7 +20,7 @@ interface ScatterPlotPageProps {
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }
 
-interface ScatterPlotPoint {
+interface PlotPoint {
   achievement: number;
   title: string;
   laneKey: number;
@@ -32,9 +32,14 @@ interface ScatterPlotPoint {
   detailTarget: SongDetailTarget;
 }
 
-interface ScatterPlotLane {
+interface PlotLane {
   key: number;
   label: string;
+}
+
+interface ScoreMetadata {
+  levelTenths: number;
+  imageName: string | null;
 }
 
 type PlotDisplayMode = 'scatter' | 'box';
@@ -112,6 +117,39 @@ function coverUrl(songInfoUrl: string, imageName: string | null): string | null 
   return imageName ? buildCoverUrl(songInfoUrl, imageName) : null;
 }
 
+function isInPlotWindow(
+  achievementPercent: number | null,
+  daysElapsed: number | null,
+  daysWindow: DaysFilterOption,
+): boolean {
+  return achievementPercent !== null
+    && achievementPercent >= MIN_ACHIEVEMENT_FILTER
+    && daysElapsed !== null
+    && (daysWindow === 'max' || daysElapsed <= daysWindow);
+}
+
+function buildPlotLanes(points: PlotPoint[]): PlotLane[] {
+  const lanes = new Map<number, PlotLane>();
+  for (const point of points) {
+    lanes.set(point.laneKey, { key: point.laneKey, label: point.laneLabel });
+  }
+  return Array.from(lanes.values()).sort((a, b) => a.key - b.key);
+}
+
+function buildScoreMetadataMap(songMetadata: Map<string, SongInfoResponse>): Map<string, ScoreMetadata> {
+  const metadataMap = new Map<string, ScoreMetadata>();
+  for (const [, song] of songMetadata) {
+    for (const sheet of song.sheets) {
+      if (sheet.internal_level != null) {
+        const ilTenths = Math.round(sheet.internal_level * 10);
+        const key = JSON.stringify([song.title, song.genre, song.artist, sheet.chart_type, sheet.difficulty]);
+        metadataMap.set(key, { levelTenths: ilTenths, imageName: song.image_name });
+      }
+    }
+  }
+  return metadataMap;
+}
+
 function PlotTooltip({ tooltip }: { tooltip: HoverTooltipState }) {
   const { t } = useI18n();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
@@ -122,13 +160,13 @@ function PlotTooltip({ tooltip }: { tooltip: HoverTooltipState }) {
 
   return (
     <div
-      className="scatter-plot-tooltip"
+      className="plot-tooltip"
       style={{
         left: tooltip.x,
         top: tooltip.y,
       }}
     >
-      <div className="scatter-plot-tooltip-jacket">
+      <div className="plot-tooltip-jacket">
         {tooltip.data.imageUrl ? (
           <>
             {!isImageLoaded ? (
@@ -148,7 +186,7 @@ function PlotTooltip({ tooltip }: { tooltip: HoverTooltipState }) {
           <span aria-hidden="true" />
         )}
       </div>
-      <div className="scatter-plot-tooltip-body">
+      <div className="plot-tooltip-body">
         <strong>{tooltip.data.title}</strong>
         <span>{tooltip.data.subtitle}</span>
         <span>{tooltip.data.achievement}</span>
@@ -158,9 +196,9 @@ function PlotTooltip({ tooltip }: { tooltip: HoverTooltipState }) {
   );
 }
 
-interface ScatterPlotChartProps {
-  points: ScatterPlotPoint[];
-  lanes: ScatterPlotLane[];
+interface PlotChartProps {
+  points: PlotPoint[];
+  lanes: PlotLane[];
   displayMode: PlotDisplayMode;
   daysWindow: DaysFilterOption;
   plotTheme: PlotTheme;
@@ -169,7 +207,7 @@ interface ScatterPlotChartProps {
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }
 
-function ScatterPlotChart({
+function PlotChart({
   points,
   lanes,
   displayMode,
@@ -178,7 +216,7 @@ function ScatterPlotChart({
   songInfoUrl,
   setHoverTooltip,
   onOpenSongDetail,
-}: ScatterPlotChartProps) {
+}: PlotChartProps) {
   const plotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -201,7 +239,7 @@ function ScatterPlotChart({
       const rng = mulberry32(42);
       const laneIndexMap = new Map(lanes.map((lane, index) => [lane.key, index]));
       const colorMap = new Map(lanes.map((lane, index) => [lane.key, PALETTE[index % PALETTE.length]]));
-      const pointsByLane = new Map<number, ScatterPlotPoint[]>();
+      const pointsByLane = new Map<number, PlotPoint[]>();
       for (const lane of lanes) {
         pointsByLane.set(lane.key, []);
       }
@@ -375,7 +413,7 @@ function ScatterPlotChart({
     };
   }, [daysWindow, displayMode, lanes, onOpenSongDetail, plotTheme, points, setHoverTooltip, songInfoUrl]);
 
-  return <div className="scatter-plot-chart-container" ref={plotRef} />;
+  return <div className="plot-chart-container" ref={plotRef} />;
 }
 
 interface PlotTheme {
@@ -488,7 +526,7 @@ function readStoredPlotSettings(): { daysWindow: DaysFilterOption; displayMode: 
   }
 }
 
-export function ScatterPlotPage({
+export function PlotPage({
   sidebarTopContent,
   songInfoUrl,
   scoreRecords,
@@ -496,7 +534,7 @@ export function ScatterPlotPage({
   userTierGroups,
   isLoading = false,
   onOpenSongDetail,
-}: ScatterPlotPageProps) {
+}: PlotPageProps) {
   const { t } = useI18n();
   const [hoverTooltip, setHoverTooltip] = useState<HoverTooltipState | null>(null);
   const effectiveTheme = useEffectiveTheme();
@@ -520,31 +558,21 @@ export function ScatterPlotPage({
     setDisplayMode(value);
   }, []);
 
-  const points = useMemo<ScatterPlotPoint[]>(() => {
-    const metadataMap = new Map<string, { levelTenths: number; imageName: string | null }>();
-    for (const [, song] of songMetadata) {
-      for (const sheet of song.sheets) {
-        if (sheet.internal_level != null) {
-          const ilTenths = Math.round(sheet.internal_level * 10);
-          const key = JSON.stringify([song.title, song.genre, song.artist, sheet.chart_type, sheet.difficulty]);
-          metadataMap.set(key, { levelTenths: ilTenths, imageName: song.image_name });
-        }
-      }
-    }
+  const scoreMetadataMap = useMemo(() => buildScoreMetadataMap(songMetadata), [songMetadata]);
 
-    const result: ScatterPlotPoint[] = [];
+  const points = useMemo<PlotPoint[]>(() => {
+    const result: PlotPoint[] = [];
     for (const score of scoreRecords) {
       if (score.achievement_x10000 == null) continue;
       const achievementPercent = score.achievement_x10000 / 10000;
-      if (achievementPercent < MIN_ACHIEVEMENT_FILTER) continue;
 
       if (!score.last_played_at) continue;
       const playedUnix = parseMaimaiPlayedAtToUnix(score.last_played_at);
       const elapsed = daysSince(playedUnix);
-      if (elapsed == null || (daysWindow !== 'max' && elapsed > daysWindow)) continue;
+      if (elapsed === null || !isInPlotWindow(achievementPercent, elapsed, daysWindow)) continue;
 
       const key = JSON.stringify([score.title, score.genre, score.artist, score.chart_type, score.diff_category]);
-      const metadata = metadataMap.get(key);
+      const metadata = scoreMetadataMap.get(key);
       if (!metadata) continue;
 
       result.push({
@@ -565,44 +593,44 @@ export function ScatterPlotPage({
     }
 
     return result;
-  }, [scoreRecords, songMetadata, daysWindow]);
+  }, [scoreRecords, scoreMetadataMap, daysWindow]);
 
-  const levelLanes = useMemo<ScatterPlotLane[]>(() => {
-    const lanes = new Map<number, ScatterPlotLane>();
-    for (const point of points) {
-      lanes.set(point.laneKey, { key: point.laneKey, label: point.laneLabel });
-    }
-    return Array.from(lanes.values()).sort((a, b) => a.key - b.key);
-  }, [points]);
+  const levelLanes = useMemo(() => buildPlotLanes(points), [points]);
 
-  const userTierPoints = useMemo<ScatterPlotPoint[]>(() => {
-    return userTierGroups.flatMap((group) =>
-      group.rows
-        .filter((item) =>
-          item.score.achievementPercent !== null
-          && item.score.achievementPercent >= MIN_ACHIEVEMENT_FILTER
-          && item.score.daysSinceLastPlayed !== null
-          && (daysWindow === 'max' || item.score.daysSinceLastPlayed <= daysWindow)
-          && item.userTierStep / 100 >= TIER_PLOT_X_MIN
-          && item.userTierStep / 100 <= TIER_PLOT_X_MAX
-        )
-        .map((item) => ({
-          achievement: item.score.achievementPercent ?? 0,
+  const userTierPoints = useMemo<PlotPoint[]>(() => {
+    return userTierGroups.flatMap((group) => group.rows.flatMap((item) => {
+      const achievementPercent = item.score.achievementPercent;
+      const daysElapsed = item.score.daysSinceLastPlayed;
+      const tierValue = item.userTierStep / 100;
+      if (
+        achievementPercent === null
+        || daysElapsed === null
+        || !isInPlotWindow(achievementPercent, daysElapsed, daysWindow)
+        || tierValue < TIER_PLOT_X_MIN
+        || tierValue > TIER_PLOT_X_MAX
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          achievement: achievementPercent,
           title: item.score.title,
           laneKey: item.userTierStep,
           laneLabel: item.userTier,
           tooltipSubtitle: `Tier ${item.userTier} / Lv ${
             item.score.internalLevel === null ? '-' : item.score.internalLevel.toFixed(1)
           }`,
-          daysElapsed: item.score.daysSinceLastPlayed ?? 0,
+          daysElapsed,
           imageName: item.score.imageName,
           lastPlayedAt: item.score.latestPlayedAtLabel,
           detailTarget: item.score,
-        })),
-    );
+        },
+      ];
+    }));
   }, [userTierGroups, daysWindow]);
 
-  const userTierLanes = useMemo<ScatterPlotLane[]>(() => {
+  const userTierLanes = useMemo<PlotLane[]>(() => {
     const ticks = new Map<number, string>();
     for (const group of userTierGroups) {
       const value = group.step / 100;
@@ -616,23 +644,23 @@ export function ScatterPlotPage({
   }, [userTierGroups]);
 
   return (
-    <section className="scatter-plot-layout">
-      <div className="scatter-plot-sidebar">
+    <section className="plot-layout">
+      <div className="plot-sidebar">
         {sidebarTopContent}
       </div>
-      <section className="scatter-plot-section panel">
+      <section className="plot-section panel">
         <h2 className="section-heading">{t('plot.title')}</h2>
-        <p className="muted scatter-plot-description">{t('plot.description')}</p>
+        <p className="muted plot-description">{t('plot.description')}</p>
 
-        <div className="scatter-plot-controls">
-          <div className="scatter-plot-days-control">
-            <span className="scatter-plot-days-title">{t('plot.daysWindow')}</span>
-            <div className="scatter-plot-days-options" role="group" aria-label={t('plot.daysWindow')}>
+        <div className="plot-controls">
+          <div className="plot-control-group">
+            <span className="plot-control-title">{t('plot.daysWindow')}</span>
+            <div className="plot-segmented-options" role="group" aria-label={t('plot.daysWindow')}>
               {DAYS_FILTER_OPTIONS.map((value) => (
                 <button
                   key={value}
                   type="button"
-                  className="scatter-plot-days-option"
+                  className="plot-segmented-option"
                   aria-pressed={daysWindow === value}
                   onClick={() => handleDaysWindowChange(value)}
                 >
@@ -641,14 +669,14 @@ export function ScatterPlotPage({
               ))}
             </div>
           </div>
-          <div className="scatter-plot-days-control scatter-plot-mode-control">
-            <span className="scatter-plot-days-title">{t('plot.displayMode')}</span>
-            <div className="scatter-plot-days-options" role="group" aria-label={t('plot.displayMode')}>
+          <div className="plot-control-group plot-view-control">
+            <span className="plot-control-title">{t('plot.displayMode')}</span>
+            <div className="plot-segmented-options" role="group" aria-label={t('plot.displayMode')}>
               {PLOT_DISPLAY_MODES.map((value) => (
                 <button
                   key={value}
                   type="button"
-                  className="scatter-plot-days-option"
+                  className="plot-segmented-option"
                   aria-pressed={displayMode === value}
                   onClick={() => handleDisplayModeChange(value)}
                 >
@@ -660,11 +688,11 @@ export function ScatterPlotPage({
         </div>
 
         {isLoading && points.length === 0 ? (
-          <p className="muted scatter-plot-empty">{t('common.loadingCharts')}</p>
+          <p className="muted plot-empty">{t('common.loadingCharts')}</p>
         ) : points.length === 0 ? (
-          <p className="muted scatter-plot-empty">{t('plot.empty')}</p>
+          <p className="muted plot-empty">{t('plot.empty')}</p>
         ) : (
-          <ScatterPlotChart
+          <PlotChart
             points={points}
             lanes={levelLanes}
             displayMode={displayMode}
@@ -676,15 +704,15 @@ export function ScatterPlotPage({
           />
         )}
       </section>
-      <section className="scatter-plot-section panel scatter-plot-main-column">
+      <section className="plot-section panel plot-main-column">
         <h2 className="section-heading">{t('plot.userTierTitle')}</h2>
-        <p className="muted scatter-plot-description">{t('plot.userTierDescription')}</p>
+        <p className="muted plot-description">{t('plot.userTierDescription')}</p>
         {isLoading && userTierPoints.length === 0 ? (
-          <p className="muted scatter-plot-empty">{t('common.loadingCharts')}</p>
+          <p className="muted plot-empty">{t('common.loadingCharts')}</p>
         ) : userTierPoints.length === 0 ? (
-          <p className="muted scatter-plot-empty">{t('plot.userTierEmpty')}</p>
+          <p className="muted plot-empty">{t('plot.userTierEmpty')}</p>
         ) : (
-          <ScatterPlotChart
+          <PlotChart
             points={userTierPoints}
             lanes={userTierLanes}
             displayMode={displayMode}

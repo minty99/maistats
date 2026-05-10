@@ -73,7 +73,7 @@ import { ScoreExplorerSection } from './components/ScoreExplorerSection';
 import { SettingsPage } from './components/SettingsPage';
 import { SetupGuidePage } from './components/SetupGuidePage';
 import { SongDetailModal } from './components/SongDetailModal';
-import { ScatterPlotPage } from './components/ScatterPlotPage';
+import { PlotPage } from './components/PlotPage';
 import { ScoreHistoryModal } from './components/ScoreHistoryModal';
 import { UserTierPage, type UserTierSongRow } from './components/UserTierPage';
 import type { SongDetailTarget } from './components/TableActionCells';
@@ -1754,7 +1754,7 @@ function App() {
             versionOptions={pickerVersionOptions}
           />
         ) : activePage === 'plot' ? (
-          <ScatterPlotPage
+          <PlotPage
             sidebarTopContent={desktopSidebarTopContent}
             songInfoUrl={songInfoUrl}
             scoreRecords={scoreRecords}
