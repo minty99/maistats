@@ -3550,9 +3550,17 @@ tbody tr:last-child td {
   padding: 24px;
 }
 
+.scatter-plot-main-column {
+  grid-column: 2;
+}
+
 @media (max-width: 960px) {
   .scatter-plot-layout {
     grid-template-columns: 1fr;
+  }
+
+  .scatter-plot-main-column {
+    grid-column: auto;
   }
 
   .scatter-plot-sidebar {
@@ -3586,24 +3594,48 @@ tbody tr:last-child td {
   color: var(--text-muted);
 }
 
-.scatter-plot-input {
-  width: 7ch;
-  padding: 6px 8px;
+.scatter-plot-days-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 420px;
+  min-width: min(100%, 340px);
+  flex-wrap: wrap;
+}
+
+.scatter-plot-days-title {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.scatter-plot-days-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scatter-plot-days-option {
+  min-height: 32px;
+  padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--panel);
-  color: var(--text);
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.scatter-plot-input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+.scatter-plot-days-option:hover {
+  border-color: var(--accent);
+  color: var(--text);
 }
 
-.scatter-plot-summary {
-  font-size: 0.85rem;
+.scatter-plot-days-option[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent-2);
+  color: var(--accent-fg);
 }
 
 .scatter-plot-empty {
@@ -3623,6 +3655,73 @@ tbody tr:last-child td {
 
 .scatter-plot-chart-container .modebar:hover {
   opacity: 1;
+}
+
+.scatter-plot-tooltip {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  width: min(340px, calc(100vw - 24px));
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--panel) 70%, transparent),
+    0 14px 34px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+  transform: translate(14px, -50%);
+}
+
+.scatter-plot-tooltip-jacket {
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--stage-placeholder-bg);
+}
+
+.scatter-plot-tooltip-jacket img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scatter-plot-tooltip-jacket img[hidden] {
+  display: none;
+}
+
+.scatter-plot-tooltip-jacket span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.scatter-plot-tooltip-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  align-content: center;
+  font-size: 0.82rem;
+}
+
+.scatter-plot-tooltip-body strong {
+  overflow: hidden;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scatter-plot-tooltip-body span {
+  color: var(--text-muted);
 }
 
 @media (max-width: 640px) {

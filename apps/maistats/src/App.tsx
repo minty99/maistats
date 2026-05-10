@@ -1756,8 +1756,12 @@ function App() {
         ) : activePage === 'plot' ? (
           <ScatterPlotPage
             sidebarTopContent={desktopSidebarTopContent}
+            songInfoUrl={songInfoUrl}
             scoreRecords={scoreRecords}
             songMetadata={songMetadata}
+            userTierGroups={userTierGroups}
+            isLoading={isLoading}
+            onOpenSongDetail={handleOpenSongDetail}
           />
         ) : (
           <SettingsPage
