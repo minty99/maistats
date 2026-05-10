@@ -1394,6 +1394,10 @@ select:focus-visible {
   border-top: 2px solid var(--accent);
 }
 
+.user-tier-intro-panel .panel-heading {
+  gap: 14px;
+}
+
 .user-tier-filter-actions {
   display: grid;
   gap: 8px;
@@ -3496,31 +3500,39 @@ tbody tr:last-child td {
   --skeleton-mid: #d0d0ca;
 }
 
-/* ---- Scatter Plot Page ---- */
+/* ---- Plot Page ---- */
 
-.scatter-plot-layout {
+.plot-layout {
   display: grid;
   grid-template-columns: var(--desktop-sidebar-width) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
 
-.scatter-plot-sidebar {
+.plot-sidebar {
   display: grid;
   gap: 10px;
   align-self: start;
 }
 
-.scatter-plot-section {
+.plot-section {
   padding: 24px;
 }
 
+.plot-main-column {
+  grid-column: 2;
+}
+
 @media (max-width: 960px) {
-  .scatter-plot-layout {
+  .plot-layout {
     grid-template-columns: 1fr;
   }
 
-  .scatter-plot-sidebar {
+  .plot-main-column {
+    grid-column: auto;
+  }
+
+  .plot-sidebar {
     position: static;
     top: auto;
     max-height: none;
@@ -3528,74 +3540,175 @@ tbody tr:last-child td {
   }
 }
 
-.scatter-plot-description {
+.plot-description {
   margin-bottom: 16px;
 }
 
-.scatter-plot-controls {
+.plot-controls {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.scatter-plot-label {
+.plot-control-group {
   display: flex;
   align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.plot-view-control {
+  margin-top: 0;
+}
+
+.plot-control-title {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 800;
+  min-width: 44px;
+}
+
+.plot-segmented-options {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.scatter-plot-label-text {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.scatter-plot-input {
-  width: 7ch;
-  padding: 6px 8px;
+.plot-segmented-option {
+  min-height: 32px;
+  padding: 6px 10px;
   border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, var(--text-muted));
+  background: color-mix(in srgb, var(--panel) 86%, var(--text) 14%);
   color: var(--text);
-  font-size: 0.9rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s ease;
 }
 
-.scatter-plot-input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+.plot-segmented-option:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--panel) 70%, var(--accent) 30%);
+  color: var(--text);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 3px 8px rgba(0, 0, 0, 0.20);
 }
 
-.scatter-plot-summary {
-  font-size: 0.85rem;
+.plot-segmented-option:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.20),
+    0 1px 2px rgba(0, 0, 0, 0.14);
 }
 
-.scatter-plot-empty {
+.plot-segmented-option[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent-2);
+  color: var(--accent-fg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 2px 8px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.plot-empty {
   padding: 48px 0;
   text-align: center;
 }
 
-.scatter-plot-chart-container {
+.plot-chart-container {
   border-radius: 8px;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
-.scatter-plot-chart-container .modebar {
-  opacity: 0.5;
+.plot-tooltip {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  width: min(340px, calc(100vw - 24px));
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--panel) 70%, transparent),
+    0 14px 34px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+  transform: translate(14px, -50%);
 }
 
-.scatter-plot-chart-container .modebar:hover {
-  opacity: 1;
+.plot-tooltip-jacket {
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--stage-placeholder-bg);
+}
+
+.plot-tooltip-jacket img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.plot-tooltip-jacket img[hidden] {
+  display: none;
+}
+
+.plot-tooltip-jacket span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.plot-tooltip-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  align-content: center;
+  font-size: 0.82rem;
+}
+
+.plot-tooltip-body strong {
+  overflow: hidden;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plot-tooltip-body span {
+  color: var(--text-muted);
 }
 
 @media (max-width: 640px) {
-  .scatter-plot-section {
+  .plot-section {
     padding: 16px;
   }
 
-  .scatter-plot-controls {
+  .plot-controls {
     gap: 10px;
   }
 }

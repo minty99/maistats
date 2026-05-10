@@ -13,7 +13,7 @@ export interface UserTierSongRow {
   score: ScoreRow;
 }
 
-interface UserTierGroup {
+export interface UserTierGroup {
   label: string;
   step: number;
   rows: UserTierSongRow[];
