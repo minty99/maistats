@@ -20,27 +20,24 @@ interface ScatterPlotPageProps {
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }
 
-interface PlotPoint {
+interface ScatterPlotPoint {
   achievement: number;
-  levelTenths: number;
   title: string;
+  laneKey: number;
+  laneLabel: string;
+  tooltipSubtitle: string;
   daysElapsed: number;
   imageName: string | null;
   lastPlayedAt: string | null;
   detailTarget: SongDetailTarget;
 }
 
-interface UserTierPlotPoint {
-  achievement: number;
-  tier: string;
-  tierStep: number;
-  title: string;
-  internalLevel: number | null;
-  daysElapsed: number;
-  imageName: string | null;
-  lastPlayedAt: string | null;
-  detailTarget: SongDetailTarget;
+interface ScatterPlotLane {
+  key: number;
+  label: string;
 }
+
+type PlotDisplayMode = 'scatter' | 'box';
 
 interface HoverTooltipData {
   title: string;
@@ -161,6 +158,226 @@ function PlotTooltip({ tooltip }: { tooltip: HoverTooltipState }) {
   );
 }
 
+interface ScatterPlotChartProps {
+  points: ScatterPlotPoint[];
+  lanes: ScatterPlotLane[];
+  displayMode: PlotDisplayMode;
+  daysWindow: DaysFilterOption;
+  plotTheme: PlotTheme;
+  songInfoUrl: string;
+  setHoverTooltip: (tooltip: HoverTooltipState | null) => void;
+  onOpenSongDetail: (target: SongDetailTarget) => void;
+}
+
+function ScatterPlotChart({
+  points,
+  lanes,
+  displayMode,
+  daysWindow,
+  plotTheme,
+  songInfoUrl,
+  setHoverTooltip,
+  onOpenSongDetail,
+}: ScatterPlotChartProps) {
+  const plotRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = plotRef.current;
+    if (!el || points.length === 0 || lanes.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    let plotlyInstance: typeof import('plotly.js-dist-min').default | null = null;
+    let handleHover: ((event: PlotlyHoverEvent | PlotlyClickEvent) => void) | null = null;
+    let handleUnhover: (() => void) | null = null;
+    let handleClick: ((event: PlotlyHoverEvent | PlotlyClickEvent) => void) | null = null;
+
+    void (async () => {
+      const Plotly = (await import('plotly.js-dist-min')).default;
+      plotlyInstance = Plotly;
+      if (cancelled) return;
+
+      const rng = mulberry32(42);
+      const laneIndexMap = new Map(lanes.map((lane, index) => [lane.key, index]));
+      const colorMap = new Map(lanes.map((lane, index) => [lane.key, PALETTE[index % PALETTE.length]]));
+      const pointsByLane = new Map<number, ScatterPlotPoint[]>();
+      for (const lane of lanes) {
+        pointsByLane.set(lane.key, []);
+      }
+      for (const point of points) {
+        pointsByLane.get(point.laneKey)?.push(point);
+      }
+
+      const traces = lanes.map((lane) => {
+        const group = pointsByLane.get(lane.key) ?? [];
+        const index = laneIndexMap.get(lane.key) ?? 0;
+        const baseHex = colorMap.get(lane.key) ?? PALETTE[0];
+
+        if (displayMode === 'box') {
+          return {
+            x: group.map(() => index),
+            y: group.map((point) => point.achievement),
+            type: 'box' as const,
+            name: lane.label,
+            boxpoints: false,
+            width: 0.5,
+            fillcolor: hexToRgba(baseHex, 0.34),
+            line: { color: baseHex, width: 1.4 },
+            marker: { color: baseHex },
+          };
+        }
+
+        return {
+          x: group.map(() => index + (rng() * 2 - 1) * PLOT_JITTER),
+          y: group.map((point) => point.achievement),
+          mode: 'markers' as const,
+          type: 'scatter' as const,
+          name: lane.label,
+          customdata: group.map((point): HoverTooltipData => ({
+            title: point.title,
+            subtitle: point.tooltipSubtitle,
+            achievement: `${point.achievement.toFixed(4)}%`,
+            lastPlayedAt: point.lastPlayedAt ?? MISSING_LAST_PLAYED_LABEL,
+            imageUrl: coverUrl(songInfoUrl, point.imageName),
+            detailTarget: point.detailTarget,
+          })),
+          hoverinfo: 'none' as const,
+          marker: {
+            size: 11,
+            color: group.map((point) => hexToRgba(
+              baseHex,
+              daysWindow === 'max' ? MAX_ALPHA : ageAlpha(point.daysElapsed, daysWindow),
+            )),
+            line: { width: 0.6, color: plotTheme.markerOutline },
+          },
+        };
+      });
+
+      const minAchievement = Math.min(...points.map((point) => point.achievement));
+      const yMin = Math.min(minAchievement, 100.5);
+      const yRange = PLOT_Y_MAX - yMin;
+      const shapes: Array<Record<string, unknown>> = [];
+      const images: Array<Record<string, unknown>> = [];
+
+      for (let i = 1; i < lanes.length; i++) {
+        shapes.push({
+          type: 'line',
+          x0: i - 0.5,
+          x1: i - 0.5,
+          y0: yMin,
+          y1: PLOT_Y_MAX,
+          xref: 'x',
+          yref: 'y',
+          line: { dash: 'dash', color: plotTheme.laneSep, width: 1 },
+        });
+      }
+
+      for (const rank of RANK_THRESHOLDS) {
+        if (rank.value < yMin || rank.value > PLOT_Y_MAX) continue;
+        shapes.push({
+          type: 'line',
+          x0: -0.5,
+          x1: lanes.length - 0.5,
+          y0: rank.value,
+          y1: rank.value,
+          xref: 'x',
+          yref: 'y',
+          line: { dash: 'dot', color: plotTheme.rankLine, width: 1.2 },
+        });
+        images.push({
+          source: rank.icon,
+          xref: 'paper',
+          yref: 'paper',
+          x: 1.01,
+          y: (rank.value - yMin) / yRange,
+          sizex: 0.08,
+          sizey: 0.04,
+          xanchor: 'left',
+          yanchor: 'middle',
+          sizing: 'contain',
+          layer: 'above',
+        });
+      }
+
+      const layout: Record<string, unknown> = {
+        font: { family: PLOT_FONT_FAMILY, color: plotTheme.text },
+        xaxis: {
+          range: [-0.5, lanes.length - 0.5],
+          tickvals: lanes.map((_, index) => index),
+          ticktext: lanes.map((lane) => lane.label),
+          showgrid: false,
+          zeroline: false,
+          fixedrange: true,
+          tickfont: { size: 11, color: plotTheme.text, family: PLOT_FONT_FAMILY },
+        },
+        yaxis: {
+          range: [yMin, PLOT_Y_MAX],
+          tickformat: '.2f',
+          showgrid: true,
+          gridcolor: plotTheme.grid,
+          zeroline: false,
+          fixedrange: true,
+          tickfont: { size: 11, color: plotTheme.text, family: PLOT_FONT_FAMILY },
+        },
+        plot_bgcolor: plotTheme.bg,
+        paper_bgcolor: plotTheme.paperBg,
+        showlegend: false,
+        margin: PLOT_MARGIN,
+        shapes,
+        images,
+        width: Math.max(PLOT_MIN_WIDTH, PLOT_LANE_WIDTH * lanes.length + PLOT_FIXED_WIDTH),
+        height: PLOT_HEIGHT,
+        dragmode: false,
+      };
+
+      const config: Record<string, unknown> = {
+        displayModeBar: false,
+        displaylogo: false,
+        responsive: false,
+        scrollZoom: false,
+        doubleClick: false,
+        staticPlot: false,
+      };
+
+      Plotly.react(el, traces, layout, config);
+
+      const plotElement = el as PlotlyElement;
+      if (displayMode === 'scatter') {
+        handleHover = (event: PlotlyHoverEvent | PlotlyClickEvent) => {
+          const data = event.points?.[0]?.customdata;
+          if (!data || !('event' in event) || !event.event) return;
+          setHoverTooltip({ x: event.event.clientX, y: event.event.clientY, data });
+        };
+        handleUnhover = () => setHoverTooltip(null);
+        handleClick = (event: PlotlyHoverEvent | PlotlyClickEvent) => {
+          const data = event.points?.[0]?.customdata;
+          if (!data) return;
+          setHoverTooltip(null);
+          onOpenSongDetail(data.detailTarget);
+        };
+        plotElement.on?.('plotly_hover', handleHover);
+        plotElement.on?.('plotly_unhover', handleUnhover);
+        plotElement.on?.('plotly_click', handleClick);
+      } else {
+        setHoverTooltip(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setHoverTooltip(null);
+      const plotElement = el as PlotlyElement;
+      if (handleHover) plotElement.removeListener?.('plotly_hover', handleHover);
+      if (handleUnhover) plotElement.removeListener?.('plotly_unhover', handleUnhover);
+      if (handleClick) plotElement.removeListener?.('plotly_click', handleClick);
+      plotlyInstance?.purge(el);
+    };
+  }, [daysWindow, displayMode, lanes, onOpenSongDetail, plotTheme, points, setHoverTooltip, songInfoUrl]);
+
+  return <div className="scatter-plot-chart-container" ref={plotRef} />;
+}
+
 interface PlotTheme {
   bg: string;
   paperBg: string;
@@ -228,16 +445,19 @@ const MIN_ACHIEVEMENT_FILTER = 90;
 const DEFAULT_DAYS_FILTER = 30;
 const DAYS_FILTER_OPTIONS = [7, 30, 60, 90, 180, 'max'] as const;
 type DaysFilterOption = typeof DAYS_FILTER_OPTIONS[number];
+const PLOT_DISPLAY_MODES: PlotDisplayMode[] = ['scatter', 'box'];
+const PLOT_SETTINGS_STORAGE_KEY = 'maistats.plot.settings';
 const PLOT_LANE_WIDTH = 64;
 const PLOT_FIXED_WIDTH = 220;
 const PLOT_MIN_WIDTH = 450;
 const PLOT_HEIGHT = 650;
 const PLOT_MARGIN = { l: 60, r: 110, t: 20, b: 40 };
+const PLOT_Y_MAX = 101.0;
+const PLOT_JITTER = 0.35;
+const PLOT_FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
 const MISSING_LAST_PLAYED_LABEL = '-';
 const TIER_PLOT_X_MIN = 13.0;
 const TIER_PLOT_X_MAX = 14.5;
-const TIER_PLOT_Y_MAX = 101.0;
-const TIER_PLOT_JITTER = 0.35;
 
 function mulberry32(seed: number): () => number {
   let s = seed | 0;
@@ -247,6 +467,25 @@ function mulberry32(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+function readStoredPlotSettings(): { daysWindow: DaysFilterOption; displayMode: PlotDisplayMode } {
+  if (typeof localStorage === 'undefined') {
+    return { daysWindow: DEFAULT_DAYS_FILTER, displayMode: 'scatter' };
+  }
+
+  try {
+    const raw = localStorage.getItem(PLOT_SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return { daysWindow: DEFAULT_DAYS_FILTER, displayMode: 'scatter' };
+    }
+    const parsed = JSON.parse(raw) as { daysWindow?: unknown; displayMode?: unknown };
+    const daysWindow = DAYS_FILTER_OPTIONS.find((option) => option === parsed.daysWindow) ?? DEFAULT_DAYS_FILTER;
+    const displayMode = PLOT_DISPLAY_MODES.find((option) => option === parsed.displayMode) ?? 'scatter';
+    return { daysWindow, displayMode };
+  } catch {
+    return { daysWindow: DEFAULT_DAYS_FILTER, displayMode: 'scatter' };
+  }
 }
 
 export function ScatterPlotPage({
@@ -259,19 +498,29 @@ export function ScatterPlotPage({
   onOpenSongDetail,
 }: ScatterPlotPageProps) {
   const { t } = useI18n();
-  const plotRef = useRef<HTMLDivElement>(null);
-  const userTierPlotRef = useRef<HTMLDivElement>(null);
   const [hoverTooltip, setHoverTooltip] = useState<HoverTooltipState | null>(null);
   const effectiveTheme = useEffectiveTheme();
   const plotTheme = effectiveTheme === 'light' ? LIGHT_PLOT_THEME : DARK_PLOT_THEME;
+  const storedPlotSettings = useMemo(() => readStoredPlotSettings(), []);
 
-  const [daysWindow, setDaysWindow] = useState<DaysFilterOption>(DEFAULT_DAYS_FILTER);
+  const [daysWindow, setDaysWindow] = useState<DaysFilterOption>(storedPlotSettings.daysWindow);
+  const [displayMode, setDisplayMode] = useState<PlotDisplayMode>(storedPlotSettings.displayMode);
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(PLOT_SETTINGS_STORAGE_KEY, JSON.stringify({ daysWindow, displayMode }));
+  }, [daysWindow, displayMode]);
 
   const handleDaysWindowChange = useCallback((value: DaysFilterOption) => {
     setDaysWindow(value);
   }, []);
 
-  const points = useMemo<PlotPoint[]>(() => {
+  const handleDisplayModeChange = useCallback((value: PlotDisplayMode) => {
+    setHoverTooltip(null);
+    setDisplayMode(value);
+  }, []);
+
+  const points = useMemo<ScatterPlotPoint[]>(() => {
     const metadataMap = new Map<string, { levelTenths: number; imageName: string | null }>();
     for (const [, song] of songMetadata) {
       for (const sheet of song.sheets) {
@@ -283,7 +532,7 @@ export function ScatterPlotPage({
       }
     }
 
-    const result: PlotPoint[] = [];
+    const result: ScatterPlotPoint[] = [];
     for (const score of scoreRecords) {
       if (score.achievement_x10000 == null) continue;
       const achievementPercent = score.achievement_x10000 / 10000;
@@ -300,8 +549,10 @@ export function ScatterPlotPage({
 
       result.push({
         achievement: achievementPercent,
-        levelTenths: metadata.levelTenths,
         title: score.title,
+        laneKey: metadata.levelTenths,
+        laneLabel: (metadata.levelTenths / 10).toFixed(1),
+        tooltipSubtitle: `Lv ${(metadata.levelTenths / 10).toFixed(1)}`,
         daysElapsed: elapsed,
         imageName: metadata.imageName,
         lastPlayedAt: score.last_played_at,
@@ -316,12 +567,15 @@ export function ScatterPlotPage({
     return result;
   }, [scoreRecords, songMetadata, daysWindow]);
 
-  const levels = useMemo(
-    () => [...new Set(points.map((p) => p.levelTenths))].sort((a, b) => a - b),
-    [points],
-  );
+  const levelLanes = useMemo<ScatterPlotLane[]>(() => {
+    const lanes = new Map<number, ScatterPlotLane>();
+    for (const point of points) {
+      lanes.set(point.laneKey, { key: point.laneKey, label: point.laneLabel });
+    }
+    return Array.from(lanes.values()).sort((a, b) => a.key - b.key);
+  }, [points]);
 
-  const userTierPoints = useMemo<UserTierPlotPoint[]>(() => {
+  const userTierPoints = useMemo<ScatterPlotPoint[]>(() => {
     return userTierGroups.flatMap((group) =>
       group.rows
         .filter((item) =>
@@ -334,10 +588,12 @@ export function ScatterPlotPage({
         )
         .map((item) => ({
           achievement: item.score.achievementPercent ?? 0,
-          tier: item.userTier,
-          tierStep: item.userTierStep,
           title: item.score.title,
-          internalLevel: item.score.internalLevel,
+          laneKey: item.userTierStep,
+          laneLabel: item.userTier,
+          tooltipSubtitle: `Tier ${item.userTier} / Lv ${
+            item.score.internalLevel === null ? '-' : item.score.internalLevel.toFixed(1)
+          }`,
           daysElapsed: item.score.daysSinceLastPlayed ?? 0,
           imageName: item.score.imageName,
           lastPlayedAt: item.score.latestPlayedAtLabel,
@@ -346,369 +602,18 @@ export function ScatterPlotPage({
     );
   }, [userTierGroups, daysWindow]);
 
-  const tierTicks = useMemo(() => {
+  const userTierLanes = useMemo<ScatterPlotLane[]>(() => {
     const ticks = new Map<number, string>();
     for (const group of userTierGroups) {
       const value = group.step / 100;
       if (value >= TIER_PLOT_X_MIN && value <= TIER_PLOT_X_MAX) {
-        ticks.set(value, group.label);
+        ticks.set(group.step, group.label);
       }
     }
-    return Array.from(ticks.entries()).sort((left, right) => left[0] - right[0]);
+    return Array.from(ticks.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((left, right) => left.key - right.key);
   }, [userTierGroups]);
-
-  useEffect(() => {
-    const el = plotRef.current;
-    if (!el || points.length === 0 || levels.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-    let plotlyInstance: typeof import('plotly.js-dist-min').default | null = null;
-    let handleHover: ((event: PlotlyHoverEvent | PlotlyClickEvent) => void) | null = null;
-    let handleUnhover: (() => void) | null = null;
-    let handleClick: ((event: PlotlyHoverEvent | PlotlyClickEvent) => void) | null = null;
-
-    void (async () => {
-    const Plotly = (await import('plotly.js-dist-min')).default;
-    plotlyInstance = Plotly;
-    if (cancelled) return;
-
-    const rng = mulberry32(42);
-    const nLevels = levels.length;
-    const levelIndexMap = new Map(levels.map((lt, i) => [lt, i]));
-    const colorMap = new Map(levels.map((lt, i) => [lt, PALETTE[i % PALETTE.length]]));
-    const JITTER = 0.35;
-
-    const traces = levels.map((levelTenths) => {
-      const group = points.filter((p) => p.levelTenths === levelTenths);
-      const idx = levelIndexMap.get(levelTenths) ?? 0;
-
-      const xVals = group.map(() => idx + (rng() * 2 - 1) * JITTER);
-      const yVals = group.map((p) => p.achievement);
-      const hoverPayloads: HoverTooltipData[] = group.map((p) => ({
-        title: p.title,
-        subtitle: `Lv ${(p.levelTenths / 10).toFixed(1)}`,
-        achievement: `${p.achievement.toFixed(4)}%`,
-        lastPlayedAt: p.lastPlayedAt ?? MISSING_LAST_PLAYED_LABEL,
-        imageUrl: coverUrl(songInfoUrl, p.imageName),
-        detailTarget: p.detailTarget,
-      }));
-      const baseHex = colorMap.get(levelTenths) ?? PALETTE[0];
-      const colors = group.map((p) => hexToRgba(baseHex, daysWindow === 'max' ? MAX_ALPHA : ageAlpha(p.daysElapsed, daysWindow)));
-
-      return {
-        x: xVals,
-        y: yVals,
-        mode: 'markers' as const,
-        type: 'scatter' as const,
-        name: `Lv ${(levelTenths / 10).toFixed(1)}`,
-        customdata: hoverPayloads,
-        hoverinfo: 'none' as const,
-        marker: {
-          size: 11,
-          color: colors,
-          line: { width: 0.6, color: plotTheme.markerOutline },
-        },
-      };
-    });
-
-    const minAchievement = Math.min(...points.map((p) => p.achievement));
-    const yMin = Math.min(minAchievement, 100.5);
-
-    const shapes: Array<Record<string, unknown>> = [];
-
-    // Lane separators
-    for (let i = 1; i < nLevels; i++) {
-      shapes.push({
-        type: 'line',
-        x0: i - 0.5,
-        x1: i - 0.5,
-        y0: yMin,
-        y1: 101.0,
-        xref: 'x',
-        yref: 'y',
-        line: { dash: 'dash', color: plotTheme.laneSep, width: 1 },
-      });
-    }
-
-    // Rank threshold lines
-    const images: Array<Record<string, unknown>> = [];
-    const yRange = 101.0 - yMin;
-    for (const rank of RANK_THRESHOLDS) {
-      if (rank.value < yMin || rank.value > 101.0) continue;
-      shapes.push({
-        type: 'line',
-        x0: -0.5,
-        x1: nLevels - 0.5,
-        y0: rank.value,
-        y1: rank.value,
-        xref: 'x',
-        yref: 'y',
-        line: { dash: 'dot', color: plotTheme.rankLine, width: 1.2 },
-      });
-      const paperY = (rank.value - yMin) / yRange;
-      images.push({
-        source: rank.icon,
-        xref: 'paper',
-        yref: 'paper',
-        x: 1.01,
-        y: paperY,
-        sizex: 0.08,
-        sizey: 0.04,
-        xanchor: 'left',
-        yanchor: 'middle',
-        sizing: 'contain',
-        layer: 'above',
-      });
-    }
-
-    const figWidth = Math.max(PLOT_MIN_WIDTH, PLOT_LANE_WIDTH * nLevels + PLOT_FIXED_WIDTH);
-
-    // Match the rest of the app — Pretendard with the same fallback chain
-    // used in styles.css.
-    const FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
-
-    const layout: Record<string, unknown> = {
-      font: { family: FONT_FAMILY, color: plotTheme.text },
-      xaxis: {
-        range: [-0.5, nLevels - 0.5],
-        tickvals: levels.map((_, i) => i),
-        ticktext: levels.map((lt) => `${(lt / 10).toFixed(1)}`),
-        showgrid: false,
-        zeroline: false,
-        fixedrange: true,
-        tickfont: { size: 11, color: plotTheme.text, family: FONT_FAMILY },
-      },
-      yaxis: {
-        range: [yMin, 101.0],
-        tickformat: '.2f',
-        showgrid: true,
-        gridcolor: plotTheme.grid,
-        zeroline: false,
-        fixedrange: true,
-        tickfont: { size: 11, color: plotTheme.text, family: FONT_FAMILY },
-      },
-      plot_bgcolor: plotTheme.bg,
-      paper_bgcolor: plotTheme.paperBg,
-      showlegend: false,
-      margin: PLOT_MARGIN,
-      shapes,
-      images,
-      width: figWidth,
-      height: PLOT_HEIGHT,
-      dragmode: false,
-    };
-
-    const config: Record<string, unknown> = {
-      displayModeBar: false,
-      displaylogo: false,
-      responsive: false,
-      scrollZoom: false,
-      doubleClick: false,
-      staticPlot: false,
-    };
-
-    Plotly.react(el, traces, layout, config);
-
-    const plotElement = el as PlotlyElement;
-    handleHover = (event: PlotlyHoverEvent) => {
-      const data = event.points?.[0]?.customdata;
-      if (!data || !event.event) return;
-      setHoverTooltip({ x: event.event.clientX, y: event.event.clientY, data });
-    };
-    handleUnhover = () => setHoverTooltip(null);
-    handleClick = (event: PlotlyHoverEvent | PlotlyClickEvent) => {
-      const data = event.points?.[0]?.customdata;
-      if (!data) return;
-      setHoverTooltip(null);
-      onOpenSongDetail(data.detailTarget);
-    };
-    plotElement.on?.('plotly_hover', handleHover);
-    plotElement.on?.('plotly_unhover', handleUnhover);
-    plotElement.on?.('plotly_click', handleClick);
-    })();
-
-    return () => {
-      cancelled = true;
-      setHoverTooltip(null);
-      const plotElement = el as PlotlyElement;
-      if (handleHover) plotElement.removeListener?.('plotly_hover', handleHover);
-      if (handleUnhover) plotElement.removeListener?.('plotly_unhover', handleUnhover);
-      if (handleClick) plotElement.removeListener?.('plotly_click', handleClick);
-      plotlyInstance?.purge(el);
-    };
-  }, [points, levels, plotTheme, daysWindow, songInfoUrl, onOpenSongDetail]);
-
-  useEffect(() => {
-    const el = userTierPlotRef.current;
-    if (!el || userTierPoints.length === 0 || tierTicks.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-    let plotlyInstance: typeof import('plotly.js-dist-min').default | null = null;
-    let handleHover: ((event: PlotlyHoverEvent | PlotlyClickEvent) => void) | null = null;
-    let handleUnhover: (() => void) | null = null;
-    let handleClick: ((event: PlotlyHoverEvent | PlotlyClickEvent) => void) | null = null;
-
-    void (async () => {
-      const Plotly = (await import('plotly.js-dist-min')).default;
-      plotlyInstance = Plotly;
-      if (cancelled) return;
-
-      const FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
-      const rng = mulberry32(42);
-      const nTiers = tierTicks.length;
-      const tierIndexMap = new Map(tierTicks.map(([tier], index) => [Math.round(tier * 100), index]));
-      const colorMap = new Map(
-        tierTicks.map(([tier], index) => [Math.round(tier * 100), PALETTE[index % PALETTE.length]]),
-      );
-      const xValues = userTierPoints.map((point) => {
-        const index = tierIndexMap.get(point.tierStep) ?? 0;
-        return index + (rng() * 2 - 1) * TIER_PLOT_JITTER;
-      });
-      const yValues = userTierPoints.map((point) => point.achievement);
-      const yMin = Math.min(Math.min(...yValues), 100.5);
-      const yRange = TIER_PLOT_Y_MAX - yMin;
-      const figWidth = Math.max(PLOT_MIN_WIDTH, PLOT_LANE_WIDTH * nTiers + PLOT_FIXED_WIDTH);
-      const shapes: Array<Record<string, unknown>> = [];
-      const images: Array<Record<string, unknown>> = [];
-
-      for (let i = 1; i < nTiers; i++) {
-        shapes.push({
-          type: 'line',
-          x0: i - 0.5,
-          x1: i - 0.5,
-          y0: yMin,
-          y1: TIER_PLOT_Y_MAX,
-          xref: 'x',
-          yref: 'y',
-          line: { dash: 'dash', color: plotTheme.laneSep, width: 1 },
-        });
-      }
-
-      for (const rank of RANK_THRESHOLDS) {
-        if (rank.value < yMin || rank.value > TIER_PLOT_Y_MAX) continue;
-        shapes.push({
-          type: 'line',
-          x0: -0.5,
-          x1: nTiers - 0.5,
-          y0: rank.value,
-          y1: rank.value,
-          xref: 'x',
-          yref: 'y',
-          line: { dash: 'dot', color: plotTheme.rankLine, width: 1.2 },
-        });
-        images.push({
-          source: rank.icon,
-          xref: 'paper',
-          yref: 'paper',
-          x: 1.01,
-          y: (rank.value - yMin) / yRange,
-          sizex: 0.08,
-          sizey: 0.04,
-          xanchor: 'left',
-          yanchor: 'middle',
-          sizing: 'contain',
-          layer: 'above',
-        });
-      }
-
-      const trace = {
-        x: xValues,
-        y: userTierPoints.map((point) => point.achievement),
-        mode: 'markers' as const,
-        type: 'scatter' as const,
-        customdata: userTierPoints.map((point): HoverTooltipData => ({
-          title: point.title,
-          subtitle: `Tier ${point.tier} / Lv ${point.internalLevel === null ? '-' : point.internalLevel.toFixed(1)}`,
-          achievement: `${point.achievement.toFixed(4)}%`,
-          lastPlayedAt: point.lastPlayedAt ?? MISSING_LAST_PLAYED_LABEL,
-          imageUrl: coverUrl(songInfoUrl, point.imageName),
-          detailTarget: point.detailTarget,
-        })),
-        hoverinfo: 'none' as const,
-        marker: {
-          size: 11,
-          color: userTierPoints.map((point) => {
-            const baseHex = colorMap.get(point.tierStep) ?? PALETTE[0];
-            return hexToRgba(baseHex, daysWindow === 'max' ? MAX_ALPHA : ageAlpha(point.daysElapsed, daysWindow));
-          }),
-          line: { width: 0.6, color: plotTheme.markerOutline },
-        },
-      };
-
-      const layout: Record<string, unknown> = {
-        font: { family: FONT_FAMILY, color: plotTheme.text },
-        xaxis: {
-          range: [-0.5, nTiers - 0.5],
-          tickvals: tierTicks.map((_, index) => index),
-          ticktext: tierTicks.map(([, label]) => label),
-          showgrid: false,
-          zeroline: false,
-          fixedrange: true,
-          tickfont: { size: 11, color: plotTheme.text, family: FONT_FAMILY },
-        },
-        yaxis: {
-          range: [yMin, TIER_PLOT_Y_MAX],
-          tickformat: '.2f',
-          showgrid: true,
-          gridcolor: plotTheme.grid,
-          zeroline: false,
-          fixedrange: true,
-          tickfont: { size: 11, color: plotTheme.text, family: FONT_FAMILY },
-        },
-        plot_bgcolor: plotTheme.bg,
-        paper_bgcolor: plotTheme.paperBg,
-        showlegend: false,
-        margin: PLOT_MARGIN,
-        shapes,
-        images,
-        width: figWidth,
-        height: PLOT_HEIGHT,
-        dragmode: false,
-      };
-
-      const config: Record<string, unknown> = {
-        displayModeBar: false,
-        displaylogo: false,
-        responsive: false,
-        scrollZoom: false,
-        doubleClick: false,
-        staticPlot: false,
-      };
-
-      Plotly.react(el, [trace], layout, config);
-
-      const plotElement = el as PlotlyElement;
-      handleHover = (event: PlotlyHoverEvent) => {
-        const data = event.points?.[0]?.customdata;
-        if (!data || !event.event) return;
-        setHoverTooltip({ x: event.event.clientX, y: event.event.clientY, data });
-      };
-      handleUnhover = () => setHoverTooltip(null);
-      handleClick = (event: PlotlyHoverEvent | PlotlyClickEvent) => {
-        const data = event.points?.[0]?.customdata;
-        if (!data) return;
-        setHoverTooltip(null);
-        onOpenSongDetail(data.detailTarget);
-      };
-      plotElement.on?.('plotly_hover', handleHover);
-      plotElement.on?.('plotly_unhover', handleUnhover);
-      plotElement.on?.('plotly_click', handleClick);
-    })();
-
-    return () => {
-      cancelled = true;
-      setHoverTooltip(null);
-      const plotElement = el as PlotlyElement;
-      if (handleHover) plotElement.removeListener?.('plotly_hover', handleHover);
-      if (handleUnhover) plotElement.removeListener?.('plotly_unhover', handleUnhover);
-      if (handleClick) plotElement.removeListener?.('plotly_click', handleClick);
-      plotlyInstance?.purge(el);
-    };
-  }, [userTierPoints, plotTheme, tierTicks, daysWindow, songInfoUrl, onOpenSongDetail]);
 
   return (
     <section className="scatter-plot-layout">
@@ -736,6 +641,22 @@ export function ScatterPlotPage({
               ))}
             </div>
           </div>
+          <div className="scatter-plot-days-control scatter-plot-mode-control">
+            <span className="scatter-plot-days-title">{t('plot.displayMode')}</span>
+            <div className="scatter-plot-days-options" role="group" aria-label={t('plot.displayMode')}>
+              {PLOT_DISPLAY_MODES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="scatter-plot-days-option"
+                  aria-pressed={displayMode === value}
+                  onClick={() => handleDisplayModeChange(value)}
+                >
+                  {t(`plot.displayMode.${value}`)}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {isLoading && points.length === 0 ? (
@@ -743,7 +664,16 @@ export function ScatterPlotPage({
         ) : points.length === 0 ? (
           <p className="muted scatter-plot-empty">{t('plot.empty')}</p>
         ) : (
-          <div className="scatter-plot-chart-container" ref={plotRef} />
+          <ScatterPlotChart
+            points={points}
+            lanes={levelLanes}
+            displayMode={displayMode}
+            daysWindow={daysWindow}
+            plotTheme={plotTheme}
+            songInfoUrl={songInfoUrl}
+            setHoverTooltip={setHoverTooltip}
+            onOpenSongDetail={onOpenSongDetail}
+          />
         )}
       </section>
       <section className="scatter-plot-section panel scatter-plot-main-column">
@@ -754,7 +684,16 @@ export function ScatterPlotPage({
         ) : userTierPoints.length === 0 ? (
           <p className="muted scatter-plot-empty">{t('plot.userTierEmpty')}</p>
         ) : (
-          <div className="scatter-plot-chart-container" ref={userTierPlotRef} />
+          <ScatterPlotChart
+            points={userTierPoints}
+            lanes={userTierLanes}
+            displayMode={displayMode}
+            daysWindow={daysWindow}
+            plotTheme={plotTheme}
+            songInfoUrl={songInfoUrl}
+            setHoverTooltip={setHoverTooltip}
+            onOpenSongDetail={onOpenSongDetail}
+          />
         )}
       </section>
       {hoverTooltip ? <PlotTooltip tooltip={hoverTooltip} /> : null}
