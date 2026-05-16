@@ -349,19 +349,6 @@ export async function fetchCollectorLogs(
   );
 }
 
-export async function fetchSongVersions(
-  songDatabaseBaseUrl: string,
-  signal?: AbortSignal,
-): Promise<SongVersionResponse[]> {
-  const songDatabaseBase = normalizeBaseUrl(songDatabaseBaseUrl);
-  if (!songDatabaseBase) {
-    return [];
-  }
-
-  const response = await fetchSongDatabase(songDatabaseBase, signal);
-  return deriveSongVersions(response.songs.map(toSongInfoResponse));
-}
-
 export function buildCoverUrl(songDatabaseBaseUrl: string, imageName: string): string {
   return `${normalizeBaseUrl(songDatabaseBaseUrl)}/cover/${encodeURIComponent(imageName)}`;
 }

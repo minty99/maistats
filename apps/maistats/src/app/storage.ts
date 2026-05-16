@@ -27,18 +27,6 @@ export interface StoredPlaylogFilters {
   newRecordOnly?: boolean;
 }
 
-export interface StoredRandomPickerFilters {
-  levelStart?: number;
-  levelEnd?: number;
-  chartTypes?: ChartType[];
-  difficultyIndices?: number[];
-  includeVersionIndices?: number[] | null;
-  achievementMin?: number;
-  achievementMax?: number;
-  daysMin?: number;
-  daysMax?: number;
-}
-
 export function readStoredValue(key: string, fallbackValue: string): string {
   const value = localStorage.getItem(key)?.trim();
   if (!value) {

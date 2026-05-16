@@ -5,7 +5,6 @@ export const SONG_DATABASE_STORAGE_KEY = 'maistats.song-database-url';
 export const RECORD_STORAGE_KEY = 'maistats.record-url';
 export const SCORE_FILTERS_STORAGE_KEY = 'maistats.score-filters';
 export const PLAYLOG_FILTERS_STORAGE_KEY = 'maistats.playlog-filters';
-export const RANDOM_PICKER_FILTERS_STORAGE_KEY = 'maistats.random-picker-filters';
 export const TABLE_LAYOUT_STORAGE_KEY = 'maistats.table-layout';
 export const THEME_STORAGE_KEY = 'maistats.theme';
 
@@ -34,11 +33,6 @@ export const DIFFICULTY_INDEX_LABELS: Record<number, DifficultyCategory> = {
   3: 'MASTER',
   4: 'Re:MASTER',
 };
-export const RANDOM_PICKER_GAP_OPTIONS = [0, 0.1, 0.2, 0.5] as const;
-export const RANDOM_PICKER_LEVEL_STEP = 0.1;
-export const RANDOM_PICKER_MIN_LEVEL = 1;
-export const RANDOM_PICKER_MAX_LEVEL = 15;
-export const RANDOM_PICKER_DEFAULT_LEVEL = 12.5;
 
 export const VERSION_ORDER = [
   'maimai',

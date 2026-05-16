@@ -67,7 +67,6 @@ import {
   buildFilteredScoreRows,
 } from './app/filtering';
 import { PlaylogExplorerSection } from './components/PlaylogExplorerSection';
-import { RandomPickerPage } from './components/RandomPickerPage';
 import { RatingPage } from './components/RatingPage';
 import { ScoreExplorerSection } from './components/ScoreExplorerSection';
 import { SettingsPage } from './components/SettingsPage';
@@ -87,11 +86,10 @@ import type {
   ScoreApiResponse,
   ScoreRow,
   SongInfoResponse,
-  SongVersionResponse,
 } from './types';
 import logoUrl from './assets/logo.png';
 
-type AppPage = 'home' | 'setup' | 'scores' | 'rating' | 'tiers' | 'playlogs' | 'picker' | 'plot' | 'settings';
+type AppPage = 'home' | 'setup' | 'scores' | 'rating' | 'tiers' | 'playlogs' | 'plot' | 'settings';
 type RatedScoreRow = ScoreRow & { rating: number; version: string };
 type ThemePreference = 'system' | 'light' | 'dark';
 type LoadingErrorState =
@@ -113,9 +111,6 @@ function readPageFromHash(hash: string): AppPage {
   }
   if (hash === '#playlogs') {
     return 'playlogs';
-  }
-  if (hash === '#picker') {
-    return 'picker';
   }
   if (hash === '#plot') {
     return 'plot';
@@ -285,18 +280,6 @@ function TiersIcon() {
   );
 }
 
-function PickerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 4h12" />
-      <path d="M9 4v4" />
-      <path d="M15 4v4" />
-      <path d="M12 8v4" />
-      <path d="M7 20c0-2.8 2.2-5 5-5s5 2.2 5 5" />
-    </svg>
-  );
-}
-
 function PlotIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -424,7 +407,6 @@ function App() {
     localStorage.removeItem(SONG_INFO_STORAGE_KEY);
   }, []);
   const [versionsResponse, setVersionsResponse] = useState<string[]>([]);
-  const [pickerVersionOptions, setPickerVersionOptions] = useState<SongVersionResponse[]>([]);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null);
   const [recordCollectorVersionStatus, setRecordCollectorVersionStatus] =
     useState<RecordCollectorVersionStatus | null>(null);
@@ -614,7 +596,6 @@ function App() {
       setUserTierRecords([]);
       setPlaylogRecords([]);
       setVersionsResponse([]);
-      setPickerVersionOptions([]);
       setPlayerProfile(null);
       setSongMetadata(new Map<string, SongInfoResponse>());
       setLoadingError({ kind: 'translated', key: 'app.missingUrls' });
@@ -655,7 +636,6 @@ function App() {
       setSongMetadata(payload.songMetadata);
       const availableVersions = filterAvailableVersions(payload.versions ?? []);
       setVersionsResponse(availableVersions.map((version) => version.version_name));
-      setPickerVersionOptions(availableVersions);
       setPlayerProfile(payload.playerProfile);
       loadedExplorerKeyRef.current = requestKey;
     } catch (error) {
@@ -669,7 +649,6 @@ function App() {
       setUserTierRecords([]);
       setSongMetadata(new Map<string, SongInfoResponse>());
       setVersionsResponse([]);
-      setPickerVersionOptions([]);
       setPlayerProfile(null);
       if (options?.throwOnError) {
         throw error instanceof Error ? error : new Error(String(error));
@@ -1429,13 +1408,11 @@ function App() {
           ? '#rating'
           : page === 'tiers'
             ? '#tiers'
-            : page === 'picker'
-              ? '#picker'
-              : page === 'plot'
-                ? '#plot'
-                : page === 'settings'
-                  ? '#settings'
-                  : '#scores';
+            : page === 'plot'
+              ? '#plot'
+              : page === 'settings'
+                ? '#settings'
+                : '#scores';
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
       return;
@@ -1466,7 +1443,6 @@ function App() {
       { page: 'rating', label: t('nav.rating'), Icon: RatingIcon },
       { page: 'tiers', label: t('nav.tiers'), Icon: TiersIcon },
       { page: 'playlogs', label: t('nav.playlogs'), Icon: PlaylogsIcon },
-      { page: 'picker', label: t('nav.picker'), Icon: PickerIcon },
       { page: 'plot', label: t('nav.plot'), Icon: PlotIcon },
       { page: 'settings', label: t('nav.settings'), Icon: SettingsIcon },
     ],
@@ -1750,14 +1726,6 @@ function App() {
               onOpenSongDetail={handleOpenSongDetail}
             />
           </>
-        ) : activePage === 'picker' ? (
-          <RandomPickerPage
-            sidebarTopContent={desktopSidebarTopContent}
-            songInfoUrl={songInfoUrl}
-            scoreRecords={scoreRecords}
-            songMetadata={songMetadata}
-            versionOptions={pickerVersionOptions}
-          />
         ) : activePage === 'plot' ? (
           <PlotPage
             sidebarTopContent={desktopSidebarTopContent}
