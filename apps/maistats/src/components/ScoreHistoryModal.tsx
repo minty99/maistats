@@ -33,13 +33,13 @@ interface HistoryPlotTheme {
 }
 
 const FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
-const RANK_THRESHOLDS: Array<{ value: number; label: string; icon: string }> = [
-  { value: 97.0, label: 'S', icon: '/rank-icons/s.png' },
-  { value: 98.0, label: 'S+', icon: '/rank-icons/sp.png' },
-  { value: 99.0, label: 'SS', icon: '/rank-icons/ss.png' },
-  { value: 99.5, label: 'SS+', icon: '/rank-icons/ssp.png' },
-  { value: 100.0, label: 'SSS', icon: '/rank-icons/sss.png' },
-  { value: 100.5, label: 'SSS+', icon: '/rank-icons/sssp.png' },
+const RANK_THRESHOLDS: Array<{ value: number; label: string }> = [
+  { value: 97.0, label: 'S' },
+  { value: 98.0, label: 'S+' },
+  { value: 99.0, label: 'SS' },
+  { value: 99.5, label: 'SS+' },
+  { value: 100.0, label: 'SSS' },
+  { value: 100.5, label: 'SSS+' },
 ];
 
 const DARK_HISTORY_THEME: HistoryPlotTheme = {
@@ -171,9 +171,7 @@ export function ScoreHistoryModal({
       ].join('<br>'));
 
       const shapes: Array<Record<string, unknown>> = [];
-      const images: Array<Record<string, unknown>> = [];
       const annotations: Array<Record<string, unknown>> = [];
-      const ySpan = yMax - yMin;
 
       for (const rank of RANK_THRESHOLDS) {
         if (rank.value < yMin || rank.value > yMax) continue;
@@ -187,19 +185,6 @@ export function ScoreHistoryModal({
           yref: 'y',
           line: { dash: 'dot', color: plotTheme.rankLine, width: 1.2 },
           layer: 'below',
-        });
-        images.push({
-          source: rank.icon,
-          xref: 'paper',
-          yref: 'paper',
-          x: 1.01,
-          y: (rank.value - yMin) / ySpan,
-          sizex: 0.075,
-          sizey: 0.045,
-          xanchor: 'left',
-          yanchor: 'middle',
-          sizing: 'contain',
-          layer: 'above',
         });
         annotations.push({
           xref: 'paper',
@@ -263,9 +248,8 @@ export function ScoreHistoryModal({
         plot_bgcolor: plotTheme.bg,
         paper_bgcolor: plotTheme.paperBg,
         showlegend: false,
-        margin: { l: 72, r: 104, t: 20, b: 56 },
+        margin: { l: 72, r: 56, t: 20, b: 56 },
         shapes,
-        images,
         annotations,
         height: 390,
         autosize: true,
