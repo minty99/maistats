@@ -73,14 +73,7 @@ interface PlotlyElement extends HTMLDivElement {
   removeListener?: (eventName: string, handler: (event: PlotlyHoverEvent | PlotlyClickEvent) => void) => void;
 }
 
-const RANK_THRESHOLDS: Array<{ value: number; icon: string }> = [
-  { value: 97.0, icon: '/rank-icons/s.png' },
-  { value: 98.0, icon: '/rank-icons/sp.png' },
-  { value: 99.0, icon: '/rank-icons/ss.png' },
-  { value: 99.5, icon: '/rank-icons/ssp.png' },
-  { value: 100.0, icon: '/rank-icons/sss.png' },
-  { value: 100.5, icon: '/rank-icons/sssp.png' },
-];
+const RANK_THRESHOLDS = [97.0, 98.0, 99.0, 99.5, 100.0, 100.5];
 
 const PALETTE = [
   '#5b9ef5',
@@ -294,9 +287,7 @@ function PlotChart({
 
       const minAchievement = Math.min(...points.map((point) => point.achievement));
       const yMin = Math.min(minAchievement, 100.5);
-      const yRange = PLOT_Y_MAX - yMin;
       const shapes: Array<Record<string, unknown>> = [];
-      const images: Array<Record<string, unknown>> = [];
 
       for (let i = 1; i < lanes.length; i++) {
         shapes.push({
@@ -312,29 +303,16 @@ function PlotChart({
       }
 
       for (const rank of RANK_THRESHOLDS) {
-        if (rank.value < yMin || rank.value > PLOT_Y_MAX) continue;
+        if (rank < yMin || rank > PLOT_Y_MAX) continue;
         shapes.push({
           type: 'line',
           x0: -0.5,
           x1: lanes.length - 0.5,
-          y0: rank.value,
-          y1: rank.value,
+          y0: rank,
+          y1: rank,
           xref: 'x',
           yref: 'y',
           line: { dash: 'dot', color: plotTheme.rankLine, width: 1.2 },
-        });
-        images.push({
-          source: rank.icon,
-          xref: 'paper',
-          yref: 'paper',
-          x: 1.01,
-          y: (rank.value - yMin) / yRange,
-          sizex: 0.08,
-          sizey: 0.04,
-          xanchor: 'left',
-          yanchor: 'middle',
-          sizing: 'contain',
-          layer: 'above',
         });
       }
 
@@ -363,7 +341,6 @@ function PlotChart({
         showlegend: false,
         margin: PLOT_MARGIN,
         shapes,
-        images,
         width: Math.max(PLOT_MIN_WIDTH, PLOT_LANE_WIDTH * lanes.length + PLOT_FIXED_WIDTH),
         height: PLOT_HEIGHT,
         dragmode: false,
@@ -489,7 +466,7 @@ const PLOT_LANE_WIDTH = 64;
 const PLOT_FIXED_WIDTH = 220;
 const PLOT_MIN_WIDTH = 450;
 const PLOT_HEIGHT = 650;
-const PLOT_MARGIN = { l: 60, r: 110, t: 20, b: 40 };
+const PLOT_MARGIN = { l: 60, r: 48, t: 20, b: 40 };
 const PLOT_Y_MAX = 101.0;
 const PLOT_JITTER = 0.35;
 const PLOT_FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
