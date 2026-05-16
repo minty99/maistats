@@ -21,6 +21,13 @@ export interface UserTierGroup {
   rows: UserTierSongRow[];
 }
 
+interface UserTierInternalLevelGroup {
+  key: string;
+  label: string;
+  sortValue: number;
+  rows: UserTierSongRow[];
+}
+
 interface UserTierPageProps {
   sidebarTopContent?: ReactNode;
   songInfoUrl: string;
@@ -57,6 +64,34 @@ function formatInternalLevel(row: ScoreRow): string {
   }
 
   return `${row.isInternalLevelEstimated ? '~' : ''}${row.internalLevel.toFixed(1)}`;
+}
+
+function formatAchievementValue(row: ScoreRow): string {
+  return formatPercent(row.achievementPercent).replace(/%$/, '');
+}
+
+function buildInternalLevelGroups(
+  rows: UserTierSongRow[],
+  formatUnknownLabel: () => string,
+): UserTierInternalLevelGroup[] {
+  const grouped = new Map<string, UserTierInternalLevelGroup>();
+
+  for (const row of rows) {
+    const internalLevel = row.score.internalLevel;
+    const key = internalLevel === null ? 'unknown' : internalLevel.toFixed(1);
+    const label = internalLevel === null ? formatUnknownLabel() : internalLevel.toFixed(1);
+    const group = grouped.get(key) ?? {
+      key,
+      label,
+      sortValue: internalLevel ?? Number.NEGATIVE_INFINITY,
+      rows: [],
+    };
+
+    group.rows.push(row);
+    grouped.set(key, group);
+  }
+
+  return Array.from(grouped.values()).sort((left, right) => right.sortValue - left.sortValue);
 }
 
 function isGroupInTierRange(group: UserTierGroup, range: (typeof USER_TIER_RANGES)[number]): boolean {
@@ -98,8 +133,7 @@ function UserTierSongCard({
         <div className="user-tier-internal-chip">{formatInternalLevel(row)}</div>
       </div>
       <div className="user-tier-song-info">
-        <h3>{row.title}</h3>
-        <strong>{formatPercent(row.achievementPercent)}</strong>
+        <strong>{formatAchievementValue(row)}</strong>
       </div>
     </article>
   );
@@ -150,6 +184,14 @@ export function UserTierPage({
   const visibleGroups = useMemo(
     () => filteredGroups.filter((group) => isGroupInTierRange(group, activeRange)),
     [activeRange, filteredGroups],
+  );
+  const visibleGroupedSections = useMemo(
+    () =>
+      visibleGroups.map((group) => ({
+        ...group,
+        internalLevelGroups: buildInternalLevelGroups(group.rows, () => t('tiers.unknownInternalLevel')),
+      })),
+    [t, visibleGroups],
   );
   const filterPanel = (
     <section className="panel filter-panel">
@@ -206,27 +248,36 @@ export function UserTierPage({
         </aside>
 
         <div className="table-column user-tier-table-column">
-          {visibleGroups.length === 0 ? (
+          {visibleGroupedSections.length === 0 ? (
             <section className="panel empty-state-panel">
               <p>{groups.length > 0 ? t('tiers.emptyAfterFilter') : t('tiers.empty')}</p>
             </section>
           ) : (
             <div className="user-tier-stack">
-              {visibleGroups.map((group) => (
+              {visibleGroupedSections.map((group) => (
                 <section key={group.label} className="panel user-tier-section-panel">
                   <div className="panel-heading">
                     <div>
                       <h2>{group.label}</h2>
                     </div>
                   </div>
-                  <div className="user-tier-card-grid">
-                    {group.rows.map((item) => (
-                      <UserTierSongCard
-                        key={item.key}
-                        row={item.score}
-                        songInfoUrl={songInfoUrl}
-                        onOpenSongDetail={onOpenSongDetail}
-                      />
+                  <div className="user-tier-internal-stack">
+                    {group.internalLevelGroups.map((internalGroup) => (
+                      <section key={internalGroup.key} className="user-tier-internal-group">
+                        <div className="user-tier-internal-heading">
+                          <h3>{internalGroup.label}</h3>
+                        </div>
+                        <div className="user-tier-card-grid">
+                          {internalGroup.rows.map((item) => (
+                            <UserTierSongCard
+                              key={item.key}
+                              row={item.score}
+                              songInfoUrl={songInfoUrl}
+                              onOpenSongDetail={onOpenSongDetail}
+                            />
+                          ))}
+                        </div>
+                      </section>
                     ))}
                   </div>
                 </section>

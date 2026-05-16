@@ -5,8 +5,8 @@
   --desktop-sidebar-width: 368px;
   --rating-card-min-width: 125px;
   --rating-card-max-width: 250px;
-  --tier-card-min-width: 104px;
-  --tier-card-max-width: 148px;
+  --tier-card-min-width: 88px;
+  --tier-card-max-width: 124px;
 
   --bg: #0b0b0f;
   --panel: #111116;
@@ -1534,6 +1534,38 @@ select:focus-visible {
   min-width: 0;
 }
 
+.user-tier-internal-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.user-tier-internal-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-tier-internal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.user-tier-internal-heading h3 {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .user-tier-card-grid {
   display: grid;
   grid-template-columns: repeat(
@@ -1541,19 +1573,19 @@ select:focus-visible {
     minmax(
       clamp(
         var(--tier-card-min-width),
-        calc((100% - 60px) / 7),
+        calc((100% - 70px) / 8),
         var(--tier-card-max-width)
       ),
       1fr
     )
   );
-  gap: 8px;
+  gap: 7px;
 }
 
 .user-tier-song-card {
   --tier-card-accent: var(--accent);
   display: grid;
-  grid-template-rows: auto minmax(58px, auto);
+  grid-template-rows: auto 30px;
   padding: 0;
   border: 1px solid var(--line-strong);
   border-top: 2px solid var(--tier-card-accent);
@@ -1646,57 +1678,45 @@ select:focus-visible {
 
 .user-tier-internal-chip {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
+  right: 5px;
+  bottom: 5px;
   z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  min-height: 22px;
-  padding: 4px 6px;
+  min-width: 34px;
+  min-height: 20px;
+  padding: 3px 5px;
   border-radius: 2px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.68);
   color: #f8fafc;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
 }
 
 .user-tier-song-info {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
-  padding: 8px;
-  background: var(--panel);
-}
-
-.user-tier-song-info h3 {
-  display: -webkit-box;
-  margin: 0;
-  min-width: 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  color: var(--ink);
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.22;
-  overflow-wrap: anywhere;
+  padding: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--tier-card-accent) 32%, var(--line));
+  background: color-mix(in srgb, var(--tier-card-accent) 24%, var(--panel));
 }
 
 .user-tier-song-info strong {
   display: block;
   min-width: 0;
-  color: var(--ink-dim);
-  font-size: 0.74rem;
-  font-weight: 600;
+  color: var(--tier-card-accent);
+  font-size: 0.76rem;
+  font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
 }
 
 .table-wrap {
@@ -3562,8 +3582,8 @@ tbody tr:last-child td {
   }
 
   .user-tier-card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(106px, 1fr));
-    gap: 7px;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 6px;
   }
 
   .rating-song-stat-grid {
