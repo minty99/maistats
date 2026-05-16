@@ -182,10 +182,6 @@ export interface SongVersionResponse {
   song_count: number;
 }
 
-export interface SongVersionsListResponse {
-  versions: SongVersionResponse[];
-}
-
 export interface RaveilleUserTierEntry {
   title: string;
   genre: string;
@@ -198,28 +194,6 @@ export interface RaveilleUserTierEntry {
 
 export interface RaveilleUserTierResponse {
   entries: RaveilleUserTierEntry[];
-}
-
-export interface RandomPickerSong {
-  title: string;
-  genre: string;
-  artist: string;
-  version: string | null;
-  imageName: string | null;
-  chartType: ChartType;
-  difficulty: DifficultyCategory;
-  level: string;
-  internalLevel: number | null;
-  achievementX10000: number | null;
-  rank: ScoreRank | null;
-  fc: FcStatus | null;
-  sync: SyncStatus | null;
-  dxScore: number | null;
-  dxScoreMax: number | null;
-  lastPlayedAt: string | null;
-  playCount: number | null;
-  levelSongCount: number | null;
-  filteredSongCount: number | null;
 }
 
 export interface ScoreRow {

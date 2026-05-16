@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { VERSION_ORDER } from './app/constants';
 import {
   describeRecordCollectorVersionStatus,
   LocalizedApiError,
   buildCoverUrl,
   fetchRecordCollectorVersionStatus,
   fetchAllSongMetadata,
-  fetchSongVersions,
   formatApiErrorMessage,
 } from './api';
 import { APP_VERSION, isMinorOrMoreOutdated, parseSemanticVersion } from './version';
@@ -82,72 +80,6 @@ describe('formatApiErrorMessage', () => {
       difficulty: 'MASTER',
       internal_level: 14.3,
     });
-  });
-
-  it('derives version options from data.json', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            generatedAt: '2026-03-24T00:00:00Z',
-            songs: [
-              {
-                title: 'Song A',
-                genre: 'maimai',
-                artist: 'Artist A',
-                sheets: [
-                  {
-                    type: 'dx',
-                    difficulty: 'master',
-                    level: '14',
-                    version: 'PRiSM',
-                    region: { jp: true, intl: true },
-                  },
-                ],
-              },
-              {
-                title: 'Song B',
-                genre: 'maimai',
-                artist: 'Artist B',
-                sheets: [
-                  {
-                    type: 'dx',
-                    difficulty: 'master',
-                    level: '14',
-                    version: 'PRiSM',
-                    region: { jp: true, intl: true },
-                  },
-                  {
-                    type: 'dx',
-                    difficulty: 'expert',
-                    level: '13',
-                    version: 'PRiSM',
-                    region: { jp: true, intl: true },
-                  },
-                  {
-                    type: 'dx',
-                    difficulty: 'expert',
-                    level: '13',
-                    version: 'BUDDiES',
-                    region: { jp: true, intl: false },
-                  },
-                ],
-              },
-            ],
-          }),
-          { headers: { 'content-type': 'application/json' } },
-        ),
-      ),
-    );
-
-    await expect(fetchSongVersions('https://maimai-charts.muhwan.dev')).resolves.toEqual([
-      {
-        version_index: VERSION_ORDER.indexOf('PRiSM'),
-        version_name: 'PRiSM',
-        song_count: 2,
-      },
-    ]);
   });
 
 });

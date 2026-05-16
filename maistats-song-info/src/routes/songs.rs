@@ -1,11 +1,7 @@
 use axum::{Json, extract::State};
-use models::{
-    ChartType, DifficultyCategory, MaimaiVersion, SongAliases, SongChartRegion, SongGenre,
-};
+use models::{ChartType, DifficultyCategory, SongAliases, SongChartRegion, SongGenre};
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
-use strum::IntoEnumIterator;
 
 use crate::error::{AppError, Result};
 use crate::state::AppState;
@@ -50,18 +46,6 @@ pub(crate) struct SongCatalogResponse {
     songs: Vec<SongInfoResponse>,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
-pub(crate) struct SongVersionResponse {
-    version_index: u8,
-    version_name: String,
-    song_count: usize,
-}
-
-#[derive(Serialize)]
-pub(crate) struct SongVersionsListResponse {
-    versions: Vec<SongVersionResponse>,
-}
-
 #[derive(Debug, Deserialize)]
 pub(crate) struct SongMetadataSearchRequest {
     #[serde(default)]
@@ -82,62 +66,6 @@ pub(crate) struct SongMetadataSearchRequest {
 pub(crate) struct SongMetadataSearchResponse {
     total: usize,
     items: Vec<SongMetadataResponse>,
-}
-
-pub(crate) async fn list_versions(
-    State(state): State<AppState>,
-) -> Result<Json<SongVersionsListResponse>> {
-    let song_data_root = state
-        .song_data_root
-        .read()
-        .map_err(|_| AppError::IoError("Failed to read song data".to_string()))?;
-
-    let versions = build_song_version_responses(song_data_root.as_slice());
-
-    Ok(Json(SongVersionsListResponse { versions }))
-}
-
-fn build_song_version_responses(songs: &[models::SongCatalogSong]) -> Vec<SongVersionResponse> {
-    let version_song_titles = build_song_version_counts(songs);
-
-    MaimaiVersion::iter()
-        .filter_map(|version| {
-            let song_count = version_song_titles.get(&version).map_or(0, HashSet::len);
-            if song_count == 0 {
-                return None;
-            }
-
-            Some(SongVersionResponse {
-                version_index: version.as_index(),
-                version_name: version.as_str().to_string(),
-                song_count,
-            })
-        })
-        .collect()
-}
-
-fn build_song_version_counts(
-    songs: &[models::SongCatalogSong],
-) -> HashMap<MaimaiVersion, HashSet<String>> {
-    let mut version_song_titles: HashMap<MaimaiVersion, HashSet<String>> = HashMap::new();
-    for song in songs {
-        let mut seen_versions_for_song = HashSet::new();
-        for sheet in &song.sheets {
-            let Some(version) = parse_intl_sheet_version(sheet) else {
-                continue;
-            };
-            seen_versions_for_song.insert(version);
-        }
-
-        for version in seen_versions_for_song {
-            version_song_titles
-                .entry(version)
-                .or_default()
-                .insert(song.title.clone());
-        }
-    }
-
-    version_song_titles
 }
 
 fn build_song_sheet_response(sheet: &models::SongCatalogChart) -> Result<SongSheetResponse> {
@@ -386,18 +314,6 @@ fn parse_chart_type_query_value(value: &str) -> Option<ChartType> {
     value.parse::<ChartType>().ok()
 }
 
-fn is_intl_sheet(sheet: &models::SongCatalogChart) -> bool {
-    sheet.region.intl
-}
-
-fn parse_intl_sheet_version(sheet: &models::SongCatalogChart) -> Option<MaimaiVersion> {
-    if !is_intl_sheet(sheet) {
-        return None;
-    }
-    let version_name = sheet.version_name.as_deref()?;
-    version_name.parse::<MaimaiVersion>().ok()
-}
-
 pub(crate) async fn search_song_metadata(
     State(state): State<AppState>,
     Json(params): Json<SongMetadataSearchRequest>,
@@ -416,126 +332,12 @@ pub(crate) async fn search_song_metadata(
 #[cfg(test)]
 mod tests {
     use super::{
-        SongMetadataSearchRequest, SongVersionResponse, build_song_info_response,
-        build_song_version_responses, is_intl_sheet, parse_intl_sheet_version,
-        search_song_metadata_items,
+        SongMetadataSearchRequest, build_song_info_response, search_song_metadata_items,
     };
     use models::{
-        DifficultyCategory, MaimaiVersion, SongAliases, SongCatalogChart, SongCatalogSong,
-        SongChartRegion, SongGenre,
+        DifficultyCategory, SongAliases, SongCatalogChart, SongCatalogSong, SongChartRegion,
+        SongGenre,
     };
-
-    #[test]
-    fn intl_sheet_predicate_uses_region_flag() {
-        let intl_sheet = SongCatalogChart {
-            chart_type: "std".to_string(),
-            difficulty: "basic".to_string(),
-            level: "10".to_string(),
-            version_name: Some("Splash".to_string()),
-            internal_level: None,
-            region: SongChartRegion {
-                jp: false,
-                intl: true,
-            },
-        };
-        let jp_only_sheet = SongCatalogChart {
-            chart_type: "std".to_string(),
-            difficulty: "basic".to_string(),
-            level: "10".to_string(),
-            version_name: Some("Splash".to_string()),
-            internal_level: None,
-            region: SongChartRegion {
-                jp: true,
-                intl: false,
-            },
-        };
-
-        assert!(is_intl_sheet(&intl_sheet));
-        assert!(!is_intl_sheet(&jp_only_sheet));
-    }
-
-    #[test]
-    fn parse_intl_sheet_version_skips_non_intl_sheet() {
-        let jp_only_sheet = SongCatalogChart {
-            chart_type: "std".to_string(),
-            difficulty: "basic".to_string(),
-            level: "10".to_string(),
-            version_name: Some("Splash".to_string()),
-            internal_level: None,
-            region: SongChartRegion {
-                jp: true,
-                intl: false,
-            },
-        };
-        let intl_sheet = SongCatalogChart {
-            chart_type: "std".to_string(),
-            difficulty: "basic".to_string(),
-            level: "10".to_string(),
-            version_name: Some("Splash".to_string()),
-            internal_level: None,
-            region: SongChartRegion {
-                jp: true,
-                intl: true,
-            },
-        };
-
-        assert_eq!(parse_intl_sheet_version(&jp_only_sheet), None);
-        assert_eq!(
-            parse_intl_sheet_version(&intl_sheet),
-            Some(MaimaiVersion::Splash)
-        );
-    }
-
-    #[test]
-    fn build_song_version_responses_skips_jp_only_future_versions() {
-        let songs = vec![
-            SongCatalogSong {
-                title: "Current INTL Song".to_string(),
-                genre: SongGenre::Maimai,
-                artist: "".to_string(),
-                image_name: None,
-                aliases: SongAliases::default(),
-                sheets: vec![SongCatalogChart {
-                    chart_type: "std".to_string(),
-                    difficulty: "basic".to_string(),
-                    level: "10".to_string(),
-                    version_name: Some("CiRCLE".to_string()),
-                    internal_level: None,
-                    region: SongChartRegion {
-                        jp: true,
-                        intl: true,
-                    },
-                }],
-            },
-            SongCatalogSong {
-                title: "Future JP Song".to_string(),
-                genre: SongGenre::Maimai,
-                artist: "".to_string(),
-                image_name: None,
-                aliases: SongAliases::default(),
-                sheets: vec![SongCatalogChart {
-                    chart_type: "std".to_string(),
-                    difficulty: "basic".to_string(),
-                    level: "12".to_string(),
-                    version_name: Some("CiRCLE PLUS".to_string()),
-                    internal_level: None,
-                    region: SongChartRegion {
-                        jp: true,
-                        intl: false,
-                    },
-                }],
-            },
-        ];
-
-        assert_eq!(
-            build_song_version_responses(&songs),
-            vec![SongVersionResponse {
-                version_index: MaimaiVersion::Circle.as_index(),
-                version_name: "CiRCLE".to_string(),
-                song_count: 1,
-            }]
-        );
-    }
 
     #[test]
     fn build_song_info_response_normalizes_sheet_fields() {
