@@ -1,9 +1,11 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react';
 
 import { useI18n } from '../app/i18n';
-import { formatVersionLabel } from '../app/utils';
+import { formatPercent } from '../app/utils';
 import type { ScoreRow } from '../types';
-import { SongRecordCard } from './SongRecordCard';
+import { getDifficultyToneClass } from './DifficultyLabel';
+import { FilterFabButton } from './FilterFabButton';
+import { Jacket } from './Jacket';
 import type { SongDetailTarget } from './TableActionCells';
 
 export interface UserTierSongRow {
@@ -26,6 +28,83 @@ interface UserTierPageProps {
   onOpenSongDetail: (target: SongDetailTarget) => void;
 }
 
+type UserTierRangeKey = '13' | '13plus' | '14';
+
+const USER_TIER_RANGES: {
+  key: UserTierRangeKey;
+  label: string;
+  rangeLabel: string;
+  minStep: number;
+  maxStep: number;
+}[] = [
+  { key: '13', label: '13', rangeLabel: '13.00 - 13.50', minStep: 1300, maxStep: 1350 },
+  { key: '13plus', label: '13+', rangeLabel: '13.55 - 13.95', minStep: 1355, maxStep: 1395 },
+  { key: '14', label: '14', rangeLabel: '14.00 - 14.50', minStep: 1400, maxStep: 1450 },
+];
+
+function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenSongDetail: () => void) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+
+  event.preventDefault();
+  onOpenSongDetail();
+}
+
+function formatInternalLevel(row: ScoreRow): string {
+  if (row.internalLevel === null) {
+    return '-';
+  }
+
+  return `${row.isInternalLevelEstimated ? '~' : ''}${row.internalLevel.toFixed(1)}`;
+}
+
+function isGroupInTierRange(group: UserTierGroup, range: (typeof USER_TIER_RANGES)[number]): boolean {
+  return group.step >= range.minStep && group.step <= range.maxStep;
+}
+
+function UserTierSongCard({
+  row,
+  songInfoUrl,
+  onOpenSongDetail,
+}: {
+  row: ScoreRow;
+  songInfoUrl: string;
+  onOpenSongDetail: (target: SongDetailTarget) => void;
+}) {
+  const { t } = useI18n();
+  const handleOpenDetail = () => onOpenSongDetail(row);
+  const toneClass = getDifficultyToneClass(row.difficulty);
+
+  return (
+    <article
+      className={`user-tier-song-card ${toneClass}`}
+      role="button"
+      tabIndex={0}
+      aria-label={t('rating.openSongDetail', { title: row.title })}
+      onClick={handleOpenDetail}
+      onKeyDown={(event) => handleCardKeyDown(event, handleOpenDetail)}
+    >
+      <div className={`user-tier-song-stage ${toneClass}`}>
+        <div className="user-tier-song-jacket-wrap">
+          <Jacket
+            songInfoUrl={songInfoUrl}
+            imageName={row.imageName}
+            title={row.title}
+            className="user-tier-song-jacket"
+          />
+        </div>
+        <div className="user-tier-song-stage-gradient" />
+        <div className="user-tier-internal-chip">{formatInternalLevel(row)}</div>
+      </div>
+      <div className="user-tier-song-info">
+        <h3>{row.title}</h3>
+        <strong>{formatPercent(row.achievementPercent)}</strong>
+      </div>
+    </article>
+  );
+}
+
 export function UserTierPage({
   sidebarTopContent,
   songInfoUrl,
@@ -35,7 +114,9 @@ export function UserTierPage({
   const { t } = useI18n();
   const [hideNoData, setHideNoData] = useState(false);
   const [hideBelow90, setHideBelow90] = useState(false);
-  const visibleGroups = useMemo(
+  const [activeRangeKey, setActiveRangeKey] = useState<UserTierRangeKey>('14');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const filteredGroups = useMemo(
     () =>
       groups
         .map((group) => ({
@@ -53,78 +134,130 @@ export function UserTierPage({
         .filter((group) => group.rows.length > 0),
     [groups, hideBelow90, hideNoData],
   );
+  const rangeSummaries = useMemo(
+    () =>
+      Object.fromEntries(
+        USER_TIER_RANGES.map((range) => [
+          range.key,
+          filteredGroups
+            .filter((group) => isGroupInTierRange(group, range))
+            .reduce((sum, group) => sum + group.rows.length, 0),
+        ]),
+      ) as Record<UserTierRangeKey, number>,
+    [filteredGroups],
+  );
+  const activeRange = USER_TIER_RANGES.find((range) => range.key === activeRangeKey) ?? USER_TIER_RANGES[2];
+  const visibleGroups = useMemo(
+    () => filteredGroups.filter((group) => isGroupInTierRange(group, activeRange)),
+    [activeRange, filteredGroups],
+  );
+  const filterPanel = (
+    <section className="panel filter-panel">
+      <div className="panel-heading compact">
+        <div>
+          <h2>{t('tiers.filters')}</h2>
+        </div>
+      </div>
+      <div className="user-tier-filter-actions">
+        <div className="user-tier-range-tabs" role="group" aria-label="User tier range">
+          {USER_TIER_RANGES.map((range) => {
+            const isActive = range.key === activeRangeKey;
+            return (
+              <button
+                key={range.key}
+                type="button"
+                className={isActive ? 'active' : ''}
+                aria-pressed={isActive}
+                onClick={() => setActiveRangeKey(range.key)}
+              >
+                <span className="user-tier-range-label">{range.label}</span>
+                <span className="user-tier-range-meta">{range.rangeLabel}</span>
+                <span className="user-tier-range-count">{rangeSummaries[range.key]}</span>
+              </button>
+            );
+          })}
+        </div>
+        <label className="user-tier-filter-toggle">
+          <input
+            type="checkbox"
+            checked={hideNoData}
+            onChange={(event) => setHideNoData(event.target.checked)}
+          />
+          <span>{t('tiers.hideNoData')}</span>
+        </label>
+        <label className="user-tier-filter-toggle">
+          <input
+            type="checkbox"
+            checked={hideBelow90}
+            onChange={(event) => setHideBelow90(event.target.checked)}
+          />
+          <span>{t('tiers.hideBelow90')}</span>
+        </label>
+      </div>
+    </section>
+  );
 
   return (
-    <div className="explorer-layout user-tier-layout">
-      <aside className="sidebar-column">
-        {sidebarTopContent}
-        <section className="panel filter-panel">
-          <div className="panel-heading compact">
-            <div>
-              <h2>{t('tiers.filters')}</h2>
-            </div>
-          </div>
-          <div className="user-tier-filter-actions">
-            <label className="user-tier-filter-toggle">
-              <input
-                type="checkbox"
-                checked={hideNoData}
-                onChange={(event) => setHideNoData(event.target.checked)}
-              />
-              <span>{t('tiers.hideNoData')}</span>
-            </label>
-            <label className="user-tier-filter-toggle">
-              <input
-                type="checkbox"
-                checked={hideBelow90}
-                onChange={(event) => setHideBelow90(event.target.checked)}
-              />
-              <span>{t('tiers.hideBelow90')}</span>
-            </label>
-          </div>
-        </section>
-      </aside>
+    <>
+      <div className="explorer-layout user-tier-layout">
+        <aside className="sidebar-column">
+          {sidebarTopContent}
+          {filterPanel}
+        </aside>
 
-      <div className="table-column user-tier-table-column">
-        <section className="panel user-tier-intro-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>{t('tiers.heading')}</h2>
-              <p>{t('tiers.description')}</p>
-            </div>
-          </div>
-        </section>
-
-        {visibleGroups.length === 0 ? (
-          <section className="panel empty-state-panel">
-            <p>{groups.length > 0 ? t('tiers.emptyAfterFilter') : t('tiers.empty')}</p>
-          </section>
-        ) : (
-          <div className="user-tier-stack">
-            {visibleGroups.map((group) => (
-              <section key={group.label} className="panel user-tier-section-panel">
-                <div className="panel-heading">
-                  <div>
-                    <h2>{group.label}</h2>
+        <div className="table-column user-tier-table-column">
+          {visibleGroups.length === 0 ? (
+            <section className="panel empty-state-panel">
+              <p>{groups.length > 0 ? t('tiers.emptyAfterFilter') : t('tiers.empty')}</p>
+            </section>
+          ) : (
+            <div className="user-tier-stack">
+              {visibleGroups.map((group) => (
+                <section key={group.label} className="panel user-tier-section-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h2>{group.label}</h2>
+                    </div>
                   </div>
-                </div>
-                <div className="user-tier-card-grid">
-                  {group.rows.map((item) => (
-                    <SongRecordCard
-                      key={item.key}
-                      row={item.score}
-                      songInfoUrl={songInfoUrl}
-                      topLeft={item.userTier}
-                      topRight={formatVersionLabel(item.score.version)}
-                      onOpenSongDetail={onOpenSongDetail}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
+                  <div className="user-tier-card-grid">
+                    {group.rows.map((item) => (
+                      <UserTierSongCard
+                        key={item.key}
+                        row={item.score}
+                        songInfoUrl={songInfoUrl}
+                        onOpenSongDetail={onOpenSongDetail}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      <FilterFabButton label={t('common.filters')} onClick={() => setIsFilterModalOpen(true)} />
+
+      {isFilterModalOpen ? (
+        <div className="modal-backdrop mobile-filter-backdrop" onClick={() => setIsFilterModalOpen(false)}>
+          <section
+            className="modal-card panel mobile-filter-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="detail-header">
+              <button
+                type="button"
+                className="modal-close-button"
+                onClick={() => setIsFilterModalOpen(false)}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            {sidebarTopContent}
+            {filterPanel}
+          </section>
+        </div>
+      ) : null}
+    </>
   );
 }
