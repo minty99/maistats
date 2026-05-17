@@ -22,11 +22,17 @@ pub(crate) const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Changelog entries ordered newest-first.
 /// Add one entry here every time the workspace version is bumped.
-const CHANGELOG: &[(&str, &str)] = &[(
-    "1.1.0",
-    "Commands now trigger an immediate data poll before responding, \
+const CHANGELOG: &[(&str, &str)] = &[
+    (
+        "1.2.0",
+        "Recent playlog sync icons now recognize FDX and FDX+ results correctly.",
+    ),
+    (
+        "1.1.0",
+        "Commands now trigger an immediate data poll before responding, \
          so results always reflect your most recent play session.",
-)];
+    ),
+];
 use crate::db;
 use crate::embeds::{
     RecentRecordView, build_mai_recent_embeds, build_mai_today_embed, embed_base,

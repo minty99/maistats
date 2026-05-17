@@ -1840,7 +1840,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "maimai-auth"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "eyre",
  "reqwest",
@@ -1848,7 +1848,7 @@ dependencies = [
 
 [[package]]
 name = "maimai-client"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "eyre",
  "models",
@@ -1862,7 +1862,7 @@ dependencies = [
 
 [[package]]
 name = "maimai-parsers"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "eyre",
  "models",
@@ -1871,7 +1871,7 @@ dependencies = [
 
 [[package]]
 name = "maistats-discord-bot"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "ab_glyph",
  "base64",
@@ -1898,7 +1898,7 @@ dependencies = [
 
 [[package]]
 name = "maistats-record-collector"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1924,7 +1924,7 @@ dependencies = [
 
 [[package]]
 name = "maistats-song-info"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "dotenvy",
@@ -2059,7 +2059,7 @@ dependencies = [
 
 [[package]]
 name = "models"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "eyre",
  "serde",
