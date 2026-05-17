@@ -11,6 +11,9 @@ interface JacketProps {
 
 export function Jacket({ songInfoUrl, imageName, title, className }: JacketProps) {
   const jacketClassName = ['jacket', className].filter(Boolean).join(' ');
+  const jacketFrameClassName = ['jacket-frame', className ? `${className}-frame` : null]
+    .filter(Boolean)
+    .join(' ');
   const coverUrl = imageName ? buildCoverUrl(songInfoUrl, imageName) : null;
   const [hasLoaded, setHasLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -25,7 +28,7 @@ export function Jacket({ songInfoUrl, imageName, title, className }: JacketProps
   }
 
   return (
-    <div className="jacket-frame">
+    <div className={jacketFrameClassName}>
       {!hasLoaded ? (
         <div className={`${jacketClassName} fallback`}>{title.slice(0, 1).toUpperCase()}</div>
       ) : null}
