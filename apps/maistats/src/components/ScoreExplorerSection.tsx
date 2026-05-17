@@ -359,7 +359,7 @@ export function ScoreExplorerSection({
 
   return (
     <>
-      <div className="explorer-layout">
+      <div className="explorer-layout table-explorer-layout">
         <aside className="sidebar-column">
           {sidebarTopContent}
           <section className="panel search-panel">
