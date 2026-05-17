@@ -3,6 +3,7 @@ import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react';
 import { useI18n } from '../app/i18n';
 import { formatPercent } from '../app/utils';
 import type { ScoreRow } from '../types';
+import { ChartTypeLabel } from './ChartTypeLabel';
 import { getDifficultyToneClass } from './DifficultyLabel';
 import { FilterFabButton } from './FilterFabButton';
 import { Jacket } from './Jacket';
@@ -150,7 +151,10 @@ function UserTierSongCard({
           />
         </div>
         <div className="user-tier-song-stage-gradient" />
-        <div className="user-tier-internal-chip">{formatInternalLevel(row)}</div>
+        <div className="user-tier-stage-badges">
+          <ChartTypeLabel chartType={row.chartType} className="user-tier-chart-chip" />
+          <div className="user-tier-internal-chip">{formatInternalLevel(row)}</div>
+        </div>
       </div>
       <div className="user-tier-song-info">
         <strong>{formatAchievementValue(row)}</strong>

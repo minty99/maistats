@@ -1743,15 +1743,23 @@ select:focus-visible {
   pointer-events: none;
 }
 
-.user-tier-internal-chip {
+.user-tier-stage-badges {
   position: absolute;
   right: 5px;
   bottom: 5px;
   z-index: 1;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: calc(100% - 10px);
+}
+
+.user-tier-stage-badges .chart-type-badge,
+.user-tier-internal-chip {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  min-width: 34px;
   min-height: 20px;
   padding: 3px 5px;
   border-radius: 2px;
@@ -1761,6 +1769,16 @@ select:focus-visible {
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.user-tier-stage-badges .chart-type-badge {
+  min-width: 31px;
+  font-size: 0.6rem;
+}
+
+.user-tier-internal-chip {
+  min-width: 34px;
+  font-size: 0.72rem;
 }
 
 .user-tier-song-info {
