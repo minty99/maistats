@@ -347,9 +347,6 @@ export function ScoreHistoryModal({
                   <HistoryMetaItem label={t('common.playCount')} value={formatNumber(selectedHistoryRow.playCount, locale)} />
                   <HistoryMetaItem label={t('common.version')} value={formatVersionLabel(selectedHistoryRow.version)} />
                 </div>
-                <p className="muted">
-                  {t('history.description')}
-                </p>
               </div>
             </div>
             <button type="button" className="modal-close-button" onClick={onClose}>

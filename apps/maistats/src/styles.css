@@ -2085,6 +2085,10 @@ tbody tr:last-child td {
   width: min(1180px, 100%);
 }
 
+.history-modal .detail-song-summary {
+  align-items: flex-start;
+}
+
 .history-summary-copy {
   display: grid;
   gap: 6px;
