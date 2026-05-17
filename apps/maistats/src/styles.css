@@ -1560,6 +1560,47 @@ select:focus-visible {
   min-width: 0;
 }
 
+.user-tier-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.user-tier-title-row h2 {
+  margin: 0;
+}
+
+.user-tier-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.user-tier-summary-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.user-tier-summary-item strong {
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
 .user-tier-internal-stack {
   display: grid;
   gap: 14px;

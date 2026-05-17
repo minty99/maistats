@@ -28,6 +28,12 @@ interface UserTierInternalLevelGroup {
   rows: UserTierSongRow[];
 }
 
+interface UserTierGroupSummary {
+  averageAchievement: number | null;
+  playedCount: number;
+  totalCount: number;
+}
+
 interface UserTierPageProps {
   sidebarTopContent?: ReactNode;
   songInfoUrl: string;
@@ -98,6 +104,20 @@ function isGroupInTierRange(group: UserTierGroup, range: (typeof USER_TIER_RANGE
   return group.step >= range.minStep && group.step <= range.maxStep;
 }
 
+function buildUserTierGroupSummary(rows: UserTierSongRow[]): UserTierGroupSummary {
+  const playedAchievements = rows
+    .map((row) => row.score.achievementPercent)
+    .filter((value): value is number => value !== null);
+
+  return {
+    averageAchievement: playedAchievements.length > 0
+      ? playedAchievements.reduce((sum, value) => sum + value, 0) / playedAchievements.length
+      : null,
+    playedCount: playedAchievements.length,
+    totalCount: rows.length,
+  };
+}
+
 function UserTierSongCard({
   row,
   songInfoUrl,
@@ -150,6 +170,10 @@ export function UserTierPage({
   const [hideBelow90, setHideBelow90] = useState(false);
   const [activeRangeKey, setActiveRangeKey] = useState<UserTierRangeKey>('14');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const tierSummaries = useMemo(
+    () => new Map(groups.map((group) => [group.label, buildUserTierGroupSummary(group.rows)])),
+    [groups],
+  );
   const filteredGroups = useMemo(
     () =>
       groups
@@ -189,9 +213,10 @@ export function UserTierPage({
     () =>
       visibleGroups.map((group) => ({
         ...group,
+        summary: tierSummaries.get(group.label) ?? buildUserTierGroupSummary(group.rows),
         internalLevelGroups: buildInternalLevelGroups(group.rows, () => t('tiers.unknownInternalLevel')),
       })),
-    [t, visibleGroups],
+    [t, tierSummaries, visibleGroups],
   );
   const filterPanel = (
     <section className="panel filter-panel">
@@ -257,8 +282,23 @@ export function UserTierPage({
               {visibleGroupedSections.map((group) => (
                 <section key={group.label} className="panel user-tier-section-panel">
                   <div className="panel-heading">
-                    <div>
+                    <div className="user-tier-title-row">
                       <h2>{group.label}</h2>
+                      <div className="user-tier-summary">
+                        <span className="user-tier-summary-item">
+                          <span>{t('tiers.averageScore')}</span>
+                          <strong>{formatPercent(group.summary.averageAchievement)}</strong>
+                        </span>
+                        <span className="user-tier-summary-item">
+                          <span>{t('tiers.playedCountLabel')}</span>
+                          <strong>
+                            {t('tiers.playedCountValue', {
+                              played: group.summary.playedCount,
+                              total: group.summary.totalCount,
+                            })}
+                          </strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="user-tier-internal-stack">
