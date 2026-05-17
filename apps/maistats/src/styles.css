@@ -1578,6 +1578,55 @@ select:focus-visible {
   font-weight: 800;
 }
 
+.user-tier-conversion-details {
+  width: 100%;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.user-tier-conversion-details summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  color: var(--ink-dim);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.user-tier-conversion-details summary::marker {
+  color: var(--muted);
+}
+
+.user-tier-conversion-details summary:hover {
+  color: var(--ink);
+}
+
+.user-tier-conversion-details summary .user-tier-title-row {
+  display: inline-flex;
+}
+
+.user-tier-conversion-lines {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.user-tier-conversion-lines div {
+  min-height: 22px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--chip);
+  color: var(--ink-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .user-tier-internal-stack {
   display: grid;
   gap: 14px;
@@ -1759,11 +1808,14 @@ select:focus-visible {
 }
 
 .user-tier-song-info {
-  display: flex;
+  display: grid;
   align-items: center;
+  align-content: center;
   justify-content: center;
+  justify-items: center;
+  gap: 1px;
   min-width: 0;
-  padding: 6px;
+  padding: 3px 5px;
   border-top: 1px solid color-mix(in srgb, var(--tier-card-accent) 32%, var(--line));
   background: color-mix(in srgb, var(--tier-card-accent) 24%, var(--panel));
 }
@@ -1772,9 +1824,22 @@ select:focus-visible {
   display: block;
   min-width: 0;
   color: var(--tier-card-accent);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.user-tier-song-info span {
+  display: block;
+  max-width: 100%;
+  color: var(--ink-dim);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

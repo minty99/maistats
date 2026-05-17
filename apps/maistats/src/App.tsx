@@ -81,6 +81,7 @@ import type {
   DifficultyCategory,
   PlayRecordApiResponse,
   RaveilleUserTierEntry,
+  RaveilleUserTierConversionEntry,
   PlaylogRow,
   ScoreApiResponse,
   ScoreRow,
@@ -392,6 +393,7 @@ function App() {
 
   const [scoreRecords, setScoreRecords] = useState<ScoreApiResponse[]>([]);
   const [userTierRecords, setUserTierRecords] = useState<RaveilleUserTierEntry[]>([]);
+  const [userTierConversions, setUserTierConversions] = useState<RaveilleUserTierConversionEntry[]>([]);
   const [playlogRecords, setPlaylogRecords] = useState<PlayRecordApiResponse[]>([]);
   const [songMetadata, setSongMetadata] = useState<Map<string, SongInfoResponse>>(
     () => new Map(),
@@ -588,6 +590,7 @@ function App() {
       setIsPlaylogsLoading(false);
       setScoreRecords([]);
       setUserTierRecords([]);
+      setUserTierConversions([]);
       setPlaylogRecords([]);
       setVersionsResponse([]);
       setPlayerProfile(null);
@@ -627,6 +630,7 @@ function App() {
 
       setScoreRecords(payload.ratedScores);
       setUserTierRecords(payload.userTiers);
+      setUserTierConversions(payload.userTierConversions);
       setSongMetadata(payload.songMetadata);
       const availableVersions = filterAvailableVersions(payload.versions ?? []);
       setVersionsResponse(availableVersions.map((version) => version.version_name));
@@ -641,6 +645,7 @@ function App() {
       setLoadingError({ kind: 'message', message });
       setScoreRecords([]);
       setUserTierRecords([]);
+      setUserTierConversions([]);
       setSongMetadata(new Map<string, SongInfoResponse>());
       setVersionsResponse([]);
       setPlayerProfile(null);
@@ -1332,6 +1337,9 @@ function App() {
         key: `${entry.userTier}:${key}`,
         userTier: entry.userTier,
         userTierStep: step,
+        lomoSourceTier: entry.lomoSourceTier ?? null,
+        raveilleInternalLevel: entry.raveilleInternalLevel ?? null,
+        raveilleTier: entry.raveilleTier ?? null,
         score,
       });
       grouped.set(entry.userTier, group);
@@ -1709,6 +1717,7 @@ function App() {
               sidebarTopContent={desktopSidebarTopContent}
               songInfoUrl={songInfoUrl}
               groups={userTierGroups}
+              conversions={userTierConversions}
               onOpenHistory={handleOpenHistory}
             />
           </>

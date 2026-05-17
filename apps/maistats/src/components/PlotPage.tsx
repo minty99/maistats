@@ -590,9 +590,13 @@ export function PlotPage({
           title: item.score.title,
           laneKey: item.userTierStep,
           laneLabel: item.userTier,
-          tooltipSubtitle: `Tier ${item.userTier} / Lv ${
-            item.score.internalLevel === null ? '-' : item.score.internalLevel.toFixed(1)
-          }`,
+          tooltipSubtitle: [
+            `Tier ${item.userTier}`,
+            `Lv ${item.score.internalLevel === null ? '-' : item.score.internalLevel.toFixed(1)}`,
+            item.raveilleInternalLevel && item.raveilleTier
+              ? `${item.raveilleInternalLevel} ${item.raveilleTier}`
+              : null,
+          ].filter(Boolean).join(' / '),
           daysElapsed,
           imageName: item.score.imageName,
           lastPlayedAt: item.score.latestPlayedAtLabel,
