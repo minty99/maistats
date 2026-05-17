@@ -485,6 +485,11 @@ input[type="radio"] {
   width: min(720px, 100%);
 }
 
+.mobile-filter-modal > .detail-header {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
 .mobile-filter-modal .filter-panel {
   border: 0;
   padding: 0;
@@ -2050,6 +2055,17 @@ tbody tr:last-child td {
 .detail-content {
   display: grid;
   gap: 10px;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-title-row h2 {
+  margin: 0;
 }
 
 .detail-header {

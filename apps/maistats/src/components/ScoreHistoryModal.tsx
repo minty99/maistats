@@ -313,7 +313,12 @@ export function ScoreHistoryModal({
         className="modal-card panel history-modal"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2>{t('history.title')}</h2>
+        <div className="modal-title-row">
+          <h2>{t('history.title')}</h2>
+          <button type="button" className="modal-close-button" onClick={onClose}>
+            {t('common.close')}
+          </button>
+        </div>
         <div className="detail-content">
           <div className="detail-header">
             <div className="detail-song-summary">
@@ -348,9 +353,6 @@ export function ScoreHistoryModal({
                 </div>
               </div>
             </div>
-            <button type="button" className="modal-close-button" onClick={onClose}>
-              {t('common.close')}
-            </button>
           </div>
 
           {shouldShowLoadingState ? (
