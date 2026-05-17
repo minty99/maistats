@@ -168,7 +168,7 @@ export function UserTierPage({
   const { t } = useI18n();
   const [hideNoData, setHideNoData] = useState(false);
   const [hideBelow90, setHideBelow90] = useState(false);
-  const [activeRangeKey, setActiveRangeKey] = useState<UserTierRangeKey>('14');
+  const [activeRangeKey, setActiveRangeKey] = useState<UserTierRangeKey>('13');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const tierSummaries = useMemo(
     () => new Map(groups.map((group) => [group.label, buildUserTierGroupSummary(group.rows)])),
@@ -204,7 +204,7 @@ export function UserTierPage({
       ) as Record<UserTierRangeKey, number>,
     [filteredGroups],
   );
-  const activeRange = USER_TIER_RANGES.find((range) => range.key === activeRangeKey) ?? USER_TIER_RANGES[2];
+  const activeRange = USER_TIER_RANGES.find((range) => range.key === activeRangeKey) ?? USER_TIER_RANGES[0];
   const visibleGroups = useMemo(
     () => filteredGroups.filter((group) => isGroupInTierRange(group, activeRange)),
     [activeRange, filteredGroups],
