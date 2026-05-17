@@ -329,12 +329,11 @@ export function ScoreHistoryModal({
                   <ChartTypeLabel chartType={selectedHistoryRow.chartType} />
                   <DifficultyLabel difficulty={selectedHistoryRow.difficulty} className="difficulty-badge" />
                 </div>
-                {selectedHistoryRow.genre || selectedHistoryRow.artist ? (
-                  <div className="muted">
-                    {[selectedHistoryRow.genre, selectedHistoryRow.artist]
-                      .filter((value): value is string => Boolean(value))
-                      .join(' / ')}
-                  </div>
+                {selectedHistoryRow.artist ? (
+                  <div className="muted detail-aliases">Artist: {selectedHistoryRow.artist}</div>
+                ) : null}
+                {selectedHistoryRow.genre ? (
+                  <div className="muted detail-aliases">Genre: {selectedHistoryRow.genre}</div>
                 ) : null}
                 {englishAliases.length > 0 ? (
                   <div className="muted detail-aliases">EN: {englishAliases.join(', ')}</div>
