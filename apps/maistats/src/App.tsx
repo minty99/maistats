@@ -1718,6 +1718,7 @@ function App() {
               songInfoUrl={songInfoUrl}
               groups={userTierGroups}
               conversions={userTierConversions}
+              isLoading={isLoading}
               onOpenHistory={handleOpenHistory}
             />
           </>
