@@ -179,9 +179,9 @@ fn parse_sync_status(value: &str) -> Option<SyncStatus> {
             .trim_start_matches("sync_"),
     );
     match normalized.as_str() {
-        "fdx+" | "fdxp" | "fdxplus" => Some(SyncStatus::FdxPlus),
+        "fdx+" | "fdxp" | "fdxplus" | "fsd+" | "fsdp" | "fsdplus" => Some(SyncStatus::FdxPlus),
         "fs+" | "fsp" | "fsplus" => Some(SyncStatus::FsPlus),
-        "fdx" => Some(SyncStatus::Fdx),
+        "fdx" | "fsd" => Some(SyncStatus::Fdx),
         "fs" => Some(SyncStatus::Fs),
         "sync" => Some(SyncStatus::Sync),
         _ => None,
