@@ -2098,6 +2098,39 @@ tbody tr:last-child td {
   align-items: center;
 }
 
+.history-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.history-meta-item {
+  display: inline-grid;
+  gap: 2px;
+  min-width: 112px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--chip);
+}
+
+.history-meta-item span {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.history-meta-item strong {
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .history-chart-panel {
   position: relative;
   border: 1px solid var(--line);

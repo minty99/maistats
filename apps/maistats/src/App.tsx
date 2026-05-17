@@ -1713,7 +1713,7 @@ function App() {
               oldRatingTotal={oldRatingTotal}
               newRows={newRatingRows}
               oldRows={oldRatingRows}
-              onOpenSongDetail={handleOpenSongDetail}
+              onOpenHistory={handleOpenHistory}
             />
           </>
         ) : activePage === 'tiers' ? (
@@ -1723,7 +1723,7 @@ function App() {
               sidebarTopContent={desktopSidebarTopContent}
               songInfoUrl={songInfoUrl}
               groups={userTierGroups}
-              onOpenSongDetail={handleOpenSongDetail}
+              onOpenHistory={handleOpenHistory}
             />
           </>
         ) : activePage === 'plot' ? (

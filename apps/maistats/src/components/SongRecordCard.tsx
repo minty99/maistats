@@ -8,23 +8,22 @@ import { ChartTypeLabel } from './ChartTypeLabel';
 import { DifficultyLabel, getDifficultyToneClass } from './DifficultyLabel';
 import { Jacket } from './Jacket';
 import { LevelCell } from './LevelCell';
-import type { SongDetailTarget } from './TableActionCells';
 
 interface SongRecordCardProps {
   row: ScoreRow;
   songInfoUrl: string;
   topLeft: string;
   topRight: string;
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }
 
-function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenSongDetail: () => void) {
+function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenHistory: () => void) {
   if (event.key !== 'Enter' && event.key !== ' ') {
     return;
   }
 
   event.preventDefault();
-  onOpenSongDetail();
+  onOpenHistory();
 }
 
 export function SongRecordCard({
@@ -32,19 +31,19 @@ export function SongRecordCard({
   songInfoUrl,
   topLeft,
   topRight,
-  onOpenSongDetail,
+  onOpenHistory,
 }: SongRecordCardProps) {
   const { locale, t } = useI18n();
-  const handleOpenDetail = () => onOpenSongDetail(row);
+  const handleOpenHistory = () => onOpenHistory(row);
 
   return (
     <article
       className={`rating-song-card ${getDifficultyToneClass(row.difficulty)}`}
       role="button"
       tabIndex={0}
-      aria-label={t('rating.openSongDetail', { title: row.title })}
-      onClick={handleOpenDetail}
-      onKeyDown={(event) => handleCardKeyDown(event, handleOpenDetail)}
+      aria-label={t('history.openChartHistory', { title: row.title })}
+      onClick={handleOpenHistory}
+      onKeyDown={(event) => handleCardKeyDown(event, handleOpenHistory)}
     >
       <div className={`rating-song-stage ${getDifficultyToneClass(row.difficulty)}`}>
         <div className="rating-song-jacket-wrap">

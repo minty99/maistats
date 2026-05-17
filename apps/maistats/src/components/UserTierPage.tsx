@@ -7,7 +7,6 @@ import { ChartTypeLabel } from './ChartTypeLabel';
 import { getDifficultyToneClass } from './DifficultyLabel';
 import { FilterFabButton } from './FilterFabButton';
 import { Jacket } from './Jacket';
-import type { SongDetailTarget } from './TableActionCells';
 
 export interface UserTierSongRow {
   key: string;
@@ -39,7 +38,7 @@ interface UserTierPageProps {
   sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   groups: UserTierGroup[];
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }
 
 type UserTierRangeKey = '13' | '13plus' | '14';
@@ -56,13 +55,13 @@ const USER_TIER_RANGES: {
   { key: '14', label: '14', rangeLabel: '14.00 - 14.50', minStep: 1400, maxStep: 1450 },
 ];
 
-function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenSongDetail: () => void) {
+function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenHistory: () => void) {
   if (event.key !== 'Enter' && event.key !== ' ') {
     return;
   }
 
   event.preventDefault();
-  onOpenSongDetail();
+  onOpenHistory();
 }
 
 function formatInternalLevel(row: ScoreRow): string {
@@ -122,14 +121,14 @@ function buildUserTierGroupSummary(rows: UserTierSongRow[]): UserTierGroupSummar
 function UserTierSongCard({
   row,
   songInfoUrl,
-  onOpenSongDetail,
+  onOpenHistory,
 }: {
   row: ScoreRow;
   songInfoUrl: string;
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }) {
   const { t } = useI18n();
-  const handleOpenDetail = () => onOpenSongDetail(row);
+  const handleOpenHistory = () => onOpenHistory(row);
   const toneClass = getDifficultyToneClass(row.difficulty);
 
   return (
@@ -137,9 +136,9 @@ function UserTierSongCard({
       className={`user-tier-song-card ${toneClass}`}
       role="button"
       tabIndex={0}
-      aria-label={t('rating.openSongDetail', { title: row.title })}
-      onClick={handleOpenDetail}
-      onKeyDown={(event) => handleCardKeyDown(event, handleOpenDetail)}
+      aria-label={t('history.openChartHistory', { title: row.title })}
+      onClick={handleOpenHistory}
+      onKeyDown={(event) => handleCardKeyDown(event, handleOpenHistory)}
     >
       <div className={`user-tier-song-stage ${toneClass}`}>
         <div className="user-tier-song-jacket-wrap">
@@ -167,7 +166,7 @@ export function UserTierPage({
   sidebarTopContent,
   songInfoUrl,
   groups,
-  onOpenSongDetail,
+  onOpenHistory,
 }: UserTierPageProps) {
   const { t } = useI18n();
   const [hideNoData, setHideNoData] = useState(false);
@@ -317,7 +316,7 @@ export function UserTierPage({
                               key={item.key}
                               row={item.score}
                               songInfoUrl={songInfoUrl}
-                              onOpenSongDetail={onOpenSongDetail}
+                              onOpenHistory={onOpenHistory}
                             />
                           ))}
                         </div>
