@@ -28,10 +28,10 @@ Default to this repo's generated alias storage:
 3. Open and verify the NamuWiki page for each remaining title:
    - Build `https://namu.moe/w/{encoded_title}`.
    - Percent-encode the title path segment with UTF-8. Spaces must be encoded as `%20`, not `+`.
-   - Follow redirects before judging whether the page is useful. Use the final redirected page title and URL as the candidate source.
+   - Follow redirects before judging whether the page is useful. Check `namu.wiki/w/{encoded_title}` as the authoritative redirect source even when the `namu.moe` mirror returns `Not Found`, because the mirror can miss redirects that exist on NamuWiki. Use the final redirected page title and URL as the candidate source.
    - Confirm the page is about the requested song by checking the article title/header and one of: overview text, `maimai 시리즈`, `CHUNITHM`, `온게키`, artist/BPM/version table, or categories for rhythm-game songs.
    - Ignore navigation templates, folded song lists, category lists, related-song tables, and other page furniture when extracting aliases. These often appear before the real article body.
-   - If the final page is a disambiguation page, wrong song, missing page, or still unclear after redirect, search within NamuWiki for the title and choose the page that clearly describes the maimai収録曲 or original song.
+   - If the final page is a disambiguation page, wrong song, missing page, or still unclear after redirect, search within NamuWiki for the title and choose the page that clearly describes the maimai収録曲 or original song. Do this search step before leaving the alias empty.
    - If no page can be matched clearly, do not guess aliases. Preserve the song as a title-only row in generated TSV output.
 4. Extract only evidence-backed aliases by understanding the page semantically:
    - Do not depend on a fixed NamuWiki layout. Song pages are case-by-case: the Korean/English title may appear in a heading, image caption, infobox, overview prose, lyrics/album context, redirect title, parenthetical disambiguation, or another nearby explanation.
@@ -68,15 +68,17 @@ python3 skills/generate-maimai-song-title-alias/scripts/prepare_namu_alias_targe
   --title "タイトル"
 ```
 
-The script emits JSON Lines with `title` and `namu_url`. It does not decide aliases; use it to avoid mistakes in title extraction, deduplication, and URL encoding. Use `--existing-tsv` only for ad hoc investigation, not for full generated TSV refreshes.
+The script emits JSON Lines with `title`, `namu_url`, and `namu_wiki_url`. It does not decide aliases; use it to avoid mistakes in title extraction, deduplication, and URL encoding. Use `--existing-tsv` only for ad hoc investigation, not for full generated TSV refreshes.
 
-To follow HTTP redirects and emit the final URL when investigating specific titles, pass `--resolve-redirects`:
+To follow HTTP redirects and emit the final mirror and official NamuWiki URLs when investigating specific titles, pass `--resolve-redirects`:
 
 ```bash
 python3 skills/generate-maimai-song-title-alias/scripts/prepare_namu_alias_targets.py \
   --title "タイトル" \
   --resolve-redirects
 ```
+
+When `--resolve-redirects` reports a `final_namu_wiki_title` different from the original Japanese title, treat that redirected Korean page title as strong alias evidence after confirming the page is about the requested song. Keep a punctuation-normalized variant only when users are likely to omit punctuation.
 
 ## Output Rules
 

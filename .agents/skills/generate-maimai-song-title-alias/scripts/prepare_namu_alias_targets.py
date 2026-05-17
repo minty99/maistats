@@ -12,7 +12,8 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DATA_URL = "https://maimai-charts.muhwan.dev/data.json"
-NAMU_BASE_URL = "https://namu.moe/w/"
+NAMU_MIRROR_BASE_URL = "https://namu.moe/w/"
+NAMU_WIKI_BASE_URL = "https://namu.wiki/w/"
 USER_AGENT = "Mozilla/5.0 maistats-alias-helper"
 
 
@@ -59,9 +60,11 @@ def main() -> int:
         row = {
             "title": title,
             "namu_url": direct_url,
+            "namu_wiki_url": namu_wiki_url(title),
         }
         if args.resolve_redirects:
-            row.update(resolve_redirects(direct_url))
+            row.update(resolve_redirects(direct_url, "namu"))
+            row.update(resolve_redirects(namu_wiki_url(title), "namu_wiki"))
         print(
             json.dumps(
                 row,
@@ -129,10 +132,14 @@ def dedupe_titles(titles: Any) -> list[str]:
 
 
 def namu_url(title: str) -> str:
-    return NAMU_BASE_URL + urllib.parse.quote(title, safe="")
+    return NAMU_MIRROR_BASE_URL + urllib.parse.quote(title, safe="")
 
 
-def resolve_redirects(url: str) -> dict[str, str | bool]:
+def namu_wiki_url(title: str) -> str:
+    return NAMU_WIKI_BASE_URL + urllib.parse.quote(title, safe="")
+
+
+def resolve_redirects(url: str, key: str) -> dict[str, str | bool]:
     request = urllib.request.Request(
         url,
         headers={
@@ -145,15 +152,24 @@ def resolve_redirects(url: str) -> dict[str, str | bool]:
             final_url = response.geturl()
     except urllib.error.URLError as error:
         return {
-            "final_namu_url": url,
-            "redirected": False,
-            "redirect_error": str(error.reason),
+            f"final_{key}_url": url,
+            f"{key}_redirected": False,
+            f"{key}_redirect_error": str(error.reason),
         }
 
     return {
-        "final_namu_url": final_url,
-        "redirected": final_url != url,
+        f"final_{key}_url": final_url,
+        f"final_{key}_title": title_from_namu_url(final_url),
+        f"{key}_redirected": final_url != url,
     }
+
+
+def title_from_namu_url(url: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    prefix = "/w/"
+    if not parsed.path.startswith(prefix):
+        return ""
+    return urllib.parse.unquote(parsed.path[len(prefix) :])
 
 
 if __name__ == "__main__":
