@@ -1202,6 +1202,11 @@ select:focus-visible {
   inset: 0;
 }
 
+.rating-song-jacket-wrap .rating-song-jacket-frame {
+  width: 100%;
+  height: 100%;
+}
+
 .rating-song-jacket-wrap .jacket.rating-song-jacket {
   position: absolute;
   inset: 0;
@@ -1210,7 +1215,7 @@ select:focus-visible {
   height: 100%;
   border: 0;
   border-radius: 0;
-  object-fit: contain;
+  object-fit: cover;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -1750,6 +1755,11 @@ select:focus-visible {
   inset: 0;
 }
 
+.user-tier-song-jacket-wrap .user-tier-song-jacket-frame {
+  width: 100%;
+  height: 100%;
+}
+
 .user-tier-song-jacket-wrap .jacket.user-tier-song-jacket {
   position: absolute;
   inset: 0;
@@ -1758,7 +1768,7 @@ select:focus-visible {
   height: 100%;
   border: 0;
   border-radius: 0;
-  object-fit: contain;
+  object-fit: cover;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -2000,6 +2010,7 @@ tbody tr:last-child td {
   position: relative;
   width: 50px;
   height: 50px;
+  overflow: hidden;
 }
 
 .jacket-frame .jacket {
@@ -2139,6 +2150,10 @@ tbody tr:last-child td {
   min-width: 0;
 }
 
+.detail-song-summary > :not(.jacket-frame) {
+  min-width: 0;
+}
+
 .detail-song-summary strong {
   line-height: 1.35;
 }
@@ -2148,10 +2163,15 @@ tbody tr:last-child td {
   overflow-wrap: anywhere;
 }
 
-.detail-jacket {
+.detail-jacket-frame,
+.jacket.detail-jacket {
   width: 68px;
   height: 68px;
   flex-shrink: 0;
+}
+
+.detail-jacket-frame {
+  border-radius: 2px;
 }
 
 .history-modal {
