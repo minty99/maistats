@@ -64,9 +64,31 @@ fn parse_recent_record_fixture() {
     );
 
     let html = std::fs::read_to_string(fixture_path("record.html")).unwrap();
-    let html = html.replacen("fc_dummy.png", "fc_fc.png", 1);
-    let html = html.replacen("sync_dummy.png", "sync_fs.png", 1);
-    let entries = parse_recent_html(&html).unwrap();
+    let entries = parse_recent_html(&html.replacen("fc_dummy.png", "fc_fc.png", 1).replacen(
+        "sync_dummy.png",
+        "sync_fs.png",
+        1,
+    ))
+    .unwrap();
     assert!(entries.iter().any(|e| e.fc == Some(FcStatus::Fc)));
     assert!(entries.iter().any(|e| e.sync == Some(SyncStatus::Fs)));
+}
+
+#[test]
+fn parse_recent_playlog_sync_status_icons() {
+    let html = std::fs::read_to_string(fixture_path("record.html")).unwrap();
+
+    for (file_name, expected) in [
+        ("fs.png", SyncStatus::Fs),
+        ("fsplus.png", SyncStatus::FsPlus),
+        ("fsd.png", SyncStatus::Fdx),
+        ("fsdplus.png", SyncStatus::FdxPlus),
+    ] {
+        let html = html.replacen("sync_dummy.png", file_name, 1);
+        let entries = parse_recent_html(&html).unwrap();
+        assert!(
+            entries.iter().any(|entry| entry.sync == Some(expected)),
+            "expected recent playlog icon {file_name} to parse as {expected:?}",
+        );
+    }
 }

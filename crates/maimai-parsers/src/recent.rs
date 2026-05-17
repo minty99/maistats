@@ -312,6 +312,8 @@ fn parse_sync_from_playlog_icon_src(src: &str) -> Option<SyncStatus> {
             "fsplus" => "fsp",
             "fdx" => "fdx",
             "fdxplus" => "fdxp",
+            "fsd" => "fsd",
+            "fsdplus" => "fsdplus",
             _ => return None,
         }
     };
