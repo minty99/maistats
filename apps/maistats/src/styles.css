@@ -403,40 +403,6 @@ input[type="radio"] {
   letter-spacing: 0;
 }
 
-.view-mode-switch {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--line-strong);
-  border-radius: 2px;
-  background: var(--chip);
-  gap: 2px;
-}
-
-.view-mode-switch button {
-  height: 24px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
-}
-
-.view-mode-switch button:hover {
-  border-color: transparent;
-  background: var(--panel-raised);
-  color: var(--ink-dim);
-}
-
-.view-mode-switch button.active {
-  background: var(--panel-raised);
-  border-color: rgba(224, 144, 0, 0.3);
-  color: var(--accent);
-  font-weight: 700;
-}
-
 .explorer-layout {
   display: grid;
   grid-template-columns: var(--desktop-sidebar-width) minmax(0, 1fr);

@@ -5,7 +5,6 @@ export const SONG_DATABASE_STORAGE_KEY = 'maistats.song-database-url';
 export const RECORD_STORAGE_KEY = 'maistats.record-url';
 export const SCORE_FILTERS_STORAGE_KEY = 'maistats.score-filters';
 export const PLAYLOG_FILTERS_STORAGE_KEY = 'maistats.playlog-filters';
-export const TABLE_LAYOUT_STORAGE_KEY = 'maistats.table-layout';
 export const THEME_STORAGE_KEY = 'maistats.theme';
 
 const ENV_SONG_DATABASE_URL = import.meta.env.SONG_DATABASE_URL?.trim();

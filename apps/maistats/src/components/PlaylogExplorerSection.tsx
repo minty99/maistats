@@ -32,8 +32,6 @@ interface PlaylogExplorerSectionProps {
   sidebarTopContent?: ReactNode;
   playlogCountLabel: string;
   isLoading: boolean;
-  showJackets: boolean;
-  setShowJackets: Dispatch<SetStateAction<boolean>>;
   appliedPlaylogQuery: string;
   onApplyPlaylogQuery: (query: string) => void;
   chartTypes: ChartType[];
@@ -75,8 +73,6 @@ export function PlaylogExplorerSection({
   sidebarTopContent,
   playlogCountLabel,
   isLoading,
-  showJackets,
-  setShowJackets,
   appliedPlaylogQuery,
   onApplyPlaylogQuery,
   chartTypes,
@@ -117,16 +113,16 @@ export function PlaylogExplorerSection({
   const virtualizer = useVirtualizer({
     count: filteredPlaylogRows.length,
     getScrollElement: () => tableWrapRef.current,
-    estimateSize: () => (showJackets ? 80 : 36),
+    estimateSize: () => 80,
     overscan: 10,
   });
 
   useEffect(() => {
     if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
-  }, [filteredPlaylogRows, showJackets]);
+  }, [filteredPlaylogRows]);
 
   const virtualItems = virtualizer.getVirtualItems();
-  const colCount = showJackets ? 13 : 12;
+  const colCount = 13;
   const paddingTop = virtualItems[0]?.start ?? 0;
   const paddingBottom =
     virtualItems.length > 0
@@ -298,22 +294,6 @@ export function PlaylogExplorerSection({
                 <h2>Playlogs</h2>
               </div>
               <div className="panel-heading-actions">
-                <div className="view-mode-switch" role="group" aria-label={t('playlogs.layout')}>
-                  <button
-                    type="button"
-                    className={showJackets ? 'active' : ''}
-                    onClick={() => setShowJackets(true)}
-                  >
-                    {t('common.jacket')}
-                  </button>
-                  <button
-                    type="button"
-                    className={!showJackets ? 'active' : ''}
-                    onClick={() => setShowJackets(false)}
-                  >
-                    {t('common.compact')}
-                  </button>
-                </div>
                 <span className="panel-count">{playlogCountLabel}</span>
               </div>
             </div>
@@ -330,7 +310,7 @@ export function PlaylogExplorerSection({
                         </span>
                       </button>
                     </th>
-                    {showJackets ? <th className="jacket-col">{t('common.jacket')}</th> : null}
+                    <th className="jacket-col">{t('common.jacket')}</th>
                     <th className="sortable played-at-col">
                       <button type="button" className="th-sort-button" onClick={() => onSortBy('playedAt')}>
                         <span>{t('playlogs.playedAt')}</span>
@@ -395,11 +375,9 @@ export function PlaylogExplorerSection({
                     return (
                       <tr key={row.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
                         <td className="credit-col">{row.creditId ?? '-'}</td>
-                        {showJackets ? (
-                          <td className="jacket-col">
-                            <Jacket songInfoUrl={songInfoUrl} imageName={row.imageName} title={row.title} />
-                          </td>
-                        ) : null}
+                        <td className="jacket-col">
+                          <Jacket songInfoUrl={songInfoUrl} imageName={row.imageName} title={row.title} />
+                        </td>
                         <td className="played-at-col">{row.playedAtLabel ?? toDateLabel(row.playedAtUnix, locale) ?? '-'}</td>
                         <td className="track-col">{row.track ?? '-'}</td>
                         <td className="title-col">
@@ -407,7 +385,7 @@ export function PlaylogExplorerSection({
                             <SongTitleButton
                               target={getSongDetailTarget(row)}
                               title={row.title}
-                              subtitle={showJackets ? formatAliasSummary(row.aliases) : null}
+                              subtitle={formatAliasSummary(row.aliases)}
                               onOpenSongDetail={onOpenSongDetail}
                             />
                           </div>

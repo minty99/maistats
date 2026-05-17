@@ -22,7 +22,6 @@ import {
   SCORE_FILTERS_STORAGE_KEY,
   SONG_DATABASE_STORAGE_KEY,
   SONG_INFO_STORAGE_KEY,
-  TABLE_LAYOUT_STORAGE_KEY,
   THEME_STORAGE_KEY,
   ScoreSortKey,
   VERSION_ORDER_MAP,
@@ -119,10 +118,6 @@ function readPageFromHash(hash: string): AppPage {
     return 'settings';
   }
   return 'scores';
-}
-
-function readShowJacketsPreference(): boolean {
-  return localStorage.getItem(TABLE_LAYOUT_STORAGE_KEY) !== 'compact';
 }
 
 function compareRatingPageRows(
@@ -484,7 +479,6 @@ function App() {
 
   const [selectedDetailSongKey, setSelectedDetailSongKey] = useState<string | null>(null);
   const [selectedHistoryKey, setSelectedHistoryKey] = useState<string | null>(null);
-  const [showJackets, setShowJackets] = useState<boolean>(readShowJacketsPreference);
 
   const [playlogQuery, setPlaylogQuery] = useState('');
   const [playlogChartFilter, setPlaylogChartFilter] = useState<ChartType[]>(() => {
@@ -860,10 +854,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem(RECORD_STORAGE_KEY, recordCollectorUrl);
   }, [recordCollectorUrl]);
-
-  useEffect(() => {
-    localStorage.setItem(TABLE_LAYOUT_STORAGE_KEY, showJackets ? 'jacket' : 'compact');
-  }, [showJackets]);
 
   useEffect(() => {
     if (activePage !== 'settings') {
@@ -1608,8 +1598,6 @@ function App() {
               sidebarTopContent={desktopSidebarTopContent}
               scoreCountLabel={scoreCountLabel}
               isLoading={isLoading}
-              showJackets={showJackets}
-              setShowJackets={setShowJackets}
               appliedQuery={query}
               onApplyQuery={handleApplyScoreQuery}
               chartTypes={CHART_TYPES}
@@ -1666,8 +1654,6 @@ function App() {
               sidebarTopContent={desktopSidebarTopContent}
               playlogCountLabel={playlogCountLabel}
               isLoading={isPlaylogsLoading}
-              showJackets={showJackets}
-              setShowJackets={setShowJackets}
               appliedPlaylogQuery={playlogQuery}
               onApplyPlaylogQuery={handleApplyPlaylogQuery}
               chartTypes={CHART_TYPES}
