@@ -3,6 +3,7 @@ use models::SongAliases;
 use std::collections::HashMap;
 
 // The GCM-bot author granted permission to reuse these maimai alias files here.
+const GENERATED_EN_ALIAS_TSV: &str = include_str!("data/en_generated_aliases.tsv");
 const GENERATED_KO_ALIAS_TSV: &str = include_str!("data/ko_generated_aliases.tsv");
 const EN_ALIAS_URL: &str =
     "https://raw.githubusercontent.com/lomotos10/GCM-bot/main/data/aliases/en/maimai.tsv";
@@ -14,7 +15,10 @@ pub(crate) async fn fetch_song_aliases(
 ) -> eyre::Result<HashMap<String, SongAliases>> {
     let generated_ko =
         parse_alias_tsv(GENERATED_KO_ALIAS_TSV).wrap_err("parse bundled ko aliases")?;
+    let generated_en =
+        parse_alias_tsv(GENERATED_EN_ALIAS_TSV).wrap_err("parse bundled en aliases")?;
     let en = fetch_aliases(client, "en", EN_ALIAS_URL).await?;
+    let en = merge_language_alias_maps(en, generated_en);
     let ko = fetch_aliases(client, "ko", KO_ALIAS_URL).await?;
     let ko = merge_language_alias_maps(ko, generated_ko);
 
