@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useI18n } from '../app/i18n';
-import { formatPercent } from '../app/utils';
+import { aliasValues, formatNumber, formatPercent, formatVersionLabel } from '../app/utils';
+import { toDateLabel } from '../derive';
 import { ChartTypeLabel } from './ChartTypeLabel';
 import { DifficultyLabel } from './DifficultyLabel';
 import { Jacket } from './Jacket';
@@ -131,6 +132,21 @@ function buildYRange(values: number[]): [number, number] {
   return yMax > yMin ? [yMin, yMax] : [Math.max(0, yMin - 0.5), yMax + 0.5];
 }
 
+function HistoryMetaItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="history-meta-item">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 export function ScoreHistoryModal({
   selectedHistoryRow,
   historyPoints,
@@ -144,6 +160,13 @@ export function ScoreHistoryModal({
   const effectiveTheme = useEffectiveTheme();
   const plotTheme = effectiveTheme === 'light' ? LIGHT_HISTORY_THEME : DARK_HISTORY_THEME;
   const shouldShowLoadingState = isLoading && historyPoints.length === 0;
+  const englishAliases = selectedHistoryRow ? aliasValues(selectedHistoryRow.aliases, 'en') : [];
+  const koreanAliases = selectedHistoryRow ? aliasValues(selectedHistoryRow.aliases, 'ko') : [];
+  const lastPlayedLabel = selectedHistoryRow
+    ? selectedHistoryRow.latestPlayedAtLabel
+      ?? toDateLabel(selectedHistoryRow.latestPlayedAtUnix, locale)
+      ?? '-'
+    : '-';
 
   const sortedHistoryPoints = useMemo(
     () => [...historyPoints].sort((a, b) => a.playedAtUnix - b.playedAtUnix),
@@ -290,7 +313,12 @@ export function ScoreHistoryModal({
         className="modal-card panel history-modal"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2>{t('history.title')}</h2>
+        <div className="modal-title-row">
+          <h2>{t('history.title')}</h2>
+          <button type="button" className="modal-close-button" onClick={onClose}>
+            {t('common.close')}
+          </button>
+        </div>
         <div className="detail-content">
           <div className="detail-header">
             <div className="detail-song-summary">
@@ -306,14 +334,25 @@ export function ScoreHistoryModal({
                   <ChartTypeLabel chartType={selectedHistoryRow.chartType} />
                   <DifficultyLabel difficulty={selectedHistoryRow.difficulty} className="difficulty-badge" />
                 </div>
-                <p className="muted">
-                  {t('history.description')}
-                </p>
+                {selectedHistoryRow.artist ? (
+                  <div className="muted detail-aliases">Artist: {selectedHistoryRow.artist}</div>
+                ) : null}
+                {selectedHistoryRow.genre ? (
+                  <div className="muted detail-aliases">Genre: {selectedHistoryRow.genre}</div>
+                ) : null}
+                {englishAliases.length > 0 ? (
+                  <div className="muted detail-aliases">EN: {englishAliases.join(', ')}</div>
+                ) : null}
+                {koreanAliases.length > 0 ? (
+                  <div className="muted detail-aliases">KO: {koreanAliases.join(', ')}</div>
+                ) : null}
+                <div className="history-meta-grid">
+                  <HistoryMetaItem label={t('common.lastPlayed')} value={lastPlayedLabel} />
+                  <HistoryMetaItem label={t('common.playCount')} value={formatNumber(selectedHistoryRow.playCount, locale)} />
+                  <HistoryMetaItem label={t('common.version')} value={formatVersionLabel(selectedHistoryRow.version)} />
+                </div>
               </div>
             </div>
-            <button type="button" className="modal-close-button" onClick={onClose}>
-              {t('common.close')}
-            </button>
           </div>
 
           {shouldShowLoadingState ? (

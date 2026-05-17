@@ -143,6 +143,15 @@ export function PlaylogExplorerSection({
         <div>
           <h2>{t('common.filters')}</h2>
         </div>
+        {isFilterModalOpen ? (
+          <button
+            type="button"
+            className="modal-close-button"
+            onClick={() => setIsFilterModalOpen(false)}
+          >
+            {t('common.close')}
+          </button>
+        ) : null}
       </div>
       <div className="filter-grid">
         <div className="filter-block playlog-day-filter">
@@ -410,15 +419,6 @@ export function PlaylogExplorerSection({
             className="modal-card panel mobile-filter-modal"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="detail-header">
-              <button
-                type="button"
-                className="modal-close-button"
-                onClick={() => setIsFilterModalOpen(false)}
-              >
-                {t('common.close')}
-              </button>
-            </div>
             {sidebarTopContent}
             {filterPanel}
           </section>

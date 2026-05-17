@@ -4,7 +4,6 @@ import { useI18n } from '../app/i18n';
 import { formatNumber, formatVersionLabel } from '../app/utils';
 import type { ScoreRow } from '../types';
 import { SongRecordCard } from './SongRecordCard';
-import type { SongDetailTarget } from './TableActionCells';
 
 interface RatingPageProps {
   sidebarTopContent?: ReactNode;
@@ -14,7 +13,7 @@ interface RatingPageProps {
   oldRatingTotal: number;
   newRows: ScoreRow[];
   oldRows: ScoreRow[];
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }
 
 function formatRatingAvg(total: number, count: number): string {
@@ -33,13 +32,13 @@ function RatingCardSection({
   summary,
   rows,
   songInfoUrl,
-  onOpenSongDetail,
+  onOpenHistory,
 }: {
   title: string;
   summary: string;
   rows: ScoreRow[];
   songInfoUrl: string;
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }) {
   return (
     <section className="panel rating-section-panel">
@@ -57,7 +56,7 @@ function RatingCardSection({
             songInfoUrl={songInfoUrl}
             topLeft={`#${index + 1}`}
             topRight={formatVersionLabel(row.version)}
-            onOpenSongDetail={onOpenSongDetail}
+            onOpenHistory={onOpenHistory}
           />
         ))}
       </div>
@@ -73,7 +72,7 @@ export function RatingPage({
   oldRatingTotal,
   newRows,
   oldRows,
-  onOpenSongDetail,
+  onOpenHistory,
 }: RatingPageProps) {
   const { locale, t } = useI18n();
   const newSummary = `avg ${formatRatingAvg(newRatingTotal, newRows.length)} (~${formatRatingProjection(newRatingTotal, newRows.length, locale)})`;
@@ -107,14 +106,14 @@ export function RatingPage({
           summary={newSummary}
           rows={newRows}
           songInfoUrl={songInfoUrl}
-          onOpenSongDetail={onOpenSongDetail}
+          onOpenHistory={onOpenHistory}
         />
         <RatingCardSection
           title="OLD"
           summary={oldSummary}
           rows={oldRows}
           songInfoUrl={songInfoUrl}
-          onOpenSongDetail={onOpenSongDetail}
+          onOpenHistory={onOpenHistory}
         />
       </div>
     </div>

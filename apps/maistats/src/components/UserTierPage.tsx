@@ -3,10 +3,10 @@ import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react';
 import { useI18n } from '../app/i18n';
 import { formatPercent } from '../app/utils';
 import type { ScoreRow } from '../types';
+import { ChartTypeLabel } from './ChartTypeLabel';
 import { getDifficultyToneClass } from './DifficultyLabel';
 import { FilterFabButton } from './FilterFabButton';
 import { Jacket } from './Jacket';
-import type { SongDetailTarget } from './TableActionCells';
 
 export interface UserTierSongRow {
   key: string;
@@ -28,11 +28,17 @@ interface UserTierInternalLevelGroup {
   rows: UserTierSongRow[];
 }
 
+interface UserTierGroupSummary {
+  averageAchievement: number | null;
+  playedCount: number;
+  totalCount: number;
+}
+
 interface UserTierPageProps {
   sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   groups: UserTierGroup[];
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }
 
 type UserTierRangeKey = '13' | '13plus' | '14';
@@ -49,13 +55,13 @@ const USER_TIER_RANGES: {
   { key: '14', label: '14', rangeLabel: '14.00 - 14.50', minStep: 1400, maxStep: 1450 },
 ];
 
-function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenSongDetail: () => void) {
+function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, onOpenHistory: () => void) {
   if (event.key !== 'Enter' && event.key !== ' ') {
     return;
   }
 
   event.preventDefault();
-  onOpenSongDetail();
+  onOpenHistory();
 }
 
 function formatInternalLevel(row: ScoreRow): string {
@@ -98,17 +104,31 @@ function isGroupInTierRange(group: UserTierGroup, range: (typeof USER_TIER_RANGE
   return group.step >= range.minStep && group.step <= range.maxStep;
 }
 
+function buildUserTierGroupSummary(rows: UserTierSongRow[]): UserTierGroupSummary {
+  const playedAchievements = rows
+    .map((row) => row.score.achievementPercent)
+    .filter((value): value is number => value !== null);
+
+  return {
+    averageAchievement: playedAchievements.length > 0
+      ? playedAchievements.reduce((sum, value) => sum + value, 0) / playedAchievements.length
+      : null,
+    playedCount: playedAchievements.length,
+    totalCount: rows.length,
+  };
+}
+
 function UserTierSongCard({
   row,
   songInfoUrl,
-  onOpenSongDetail,
+  onOpenHistory,
 }: {
   row: ScoreRow;
   songInfoUrl: string;
-  onOpenSongDetail: (target: SongDetailTarget) => void;
+  onOpenHistory: (row: ScoreRow) => void;
 }) {
   const { t } = useI18n();
-  const handleOpenDetail = () => onOpenSongDetail(row);
+  const handleOpenHistory = () => onOpenHistory(row);
   const toneClass = getDifficultyToneClass(row.difficulty);
 
   return (
@@ -116,9 +136,9 @@ function UserTierSongCard({
       className={`user-tier-song-card ${toneClass}`}
       role="button"
       tabIndex={0}
-      aria-label={t('rating.openSongDetail', { title: row.title })}
-      onClick={handleOpenDetail}
-      onKeyDown={(event) => handleCardKeyDown(event, handleOpenDetail)}
+      aria-label={t('history.openChartHistory', { title: row.title })}
+      onClick={handleOpenHistory}
+      onKeyDown={(event) => handleCardKeyDown(event, handleOpenHistory)}
     >
       <div className={`user-tier-song-stage ${toneClass}`}>
         <div className="user-tier-song-jacket-wrap">
@@ -130,7 +150,10 @@ function UserTierSongCard({
           />
         </div>
         <div className="user-tier-song-stage-gradient" />
-        <div className="user-tier-internal-chip">{formatInternalLevel(row)}</div>
+        <div className="user-tier-stage-badges">
+          <ChartTypeLabel chartType={row.chartType} className="user-tier-chart-chip" />
+          <div className="user-tier-internal-chip">{formatInternalLevel(row)}</div>
+        </div>
       </div>
       <div className="user-tier-song-info">
         <strong>{formatAchievementValue(row)}</strong>
@@ -143,13 +166,17 @@ export function UserTierPage({
   sidebarTopContent,
   songInfoUrl,
   groups,
-  onOpenSongDetail,
+  onOpenHistory,
 }: UserTierPageProps) {
   const { t } = useI18n();
   const [hideNoData, setHideNoData] = useState(false);
   const [hideBelow90, setHideBelow90] = useState(false);
-  const [activeRangeKey, setActiveRangeKey] = useState<UserTierRangeKey>('14');
+  const [activeRangeKey, setActiveRangeKey] = useState<UserTierRangeKey>('13');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const tierSummaries = useMemo(
+    () => new Map(groups.map((group) => [group.label, buildUserTierGroupSummary(group.rows)])),
+    [groups],
+  );
   const filteredGroups = useMemo(
     () =>
       groups
@@ -180,7 +207,7 @@ export function UserTierPage({
       ) as Record<UserTierRangeKey, number>,
     [filteredGroups],
   );
-  const activeRange = USER_TIER_RANGES.find((range) => range.key === activeRangeKey) ?? USER_TIER_RANGES[2];
+  const activeRange = USER_TIER_RANGES.find((range) => range.key === activeRangeKey) ?? USER_TIER_RANGES[0];
   const visibleGroups = useMemo(
     () => filteredGroups.filter((group) => isGroupInTierRange(group, activeRange)),
     [activeRange, filteredGroups],
@@ -189,9 +216,10 @@ export function UserTierPage({
     () =>
       visibleGroups.map((group) => ({
         ...group,
+        summary: tierSummaries.get(group.label) ?? buildUserTierGroupSummary(group.rows),
         internalLevelGroups: buildInternalLevelGroups(group.rows, () => t('tiers.unknownInternalLevel')),
       })),
-    [t, visibleGroups],
+    [t, tierSummaries, visibleGroups],
   );
   const filterPanel = (
     <section className="panel filter-panel">
@@ -257,8 +285,23 @@ export function UserTierPage({
               {visibleGroupedSections.map((group) => (
                 <section key={group.label} className="panel user-tier-section-panel">
                   <div className="panel-heading">
-                    <div>
+                    <div className="user-tier-title-row">
                       <h2>{group.label}</h2>
+                      <div className="user-tier-summary">
+                        <span className="user-tier-summary-item">
+                          <span>{t('tiers.averageScore')}</span>
+                          <strong>{formatPercent(group.summary.averageAchievement)}</strong>
+                        </span>
+                        <span className="user-tier-summary-item">
+                          <span>{t('tiers.playedCountLabel')}</span>
+                          <strong>
+                            {t('tiers.playedCountValue', {
+                              played: group.summary.playedCount,
+                              total: group.summary.totalCount,
+                            })}
+                          </strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="user-tier-internal-stack">
@@ -273,7 +316,7 @@ export function UserTierPage({
                               key={item.key}
                               row={item.score}
                               songInfoUrl={songInfoUrl}
-                              onOpenSongDetail={onOpenSongDetail}
+                              onOpenHistory={onOpenHistory}
                             />
                           ))}
                         </div>

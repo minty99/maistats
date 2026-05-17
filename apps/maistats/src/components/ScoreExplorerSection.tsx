@@ -176,9 +176,20 @@ export function ScoreExplorerSection({
         <div>
           <h2>{t('common.filters')}</h2>
         </div>
-        <button type="button" className="filter-reset-button" onClick={onResetFilters}>
-          {t('scores.resetAll')}
-        </button>
+        <div className="panel-heading-actions">
+          <button type="button" className="filter-reset-button" onClick={onResetFilters}>
+            {t('scores.resetAll')}
+          </button>
+          {isFilterModalOpen ? (
+            <button
+              type="button"
+              className="modal-close-button"
+              onClick={() => setIsFilterModalOpen(false)}
+            >
+              {t('common.close')}
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="filter-grid">
         <ToggleGroup
@@ -548,15 +559,6 @@ export function ScoreExplorerSection({
             className="modal-card panel mobile-filter-modal"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="detail-header">
-              <button
-                type="button"
-                className="modal-close-button"
-                onClick={() => setIsFilterModalOpen(false)}
-              >
-                {t('common.close')}
-              </button>
-            </div>
             {sidebarTopContent}
             {filterPanel}
           </section>
