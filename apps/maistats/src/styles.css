@@ -1400,6 +1400,51 @@ select:focus-visible {
   gap: 14px;
 }
 
+.user-tier-info-panel {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+.user-tier-info-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line-strong));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.user-tier-info-panel p {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink-dim);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.user-tier-info-panel a {
+  color: var(--accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.user-tier-info-panel a:hover {
+  text-decoration: underline;
+}
+
 .user-tier-range-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(96px, 1fr));
@@ -1486,6 +1531,56 @@ select:focus-visible {
 .user-tier-filter-actions {
   display: grid;
   gap: 8px;
+}
+
+.user-tier-control-group {
+  display: grid;
+  gap: 6px;
+}
+
+.user-tier-control-title {
+  color: var(--ink-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.user-tier-display-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: min(100%, 430px);
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: var(--chip);
+}
+
+.user-tier-display-options button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
+}
+
+.user-tier-display-options button:hover {
+  background: var(--panel-raised);
+  color: var(--ink);
+}
+
+.user-tier-display-options button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  color: var(--ink);
 }
 
 .user-tier-filter-toggle {
