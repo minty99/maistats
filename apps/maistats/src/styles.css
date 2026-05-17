@@ -403,45 +403,17 @@ input[type="radio"] {
   letter-spacing: 0;
 }
 
-.view-mode-switch {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--line-strong);
-  border-radius: 2px;
-  background: var(--chip);
-  gap: 2px;
-}
-
-.view-mode-switch button {
-  height: 24px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
-}
-
-.view-mode-switch button:hover {
-  border-color: transparent;
-  background: var(--panel-raised);
-  color: var(--ink-dim);
-}
-
-.view-mode-switch button.active {
-  background: var(--panel-raised);
-  border-color: rgba(224, 144, 0, 0.3);
-  color: var(--accent);
-  font-weight: 700;
-}
-
 .explorer-layout {
   display: grid;
   grid-template-columns: var(--desktop-sidebar-width) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+}
+
+.table-explorer-layout {
+  align-items: stretch;
+  height: calc(100dvh - 28px);
+  min-height: 0;
 }
 
 .sidebar-column,
@@ -1826,7 +1798,8 @@ select:focus-visible {
 .explorer-table-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  min-height: calc(100vh - 28px);
+  height: 100%;
+  min-height: 0;
 }
 
 .explorer-table-panel .table-wrap {
@@ -1956,6 +1929,25 @@ tbody tr:last-child td {
   border-radius: 2px;
   object-fit: cover;
   border: 1px solid var(--line-strong);
+}
+
+.jacket-frame {
+  position: relative;
+  width: 50px;
+  height: 50px;
+}
+
+.jacket-frame .jacket {
+  position: absolute;
+  inset: 0;
+}
+
+.jacket-image {
+  opacity: 0;
+}
+
+.jacket-image.loaded {
+  opacity: 1;
 }
 
 .jacket.fallback {
@@ -2993,6 +2985,10 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .table-explorer-layout {
+    height: auto;
+  }
+
   .table-column {
     order: 1;
   }
@@ -3006,11 +3002,13 @@ tbody tr:last-child td {
   }
 
   .explorer-table-panel {
-    min-height: auto;
+    height: calc(100dvh - 128px);
+    min-height: 420px;
   }
 
   .explorer-table-panel .table-wrap {
-    height: auto;
+    height: 100%;
+    overflow-y: auto;
   }
 
   .sidebar-column .panel {

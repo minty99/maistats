@@ -1,5 +1,13 @@
-import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { SearchInput } from './SearchInput';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 import type { PlaylogSortKey } from '../app/constants';
 import { useI18n } from '../app/i18n';
@@ -24,8 +32,6 @@ interface PlaylogExplorerSectionProps {
   sidebarTopContent?: ReactNode;
   playlogCountLabel: string;
   isLoading: boolean;
-  showJackets: boolean;
-  setShowJackets: Dispatch<SetStateAction<boolean>>;
   appliedPlaylogQuery: string;
   onApplyPlaylogQuery: (query: string) => void;
   chartTypes: ChartType[];
@@ -67,8 +73,6 @@ export function PlaylogExplorerSection({
   sidebarTopContent,
   playlogCountLabel,
   isLoading,
-  showJackets,
-  setShowJackets,
   appliedPlaylogQuery,
   onApplyPlaylogQuery,
   chartTypes,
@@ -103,7 +107,27 @@ export function PlaylogExplorerSection({
   onSortBy,
 }: PlaylogExplorerSectionProps) {
   const { formatNumber: formatLocalizedNumber, locale, t } = useI18n();
+  const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  const virtualizer = useVirtualizer({
+    count: filteredPlaylogRows.length,
+    getScrollElement: () => tableWrapRef.current,
+    estimateSize: () => 80,
+    overscan: 10,
+  });
+
+  useEffect(() => {
+    if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
+  }, [filteredPlaylogRows]);
+
+  const virtualItems = virtualizer.getVirtualItems();
+  const colCount = 13;
+  const paddingTop = virtualItems[0]?.start ?? 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? virtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+      : 0;
 
   const handlePlaylogDayInputChange = (value: string) => {
     if (!value) {
@@ -251,7 +275,7 @@ export function PlaylogExplorerSection({
 
   return (
     <>
-      <div className="explorer-layout">
+      <div className="explorer-layout table-explorer-layout">
         <aside className="sidebar-column">
           {sidebarTopContent}
           <section className="panel search-panel">
@@ -270,26 +294,10 @@ export function PlaylogExplorerSection({
                 <h2>Playlogs</h2>
               </div>
               <div className="panel-heading-actions">
-                <div className="view-mode-switch" role="group" aria-label={t('playlogs.layout')}>
-                  <button
-                    type="button"
-                    className={showJackets ? 'active' : ''}
-                    onClick={() => setShowJackets(true)}
-                  >
-                    {t('common.jacket')}
-                  </button>
-                  <button
-                    type="button"
-                    className={!showJackets ? 'active' : ''}
-                    onClick={() => setShowJackets(false)}
-                  >
-                    {t('common.compact')}
-                  </button>
-                </div>
                 <span className="panel-count">{playlogCountLabel}</span>
               </div>
             </div>
-            <div className="table-wrap">
+            <div className="table-wrap" ref={tableWrapRef}>
               {isLoading ? <div className="table-loading-state">{t('common.loadingPlaylogs')}</div> : null}
               <table className="playlog-table compact-table">
                 <thead>
@@ -302,7 +310,7 @@ export function PlaylogExplorerSection({
                         </span>
                       </button>
                     </th>
-                    {showJackets ? <th className="jacket-col">{t('common.jacket')}</th> : null}
+                    <th className="jacket-col">{t('common.jacket')}</th>
                     <th className="sortable played-at-col">
                       <button type="button" className="th-sort-button" onClick={() => onSortBy('playedAt')}>
                         <span>{t('playlogs.playedAt')}</span>
@@ -357,53 +365,64 @@ export function PlaylogExplorerSection({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPlaylogRows.map((row) => (
-                    <tr key={row.key}>
-                      <td className="credit-col">{row.creditId ?? '-'}</td>
-                      {showJackets ? (
+                  {paddingTop > 0 && (
+                    <tr style={{ height: paddingTop }}>
+                      <td colSpan={colCount} />
+                    </tr>
+                  )}
+                  {virtualItems.map((virtualRow) => {
+                    const row = filteredPlaylogRows[virtualRow.index];
+                    return (
+                      <tr key={row.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
+                        <td className="credit-col">{row.creditId ?? '-'}</td>
                         <td className="jacket-col">
                           <Jacket songInfoUrl={songInfoUrl} imageName={row.imageName} title={row.title} />
                         </td>
-                      ) : null}
-                      <td className="played-at-col">{row.playedAtLabel ?? toDateLabel(row.playedAtUnix, locale) ?? '-'}</td>
-                      <td className="track-col">{row.track ?? '-'}</td>
-                      <td className="title-col">
-                        <div className="title-cell">
-                          <SongTitleButton
-                            target={getSongDetailTarget(row)}
-                            title={row.title}
-                            subtitle={showJackets ? formatAliasSummary(row.aliases) : null}
-                            onOpenSongDetail={onOpenSongDetail}
+                        <td className="played-at-col">{row.playedAtLabel ?? toDateLabel(row.playedAtUnix, locale) ?? '-'}</td>
+                        <td className="track-col">{row.track ?? '-'}</td>
+                        <td className="title-col">
+                          <div className="title-cell">
+                            <SongTitleButton
+                              target={getSongDetailTarget(row)}
+                              title={row.title}
+                              subtitle={formatAliasSummary(row.aliases)}
+                              onOpenSongDetail={onOpenSongDetail}
+                            />
+                          </div>
+                        </td>
+                        <td className="chart-col">
+                          <ChartTypeLabel chartType={row.chartType} />
+                        </td>
+                        <td className="level-col">
+                          <LevelCell
+                            internalLevel={row.internalLevel}
+                            isInternalLevelEstimated={row.isInternalLevelEstimated}
+                            difficulty={row.difficulty}
                           />
-                        </div>
-                      </td>
-                      <td className="chart-col">
-                        <ChartTypeLabel chartType={row.chartType} />
-                      </td>
-                      <td className="level-col">
-                        <LevelCell
-                          internalLevel={row.internalLevel}
-                          isInternalLevelEstimated={row.isInternalLevelEstimated}
-                          difficulty={row.difficulty}
-                        />
-                      </td>
-                      <td className="achievement-col">
-                        <AchievementHistoryButton
-                          achievementPercent={row.achievementPercent}
-                          isHighlighted={row.isNewRecord}
-                          variant="playlog"
-                          onOpenHistory={canOpenHistory(row) ? () => onOpenHistory(row) : null}
-                        />
-                      </td>
-                      <td className="rating-col">{formatNumber(toIntegerRating(row.rating), locale)}</td>
-                      <td className="rank-col">{row.rank ?? '-'}</td>
-                      <td className="fc-col">{row.fc ?? '-'}</td>
-                      <td className="sync-col">{row.sync ?? '-'}</td>
-                      <td className="dx-col">
-                        {formatNumber(row.dxScore, locale)} / {formatNumber(row.dxScoreMax, locale)}
-                      </td>
+                        </td>
+                        <td className="achievement-col">
+                          <AchievementHistoryButton
+                            achievementPercent={row.achievementPercent}
+                            isHighlighted={row.isNewRecord}
+                            variant="playlog"
+                            onOpenHistory={canOpenHistory(row) ? () => onOpenHistory(row) : null}
+                          />
+                        </td>
+                        <td className="rating-col">{formatNumber(toIntegerRating(row.rating), locale)}</td>
+                        <td className="rank-col">{row.rank ?? '-'}</td>
+                        <td className="fc-col">{row.fc ?? '-'}</td>
+                        <td className="sync-col">{row.sync ?? '-'}</td>
+                        <td className="dx-col">
+                          {formatNumber(row.dxScore, locale)} / {formatNumber(row.dxScoreMax, locale)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {paddingBottom > 0 && (
+                    <tr style={{ height: paddingBottom }}>
+                      <td colSpan={colCount} />
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
