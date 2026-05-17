@@ -257,6 +257,9 @@ def build_output_entry(
         "difficulty": sheet["difficulty"],
         "internalLevel": sheet.get("internalLevel"),
         "userTier": entry.source_tier,
+        "lomoSourceTier": entry.source_tier,
+        "raveilleInternalLevel": f"{entry.source_internal_level_tenths / 10:.1f}",
+        "raveilleTier": entry.source_grade,
     }
 
 

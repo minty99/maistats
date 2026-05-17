@@ -2,7 +2,11 @@ import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react';
 
 import { useI18n } from '../app/i18n';
 import { formatPercent } from '../app/utils';
-import type { ScoreRow } from '../types';
+import type {
+  RaveilleUserTierConversionEntry,
+  RaveilleUserTierConversionMapping,
+  ScoreRow,
+} from '../types';
 import { ChartTypeLabel } from './ChartTypeLabel';
 import { getDifficultyToneClass } from './DifficultyLabel';
 import { FilterFabButton } from './FilterFabButton';
@@ -12,6 +16,9 @@ export interface UserTierSongRow {
   key: string;
   userTier: string;
   userTierStep: number;
+  lomoSourceTier: number | null;
+  raveilleInternalLevel: string | null;
+  raveilleTier: string | null;
   score: ScoreRow;
 }
 
@@ -34,10 +41,16 @@ interface UserTierGroupSummary {
   totalCount: number;
 }
 
+interface UserTierConversionLine {
+  key: number;
+  label: string;
+}
+
 interface UserTierPageProps {
   sidebarTopContent?: ReactNode;
   songInfoUrl: string;
   groups: UserTierGroup[];
+  conversions: RaveilleUserTierConversionEntry[];
   onOpenHistory: (row: ScoreRow) => void;
 }
 
@@ -74,6 +87,39 @@ function formatInternalLevel(row: ScoreRow): string {
 
 function formatAchievementValue(row: ScoreRow): string {
   return formatPercent(row.achievementPercent).replace(/%$/, '');
+}
+
+function formatRaveillePosition(row: UserTierSongRow): string | null {
+  if (!row.raveilleInternalLevel || !row.raveilleTier) {
+    return null;
+  }
+  return `${row.raveilleInternalLevel} ${row.raveilleTier}`;
+}
+
+function formatConversionMapping(mapping: RaveilleUserTierConversionMapping): string {
+  return `${mapping.raveilleInternalLevel} ${mapping.raveilleTier}`;
+}
+
+function buildConversionLines(
+  conversion: RaveilleUserTierConversionEntry,
+): UserTierConversionLine[] {
+  const mappingsBySourceTier = new Map<number, RaveilleUserTierConversionMapping[]>();
+
+  for (const mapping of conversion.mappings) {
+    const mappings = mappingsBySourceTier.get(mapping.lomoSourceTier) ?? [];
+    mappings.push(mapping);
+    mappingsBySourceTier.set(mapping.lomoSourceTier, mappings);
+  }
+
+  return conversion.lomoSourceTiers
+    .map((sourceTier) => {
+      const mappings = mappingsBySourceTier.get(sourceTier) ?? [];
+      return {
+        key: sourceTier,
+        label: mappings.map(formatConversionMapping).join(', '),
+      };
+    })
+    .filter((line) => line.label.length > 0);
 }
 
 function buildInternalLevelGroups(
@@ -119,17 +165,19 @@ function buildUserTierGroupSummary(rows: UserTierSongRow[]): UserTierGroupSummar
 }
 
 function UserTierSongCard({
-  row,
+  item,
   songInfoUrl,
   onOpenHistory,
 }: {
-  row: ScoreRow;
+  item: UserTierSongRow;
   songInfoUrl: string;
   onOpenHistory: (row: ScoreRow) => void;
 }) {
   const { t } = useI18n();
+  const row = item.score;
   const handleOpenHistory = () => onOpenHistory(row);
   const toneClass = getDifficultyToneClass(row.difficulty);
+  const raveillePosition = formatRaveillePosition(item);
 
   return (
     <article
@@ -157,6 +205,7 @@ function UserTierSongCard({
       </div>
       <div className="user-tier-song-info">
         <strong>{formatAchievementValue(row)}</strong>
+        {raveillePosition ? <span>{raveillePosition}</span> : null}
       </div>
     </article>
   );
@@ -166,6 +215,7 @@ export function UserTierPage({
   sidebarTopContent,
   songInfoUrl,
   groups,
+  conversions,
   onOpenHistory,
 }: UserTierPageProps) {
   const { t } = useI18n();
@@ -176,6 +226,10 @@ export function UserTierPage({
   const tierSummaries = useMemo(
     () => new Map(groups.map((group) => [group.label, buildUserTierGroupSummary(group.rows)])),
     [groups],
+  );
+  const conversionsByTier = useMemo(
+    () => new Map(conversions.map((conversion) => [conversion.userTier, conversion])),
+    [conversions],
   );
   const filteredGroups = useMemo(
     () =>
@@ -216,10 +270,11 @@ export function UserTierPage({
     () =>
       visibleGroups.map((group) => ({
         ...group,
+        conversion: conversionsByTier.get(group.label) ?? null,
         summary: tierSummaries.get(group.label) ?? buildUserTierGroupSummary(group.rows),
         internalLevelGroups: buildInternalLevelGroups(group.rows, () => t('tiers.unknownInternalLevel')),
       })),
-    [t, tierSummaries, visibleGroups],
+    [conversionsByTier, t, tierSummaries, visibleGroups],
   );
   const filterPanel = (
     <section className="panel filter-panel">
@@ -285,24 +340,54 @@ export function UserTierPage({
               {visibleGroupedSections.map((group) => (
                 <section key={group.label} className="panel user-tier-section-panel">
                   <div className="panel-heading">
-                    <div className="user-tier-title-row">
-                      <h2>{group.label}</h2>
-                      <div className="user-tier-summary">
-                        <span className="user-tier-summary-item">
-                          <span>{t('tiers.averageScore')}</span>
-                          <strong>{formatPercent(group.summary.averageAchievement)}</strong>
-                        </span>
-                        <span className="user-tier-summary-item">
-                          <span>{t('tiers.playedCountLabel')}</span>
-                          <strong>
-                            {t('tiers.playedCountValue', {
-                              played: group.summary.playedCount,
-                              total: group.summary.totalCount,
-                            })}
-                          </strong>
-                        </span>
+                    {group.conversion ? (
+                      <details className="user-tier-conversion-details">
+                        <summary>
+                          <div className="user-tier-title-row">
+                            <h2>{group.label}</h2>
+                            <div className="user-tier-summary">
+                              <span className="user-tier-summary-item">
+                                <span>{t('tiers.averageScore')}</span>
+                                <strong>{formatPercent(group.summary.averageAchievement)}</strong>
+                              </span>
+                              <span className="user-tier-summary-item">
+                                <span>{t('tiers.playedCountLabel')}</span>
+                                <strong>
+                                  {t('tiers.playedCountValue', {
+                                    played: group.summary.playedCount,
+                                    total: group.summary.totalCount,
+                                  })}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
+                        </summary>
+                        <div className="user-tier-conversion-lines">
+                          {buildConversionLines(group.conversion).map((line) => (
+                            <div key={line.key}>{line.label}</div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : (
+                      <div className="user-tier-title-row">
+                        <h2>{group.label}</h2>
+                        <div className="user-tier-summary">
+                          <span className="user-tier-summary-item">
+                            <span>{t('tiers.averageScore')}</span>
+                            <strong>{formatPercent(group.summary.averageAchievement)}</strong>
+                          </span>
+                          <span className="user-tier-summary-item">
+                            <span>{t('tiers.playedCountLabel')}</span>
+                            <strong>
+                              {t('tiers.playedCountValue', {
+                                played: group.summary.playedCount,
+                                total: group.summary.totalCount,
+                              })}
+                            </strong>
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                   <div className="user-tier-internal-stack">
                     {group.internalLevelGroups.map((internalGroup) => (
@@ -314,7 +399,7 @@ export function UserTierPage({
                           {internalGroup.rows.map((item) => (
                             <UserTierSongCard
                               key={item.key}
-                              row={item.score}
+                              item={item}
                               songInfoUrl={songInfoUrl}
                               onOpenHistory={onOpenHistory}
                             />

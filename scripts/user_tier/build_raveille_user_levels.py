@@ -16,18 +16,30 @@ if __package__ is None or __package__ == "":
 
 from scripts.user_tier.constants import (  # noqa: E402
     DEFAULT_SONG_DATABASE_URL,
+    LABELS_HARD_TO_EASY,
     RAVEILLE_TIER_SPREADSHEET_XLSX_URL,
     RAVEILLE_TIER_SPREADSHEET_ID,
     TARGET_USER_TIER_COUNT,
-    load_tier_rules,
+)
+from scripts.user_tier.build_lomo_tier_rules import (  # noqa: E402
+    LOMO_TIER_SPREADSHEET_ID,
+    load_lomo_tier_rules,
 )
 from scripts.user_tier.io_utils import fetch_json, read_xlsx  # noqa: E402
 from scripts.user_tier.matching import match_entries  # noqa: E402
-from scripts.user_tier.merge import merge_to_target_user_tiers  # noqa: E402
+from scripts.user_tier.merge import (  # noqa: E402
+    UserTierSourceTierGroup,
+    merge_to_target_user_tiers,
+)
 from scripts.user_tier.models import (  # noqa: E402
     IssueEntry,
+    LevelGrade,
     OutputEntry,
+    SourceTier,
     SongRecord,
+    TierRules,
+    UserTierConversionEntry,
+    UserTierConversionMapping,
     UserLevelsOutput,
     UserTier,
 )
@@ -57,7 +69,8 @@ def main() -> int:
     args = parser.parse_args()
 
     xlsx_bytes = read_xlsx(args.xlsx_path, RAVEILLE_TIER_SPREADSHEET_XLSX_URL)
-    tier_rules = load_tier_rules(args.lomo_xlsx_path)
+    lomo_tier_rules = load_lomo_tier_rules(args.lomo_xlsx_path)
+    tier_rules = build_tier_rules(lomo_tier_rules)
     sheet_entries = parse_raveille_sheet(xlsx_bytes, tier_rules)
     song_database = fetch_json(args.song_database_url.rstrip("/") + "/data.json")
     songs = cast(list[SongRecord], song_database["songs"])
@@ -68,15 +81,23 @@ def main() -> int:
         print_issue_report(unresolved, ambiguous)
         return 1
 
-    matched = merge_to_target_user_tiers(matched, TARGET_USER_TIER_COUNT)
+    matched, source_tier_groups = merge_to_target_user_tiers(
+        matched, TARGET_USER_TIER_COUNT
+    )
     output: UserLevelsOutput = {
         "source": {
             "raveilleSpreadsheetId": RAVEILLE_TIER_SPREADSHEET_ID,
             "raveilleUrl": f"https://docs.google.com/spreadsheets/d/{RAVEILLE_TIER_SPREADSHEET_ID}",
+            "lomoSpreadsheetId": LOMO_TIER_SPREADSHEET_ID,
+            "lomoUrl": f"https://docs.google.com/spreadsheets/d/{LOMO_TIER_SPREADSHEET_ID}",
             "songDatabaseUrl": args.song_database_url.rstrip("/"),
             "targetUserTierCount": TARGET_USER_TIER_COUNT,
         },
         "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "userTierConversions": build_user_tier_conversions(
+            source_tier_groups,
+            lomo_tier_rules,
+        ),
         "entries": matched,
     }
 
@@ -90,6 +111,56 @@ def main() -> int:
     print(f"wrote {len(matched)} matched entries to {args.output}", file=sys.stderr)
     print_user_tier_summary(matched)
     return 0
+
+
+def build_tier_rules(
+    lomo_tier_rules: tuple[tuple[SourceTier, tuple[LevelGrade, ...]], ...],
+) -> TierRules:
+    tier_rules: TierRules = {}
+    for user_tier, entries in lomo_tier_rules:
+        for level, grade in entries:
+            key = (level, grade)
+            if key in tier_rules:
+                raise ValueError(f"duplicate Lomo mapping rule for {key}")
+            tier_rules[key] = user_tier
+    return tier_rules
+
+
+def build_user_tier_conversions(
+    source_tier_groups: list[UserTierSourceTierGroup],
+    lomo_tier_rules: tuple[tuple[SourceTier, tuple[LevelGrade, ...]], ...],
+) -> list[UserTierConversionEntry]:
+    lomo_rules_by_tier = dict(lomo_tier_rules)
+    grade_order = {label: index for index, label in enumerate(LABELS_HARD_TO_EASY)}
+    conversions: list[UserTierConversionEntry] = []
+
+    for group in source_tier_groups:
+        mappings: list[UserTierConversionMapping] = []
+        for source_tier in group["lomoSourceTiers"]:
+            for internal_level, raveille_tier in lomo_rules_by_tier[source_tier]:
+                mappings.append(
+                    {
+                        "lomoSourceTier": source_tier,
+                        "raveilleInternalLevel": internal_level,
+                        "raveilleTier": raveille_tier,
+                    }
+                )
+        mappings.sort(
+            key=lambda mapping: (
+                mapping["lomoSourceTier"],
+                float(mapping["raveilleInternalLevel"]),
+                grade_order[mapping["raveilleTier"]],
+            )
+        )
+        conversions.append(
+            {
+                "userTier": group["userTier"],
+                "lomoSourceTiers": group["lomoSourceTiers"],
+                "mappings": mappings,
+            }
+        )
+
+    return conversions
 
 
 def print_issue_report(

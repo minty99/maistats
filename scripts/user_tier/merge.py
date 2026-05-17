@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import TypedDict
 
 from .models import OutputEntry, SourceTier, UserTier
 
@@ -16,9 +17,14 @@ class TierGroup:
     chart_count: int
 
 
+class UserTierSourceTierGroup(TypedDict):
+    userTier: UserTier
+    lomoSourceTiers: list[SourceTier]
+
+
 def merge_to_target_user_tiers(
     entries: list[OutputEntry], target_tier_count: int
-) -> list[OutputEntry]:
+) -> tuple[list[OutputEntry], list[UserTierSourceTierGroup]]:
     groups = initial_tier_groups(entries)
     if len(groups) < target_tier_count:
         raise ValueError(
@@ -40,6 +46,13 @@ def merge_to_target_user_tiers(
         for group_index, group in enumerate(groups)
         for source_tier in group.source_tiers
     }
+    source_tier_groups: list[UserTierSourceTierGroup] = [
+        {
+            "userTier": user_tier_label(group_index),
+            "lomoSourceTiers": sorted(group.source_tiers),
+        }
+        for group_index, group in enumerate(groups)
+    ]
     merged_entries: list[OutputEntry] = [
         {
             **entry,
@@ -56,7 +69,7 @@ def merge_to_target_user_tiers(
             item["difficulty"],
         )
     )
-    return merged_entries
+    return merged_entries, source_tier_groups
 
 
 def initial_tier_groups(entries: list[OutputEntry]) -> list[TierGroup]:

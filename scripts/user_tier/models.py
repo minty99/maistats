@@ -67,6 +67,9 @@ class OutputEntry(TypedDict):
     difficulty: str
     internalLevel: InternalLevelValue
     userTier: SourceTier | UserTier
+    lomoSourceTier: SourceTier
+    raveilleInternalLevel: str
+    raveilleTier: RaveilleGrade
 
 
 class IssueEntry(TypedDict, total=False):
@@ -87,13 +90,28 @@ class IssueEntry(TypedDict, total=False):
 class UserLevelsSource(TypedDict):
     raveilleSpreadsheetId: str
     raveilleUrl: str
+    lomoSpreadsheetId: str
+    lomoUrl: str
     songDatabaseUrl: str
     targetUserTierCount: int
+
+
+class UserTierConversionMapping(TypedDict):
+    lomoSourceTier: SourceTier
+    raveilleInternalLevel: str
+    raveilleTier: RaveilleGrade
+
+
+class UserTierConversionEntry(TypedDict):
+    userTier: UserTier
+    lomoSourceTiers: list[SourceTier]
+    mappings: list[UserTierConversionMapping]
 
 
 class UserLevelsOutput(TypedDict):
     source: UserLevelsSource
     generatedAt: str
+    userTierConversions: list[UserTierConversionEntry]
     entries: list[OutputEntry]
 
 

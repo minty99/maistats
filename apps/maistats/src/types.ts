@@ -190,9 +190,25 @@ export interface RaveilleUserTierEntry {
   difficulty: DifficultyCategory | string;
   internalLevel?: string | null;
   userTier: string;
+  lomoSourceTier?: number;
+  raveilleInternalLevel?: string;
+  raveilleTier?: string;
+}
+
+export interface RaveilleUserTierConversionMapping {
+  lomoSourceTier: number;
+  raveilleInternalLevel: string;
+  raveilleTier: string;
+}
+
+export interface RaveilleUserTierConversionEntry {
+  userTier: string;
+  lomoSourceTiers: number[];
+  mappings: RaveilleUserTierConversionMapping[];
 }
 
 export interface RaveilleUserTierResponse {
+  userTierConversions?: RaveilleUserTierConversionEntry[];
   entries: RaveilleUserTierEntry[];
 }
 

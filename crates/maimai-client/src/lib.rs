@@ -127,6 +127,12 @@ pub struct RaveilleUserTierEntry {
     pub internal_level: Option<String>,
     #[serde(rename = "userTier")]
     pub user_tier: String,
+    #[serde(rename = "lomoSourceTier")]
+    pub lomo_source_tier: Option<i32>,
+    #[serde(rename = "raveilleInternalLevel")]
+    pub raveille_internal_level: Option<String>,
+    #[serde(rename = "raveilleTier")]
+    pub raveille_tier: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
