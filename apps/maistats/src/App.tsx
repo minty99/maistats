@@ -357,7 +357,11 @@ function App() {
     const stored = localStorage.getItem(RECORD_STORAGE_KEY)?.trim();
     const envUrl = (import.meta.env.RECORD_COLLECTOR_SERVER_URL as string | undefined)?.trim();
     const hasUrl = Boolean(stored || envUrl);
-    const requestedPage = readPageFromHash(window.location.hash);
+    const requestedHash = window.location.hash;
+    if (!hasUrl && !requestedHash) {
+      return 'home';
+    }
+    const requestedPage = readPageFromHash(requestedHash);
     if (!hasUrl && !canOpenPageWithoutRecordCollector(requestedPage)) {
       return 'home';
     }
