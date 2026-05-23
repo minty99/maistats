@@ -1589,7 +1589,10 @@ function App() {
         {activePage === 'home' ? (
           <HomePage
             sidebarTopContent={desktopSidebarTopContent}
+            recordCollectorUrl={recordCollectorUrl}
+            onConnect={handleConnectUrl}
             onNavigateToSetup={() => handleNavigatePage('setup')}
+            onNavigateToScores={() => handleNavigatePage('scores')}
           />
         ) : activePage === 'setup' ? (
           <SetupGuidePage
