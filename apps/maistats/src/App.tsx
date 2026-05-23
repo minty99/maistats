@@ -121,6 +121,10 @@ function readPageFromHash(hash: string): AppPage {
   return 'scores';
 }
 
+function canOpenPageWithoutRecordCollector(page: AppPage): boolean {
+  return page === 'home' || page === 'setup' || page === 'scores' || page === 'tiers' || page === 'settings';
+}
+
 function compareRatingPageRows(
   left: RatedScoreRow,
   right: RatedScoreRow,
@@ -352,9 +356,9 @@ function App() {
   const [activePage, setActivePage] = useState<AppPage>(() => {
     const stored = localStorage.getItem(RECORD_STORAGE_KEY)?.trim();
     const envUrl = (import.meta.env.RECORD_COLLECTOR_SERVER_URL as string | undefined)?.trim();
-    const hasUrl = Boolean(stored ?? envUrl);
+    const hasUrl = Boolean(stored || envUrl);
     const requestedPage = readPageFromHash(window.location.hash);
-    if (!hasUrl && requestedPage !== 'home' && requestedPage !== 'setup' && requestedPage !== 'settings') {
+    if (!hasUrl && !canOpenPageWithoutRecordCollector(requestedPage)) {
       return 'home';
     }
     return requestedPage;
@@ -533,6 +537,7 @@ function App() {
     playlogRecordCountRef.current = playlogRecords.length;
   }, [playlogRecords.length]);
 
+  const isRecordCollectorMissing = !recordCollectorUrl.trim();
   const scoreData = useMemo(
     () => buildScoreRows(scoreRecords, songMetadata, locale),
     [locale, scoreRecords, songMetadata],
@@ -582,7 +587,7 @@ function App() {
   }, [locale, scoreData, versionsResponse]);
 
   const loadData = useCallback(async (options?: { force?: boolean; throwOnError?: boolean }) => {
-    if (!songInfoUrl.trim() || !recordCollectorUrl.trim()) {
+    if (!songInfoUrl.trim()) {
       loadedExplorerKeyRef.current = null;
       loadedPlaylogsKeyRef.current = null;
       playlogLoadAbortRef.current?.abort();
@@ -783,7 +788,7 @@ function App() {
   useEffect(() => {
     const onHashChange = () => {
       const nextPage = readPageFromHash(window.location.hash);
-      if (!recordCollectorUrl.trim() && nextPage !== 'home' && nextPage !== 'setup' && nextPage !== 'settings') {
+      if (!recordCollectorUrl.trim() && !canOpenPageWithoutRecordCollector(nextPage)) {
         setActivePage('home');
         return;
       }
@@ -1511,7 +1516,7 @@ function App() {
               type="button"
               className={activePage === page ? 'active' : ''}
               onClick={() => handleNavigatePage(page)}
-              disabled={!recordCollectorUrl.trim() && page !== 'home' && page !== 'setup' && page !== 'settings'}
+              disabled={isRecordCollectorMissing && !canOpenPageWithoutRecordCollector(page)}
             >
               <Icon />
               <span>{label}</span>
@@ -1555,7 +1560,7 @@ function App() {
                 type="button"
                 className={activePage === page ? 'active' : ''}
                 onClick={() => handleNavigatePage(page)}
-                disabled={!recordCollectorUrl.trim() && page !== 'home' && page !== 'setup' && page !== 'settings'}
+                disabled={isRecordCollectorMissing && !canOpenPageWithoutRecordCollector(page)}
               >
                 <Icon />
                 <span>{label}</span>
@@ -1569,7 +1574,7 @@ function App() {
                 type="button"
                 className={activePage === page ? 'active' : ''}
                 onClick={() => handleNavigatePage(page)}
-                disabled={!recordCollectorUrl.trim() && page !== 'home' && page !== 'setup' && page !== 'settings'}
+                disabled={isRecordCollectorMissing && !canOpenPageWithoutRecordCollector(page)}
               >
                 <Icon />
                 <span>{label}</span>
@@ -1603,6 +1608,7 @@ function App() {
           />
         ) : activePage === 'scores' ? (
           <>
+            {isRecordCollectorMissing ? <section className="info-banner">{t('scores.noCollectorNotice')}</section> : null}
             {loadingErrorMessage ? <section className="error-banner">{t('common.error')}: {loadingErrorMessage}</section> : null}
 
             <ScoreExplorerSection
