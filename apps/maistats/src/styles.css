@@ -2734,6 +2734,16 @@ tbody tr:last-child td {
   font-size: 13px;
 }
 
+.info-banner {
+  padding: 10px 14px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
 .footer-note {
   color: var(--muted);
   font-size: 13px;

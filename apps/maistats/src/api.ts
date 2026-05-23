@@ -307,10 +307,10 @@ export async function fetchExplorerPayload(
   const recordBase = normalizeBaseUrl(recordCollectorBaseUrl);
 
   const [ratedScores, songDatabase, userTierResponse, playerProfile] = await Promise.all([
-    getJson<ScoreApiResponse[]>(`${recordBase}/api/scores/rated`, signal),
+    recordBase ? getJson<ScoreApiResponse[]>(`${recordBase}/api/scores/rated`, signal) : [],
     songDatabaseBase ? fetchSongDatabase(songDatabaseBase, signal).catch(() => null) : null,
     songDatabaseBase ? fetchRaveilleUserTiers(songDatabaseBase, signal).catch(() => null) : null,
-    fetchPlayerProfile(recordBase, signal),
+    recordBase ? fetchPlayerProfile(recordBase, signal) : null,
   ]);
   const songs = songDatabase?.songs.map(toSongInfoResponse) ?? [];
 

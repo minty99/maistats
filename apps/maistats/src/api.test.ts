@@ -4,6 +4,7 @@ import {
   describeRecordCollectorVersionStatus,
   LocalizedApiError,
   buildCoverUrl,
+  fetchExplorerPayload,
   fetchRecordCollectorVersionStatus,
   fetchAllSongMetadata,
   formatApiErrorMessage,
@@ -80,6 +81,57 @@ describe('formatApiErrorMessage', () => {
       difficulty: 'MASTER',
       internal_level: 14.3,
     });
+  });
+
+  it('loads explorer metadata without a record collector URL', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/data.json')) {
+        return new Response(
+          JSON.stringify({
+            generatedAt: '2026-03-24T00:00:00Z',
+            songs: [
+              {
+                title: 'Song A',
+                genre: 'maimai',
+                artist: 'Artist A',
+                imageName: 'a.png',
+                aliases: {},
+                sheets: [
+                  {
+                    type: 'dx',
+                    difficulty: 'master',
+                    level: '14',
+                    version: 'PRiSM',
+                    internalLevel: '14.3',
+                    region: { jp: true, intl: true },
+                  },
+                ],
+              },
+            ],
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        );
+      }
+
+      if (url.endsWith('/raveille_user_tier.json')) {
+        return new Response(JSON.stringify({ entries: [], userTierConversions: [] }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      throw new Error(`unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payload = await fetchExplorerPayload('https://maimai-charts.muhwan.dev', '');
+
+    expect(payload.ratedScores).toEqual([]);
+    expect(payload.playerProfile).toBeNull();
+    expect(payload.songMetadata.size).toBe(1);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/scores/rated'),
+      expect.anything(),
+    );
   });
 
 });
