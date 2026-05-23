@@ -1092,11 +1092,22 @@ select:focus-visible {
   color: var(--ink);
 }
 
+.rating-stat-breakdown {
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-weight: 700;
+  font-family: inherit;
+}
+
 .rating-stat-sub {
   font-size: 11px;
   color: var(--muted);
   font-weight: 500;
   font-family: inherit;
+}
+
+.rating-mobile-summary-panel {
+  display: none;
 }
 
 .rating-table-column {
@@ -3175,6 +3186,18 @@ tbody tr:last-child td {
 
   .sidebar-column {
     display: none;
+  }
+
+  .rating-mobile-summary-panel {
+    display: block;
+  }
+
+  .rating-mobile-summary-panel .rating-stat-card {
+    padding: 14px 16px;
+  }
+
+  .rating-mobile-summary-panel .rating-stat-card strong {
+    font-size: 2rem;
   }
 
   .rating-table-column {
