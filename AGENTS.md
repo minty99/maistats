@@ -1,97 +1,157 @@
-# Agent Guidelines (maimai-bot)
+# AGENTS.md
 
-This repo is centered on Rust services that log in to **maimaidx-eng.com** (SEGA ID), crawl data, store it locally (SQLite), expose it via APIs/Discord, and ship a separate `apps/maistats` frontend.
+This file gives coding agents the project context and rules needed to make
+safe, consistent changes in this repository. Keep it focused on workflow,
+constraints, and validation. Human-facing overview belongs in `README.md`.
 
-The goal of this file is to keep future changes consistent with the current implementation and constraints.
+## Project Overview
 
-## Non-negotiables
+`maistats` is a monorepo for maimai DX NET tools:
 
-- **Record collector remains single-user**: do not add multi-user concepts to the crawler / record-collector data model. The Discord bot may store a Discord-user-to-record-collector mapping, but record data itself stays unscoped and per collector instance.
-- **Secrets never committed**: `.env` and `data/` are always gitignored; never print credentials or cookie contents.
-- **Dependency management**: use `cargo add` / `cargo remove` (avoid hand-editing `Cargo.toml`).
-- **Error handling**: use `eyre` (`eyre::Result`, `WrapErr`) consistently.
-- **Validation**: prefer `cargo fmt`, `cargo clippy`, `cargo test`.
-- **Version bumps**: when bumping `[workspace.package] version` in `Cargo.toml`, add a matching entry to the `CHANGELOG` constant in `maistats-discord-bot/src/commands.rs` (format: `("x.y.z", "one-line English description of what changed")`). The bot shows this changelog to users whose record collector is out of date.
+- `maistats-record-collector`: a per-user, self-hosted Rust/Axum service that
+  logs in to `maimaidx-eng.com`, stores personal records in SQLite, and exposes
+  HTTP APIs for the frontend and Discord bot.
+- `maistats-song-info`: a Rust generator for shared static song metadata,
+  internal levels, aliases, and jacket assets.
+- `maistats-discord-bot`: a shared Rust/poise Discord bot. Each Discord user
+  registers one collector URL; the bot keeps only that mapping and bot-local
+  state.
+- `apps/maistats`: a Vite + React frontend that reads shared song metadata and
+  connects to a user-provided record collector URL.
+- `crates/`: shared Rust crates for auth, maimai HTTP clients/parsers, and
+  shared API/domain/storage models.
 
-## Runtime architecture (current)
+## Non-Negotiables
 
-- Frontend app: `apps/maistats`
-  - Vite + React app deployed to Cloudflare Pages
-  - Uses root npm workspaces; prefer running npm commands from the repo root
-  - Consumes static song database assets and `maistats-record-collector` via `SONG_DATABASE_URL` and `RECORD_COLLECTOR_SERVER_URL`
+- Keep the record collector single-user. Do not add user IDs, tenant IDs, or
+  multi-user scoping to collector data.
+- Never commit secrets, cookie files, generated DBs, or private crawled data.
+  `.env` and `data/` must stay ignored.
+- Do not print credentials, cookies, raw authenticated HTML, or personal player
+  data unless the user explicitly asks for a local debugging step and the output
+  is safe to show.
+- Keep identifiers stable. Scores and playlogs intentionally use song identity
+  fields plus chart/difficulty instead of unstable external IDs.
+- Use `eyre` (`eyre::Result`, `WrapErr`) for Rust error handling.
+- Manage Rust dependencies with `cargo add` / `cargo remove`; avoid manual
+  `Cargo.toml` dependency edits.
+- When using `gh`, try it with elevated permission.
 
-- CLI entrypoint: `src/main.rs` (clap). Key subcommands:
-  - `auth check|login`
-  - `fetch url --url <URL> --out <FILE>` (authenticated fetch, raw bytes)
-  - `crawl scores|recent|song-detail|player-data` (parse to JSON; no DB)
-  - `db init|sync-scores|sync-recent`
-  - `bot run` (Discord bot)
-- Discord bot: `maistats-discord-bot/src/main.rs`
-  - On startup:
-    - runs bot-local SQLite migrations
-    - registers slash commands globally
-    - sends a startup summary DM only to `DISCORD_DEV_USER_ID`
-  - Per-user collector selection:
-    - `SONG_DATABASE_URL` is shared globally
-    - each Discord user registers exactly one `maistats-record-collector` base URL with `/register <url>`
-    - the mapping is persisted in the bot's own SQLite DB and survives restarts
-  - Slash commands:
-    - `/register <url>`: validate readiness + player API, upsert caller's collector URL, and reply ephemerally
-    - `/mai-score <title|alias>`: exact title or registered alias match
-      - exact title/alias match: resolve to the canonical song, then show that title
-      - ambiguous alias: show duplicate candidates
-      - hide "unplayed" rows (`achievement_x10000 IS NULL`)
-    - `/mai-recent`: shows the latest credit (based on recent page's TRACK numbering), formatted from `TRACK 01` upwards
+## Setup Commands
 
-## DB & migrations
+- Install frontend dependencies from the repository root: `npm ci`
+- Copy local environment templates when needed:
+  - `cp .env.example .env`
+  - `cp apps/maistats/.env.example apps/maistats/.env`
+- Generate the song database: `cargo run -p maistats-song-info`
+- Run the record collector: `cargo run -p maistats-record-collector`
+- Run the Discord bot: `cargo run -p maistats-discord-bot`
+- Run the frontend dev server from the root workspace:
+  `npm run dev:maistats`
+- Fetch an authenticated page for parser fixture/debug work:
+  `cargo run -p maistats-record-collector --bin fetch_page -- <url> <out_path>`
 
-- Migrations under `migrations/` are executed at runtime via `sqlx::migrate!()` (`src/db/mod.rs`).
-- Core tables:
-  - `scores` primary key: `(title, chart_type, diff_category)`
-  - `playlogs` primary key: `playlog_idx`
-  - `app_state` key/value store for small snapshots (e.g. total play count, rating)
-- `achievement_x10000` is stored as integer (`percent * 10000`, rounded). Read paths typically divide by `10000.0` and format with 4 decimals.
+## Validation
 
-## Model conventions (important for future edits)
+Run the narrowest useful checks while iterating, then broaden before handing off
+or committing.
 
-- Enums exist for stable UI/DB strings:
-  - `ChartType` (`STD|DX`)
-  - `DifficultyCategory` (`BASIC..Re:MASTER`)
-  - `ScoreRank` (`SSS+ .. D`)
-  - `FcStatus` (`FC/FC+/AP/AP+`)
-  - `SyncStatus` (`SYNC/FS/FS+/FDX/FDX+`)
-- Parsers should return enums, and DB bindings should store `as_str()` results.
+- Rust format: `cargo fmt --all -- --check`
+- Rust lint: `cargo clippy --all -- -D warnings`
+- Rust tests: `cargo test`
+- Frontend build/typecheck: `npm run build:maistats`
+- Frontend tests: `npm run test:maistats`
 
-## Crawler principles
+Before committing Rust changes, run:
 
-- **Cookie persistence**: store cookies under `data/` and reuse them; on expiry, re-login and overwrite.
-- **Fail loudly, debug safely**: when parsing breaks, save minimal HTML samples under `data/` (gitignored) and avoid leaking PII in logs.
-- **Keep identifiers stable**: this codebase currently keys scores by `(title, chart_type, diff_category)`; avoid introducing unstable keys.
+```bash
+cargo fmt --all
+cargo clippy --all -- -D warnings
+cargo test
+```
 
-## Code hygiene
+Before committing frontend changes, run at least:
 
-- Keep modules small and focused (`config`, `http`, `maimai`, `db`, `discord`).
-- Prefer small testable helpers.
-- **Visibility first**: default to private, use `pub(crate)` for crate-internal sharing, and keep `pub` only for true cross-crate API.
-- If adding "UI preview" tests, keep them `#[ignore]` and ensure they require explicit env vars (and never log secrets).
-- **Always run before committing**:
-  - `cargo fmt --all` (format all code)
-  - `cargo clippy --all -- -D warnings` (lint with warnings as errors)
+```bash
+npm run build:maistats
+npm run test:maistats
+```
 
-## Commit discipline
+## Code Style
 
-- **Use Conventional Commits subject line**: `<type>(<scope>): <summary>` (imperative, lowercase type).
-  - Preferred types: `feat`, `fix`, `refactor`, `docs`, `test`, `ci`, `chore`.
-  - Scope should map to component names in this repo (e.g. `discord`, `maistats-record-collector`, `maistats-song-info`, `models`, `agents`).
-  - Examples:
-    - `fix(maistats-record-collector): handle all matching musicDetail indexes`
-    - `docs(agents): define commit message convention`
-- **Atomic commits**: split commits by meaning (one logical change per commit), and avoid bundling unrelated modifications.
-- **Co-author trailer required**: every commit message must include an agent co-author trailer in the commit body.
-  - OpenAI agents: `Co-authored-by: <Agent Model Name> <noreply@openai.com>` (e.g., `Co-authored-by: GPT-5.3 Codex <noreply@openai.com>`)
-  - Anthropic agents: `Co-authored-by: <Agent Model Name> <noreply@anthropic.com>` (e.g., `Co-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>`)
-- **No escaped newlines in commit body**: never write literal `\n` in commit messages. Use real line breaks only.
-  - Prefer `git commit -m "<subject>" -m "<body line 1>" -m "<body line 2>"` (multiple `-m`) or `git commit` with an editor.
-- **Trailer recognition check (mandatory after each commit)**:
-  - `git log -1 --format='%B'` must show a standalone `Co-authored-by:` trailer line.
-  - If the trailer is missing or `\n` appears literally, fix immediately with `git commit --amend -m ...` (using real newlines).
+- Prefer small, focused modules and helpers that are easy to test.
+- Default to private visibility. Use `pub(crate)` for crate-internal sharing and
+  `pub` only for real cross-crate API.
+- Keep parser outputs typed. Use the enums in `crates/models` for chart type,
+  difficulty, rank, FC, and sync status, and store stable string forms through
+  their existing helpers.
+- Use structured parsers/APIs where available. Avoid fragile string slicing for
+  HTML, JSON, SQL, or TOML when a local helper or crate already exists.
+- Preserve existing async/runtime patterns: `tokio`, `axum`, `sqlx`, `poise`,
+  `reqwest`, and `tracing`.
+- Keep comments sparse and useful. Explain non-obvious maimai-specific behavior,
+  not routine assignments.
+
+## Data And Migrations
+
+- Record collector migrations live in `maistats-record-collector/migrations/`.
+- Discord bot migrations live in `maistats-discord-bot/migrations/`.
+- Migrations are embedded with `sqlx::migrate!()` and run at service startup.
+- SQLite data is local runtime state. Do not add migrations that assume shared
+  multi-user collector storage.
+- `achievement_x10000` stores achievement percent multiplied by 10,000 and
+  rounded as an integer. Keep read/write formatting consistent with existing
+  code.
+
+## Crawler And Auth Safety
+
+- Cookie stores are runtime artifacts and must remain outside version control.
+- Fetches to maimai DX NET should be rate-conscious and maintenance-aware.
+- If parser behavior changes, prefer focused fixtures/tests under the relevant
+  parser or collector test area.
+- Debug HTML samples must be minimal, local, and free of credentials or personal
+  data before they are committed.
+
+## Frontend Guidance
+
+- The root npm workspace owns install/build/test commands; prefer root scripts
+  over running package-local commands directly.
+- The frontend expects two origins: shared song database and per-user record
+  collector. Keep that separation visible in UI and configuration.
+- `RECORD_COLLECTOR_SERVER_URL` is only a default. Users can override the
+  collector URL in Settings/local storage.
+- After meaningful UI changes, run the frontend checks and visually verify the
+  affected screen when practical.
+
+## Versioning
+
+- The workspace version is in `[workspace.package]` in `Cargo.toml`.
+- If bumping that version, add a matching entry to the `CHANGELOG` constant in
+  `maistats-discord-bot/src/commands.rs`:
+  `("x.y.z", "one-line English description of what changed")`.
+- Keep changelog entries user-facing because the Discord bot shows them when a
+  registered record collector is out of date.
+
+## Commit And PR Rules
+
+- Use Conventional Commit subjects:
+  `<type>(<scope>): <summary>`
+- Preferred types: `feat`, `fix`, `refactor`, `docs`, `test`, `ci`, `chore`.
+- Use scopes that match repository components, for example `record-collector`,
+  `discord`, `song-info`, `models`, `maimai-parsers`, `maistats`, or `agents`.
+- Keep commits atomic. Do not bundle unrelated fixes.
+- Every commit message must include a standalone co-author trailer in the body:
+  `Co-authored-by: <Agent Model Name> <noreply@openai.com>`
+- Do not write literal `\n` sequences in commit messages. Use real line breaks,
+  preferably with multiple `-m` flags.
+- After every commit, verify trailer recognition:
+  `git log -1 --format='%B'`
+- If the trailer is missing or literal `\n` appears, amend immediately with a
+  correctly formatted message.
+
+## When Editing This File
+
+AGENTS.md is standard Markdown and should stay concise. Add instructions that a
+coding agent needs to work safely, such as setup commands, validation, style,
+security constraints, and PR conventions. Move product explanations and user
+setup details to `README.md`.
