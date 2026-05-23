@@ -195,7 +195,7 @@ export function SettingsPage({
           <div className="settings-field-group">
             <div className="home-connect-row">
               <label className="home-url-field">
-                <span>Record Collector URL</span>
+                <span>{t('settings.recordCollectorUrl')}</span>
                 <input
                   type="url"
                   value={recordCollectorUrlDraft}

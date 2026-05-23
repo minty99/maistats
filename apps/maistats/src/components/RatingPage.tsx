@@ -27,6 +27,33 @@ function formatRatingProjection(total: number, count: number, locale: string): s
   return Math.round(avg * 50).toLocaleString(locale);
 }
 
+function RatingStatCard({
+  ratingTotal,
+  newRatingTotal,
+  oldRatingTotal,
+  average,
+  locale,
+  label,
+}: {
+  ratingTotal: number;
+  newRatingTotal: number;
+  oldRatingTotal: number;
+  average: string;
+  locale: string;
+  label: string;
+}) {
+  return (
+    <div className="rating-stat-card">
+      <span>{label}</span>
+      <strong>{formatNumber(ratingTotal, locale)}</strong>
+      <small className="rating-stat-breakdown">
+        NEW {formatNumber(newRatingTotal, locale)} + OLD {formatNumber(oldRatingTotal, locale)}
+      </small>
+      <small className="rating-stat-sub">AVG {average}</small>
+    </div>
+  );
+}
+
 function RatingCardSection({
   title,
   summary,
@@ -67,7 +94,6 @@ function RatingCardSection({
 export function RatingPage({
   sidebarTopContent,
   songInfoUrl,
-  ratingTotal,
   newRatingTotal,
   oldRatingTotal,
   newRows,
@@ -75,8 +101,10 @@ export function RatingPage({
   onOpenHistory,
 }: RatingPageProps) {
   const { locale, t } = useI18n();
-  const newSummary = `avg ${formatRatingAvg(newRatingTotal, newRows.length)} (~${formatRatingProjection(newRatingTotal, newRows.length, locale)})`;
-  const oldSummary = `avg ${formatRatingAvg(oldRatingTotal, oldRows.length)} (~${formatRatingProjection(oldRatingTotal, oldRows.length, locale)})`;
+  const combinedRatingTotal = newRatingTotal + oldRatingTotal;
+  const combinedAverage = formatRatingAvg(combinedRatingTotal, newRows.length + oldRows.length);
+  const newSummary = `AVG ${formatRatingAvg(newRatingTotal, newRows.length)} (~${formatRatingProjection(newRatingTotal, newRows.length, locale)})`;
+  const oldSummary = `AVG ${formatRatingAvg(oldRatingTotal, oldRows.length)} (~${formatRatingProjection(oldRatingTotal, oldRows.length, locale)})`;
 
   return (
     <div className="explorer-layout">
@@ -89,18 +117,29 @@ export function RatingPage({
             </div>
           </div>
           <div className="rating-stat-grid">
-            <div className="rating-stat-card">
-              <span>{t('rating.current')}</span>
-              <strong>{formatNumber(ratingTotal, locale)}</strong>
-              <small className="rating-stat-sub">
-                {t('rating.avg', { value: formatRatingAvg(ratingTotal, newRows.length + oldRows.length) })}
-              </small>
-            </div>
+            <RatingStatCard
+              ratingTotal={combinedRatingTotal}
+              newRatingTotal={newRatingTotal}
+              oldRatingTotal={oldRatingTotal}
+              average={combinedAverage}
+              locale={locale}
+              label={t('rating.current')}
+            />
           </div>
         </section>
       </aside>
 
       <div className="table-column rating-table-column">
+        <section className="panel rating-mobile-summary-panel">
+          <RatingStatCard
+            ratingTotal={combinedRatingTotal}
+            newRatingTotal={newRatingTotal}
+            oldRatingTotal={oldRatingTotal}
+            average={combinedAverage}
+            locale={locale}
+            label={t('rating.current')}
+          />
+        </section>
         <RatingCardSection
           title="NEW"
           summary={newSummary}
