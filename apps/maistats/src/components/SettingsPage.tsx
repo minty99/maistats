@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 import {
@@ -10,6 +10,7 @@ import {
   type RecordCollectorVersionStatus,
 } from '../api';
 import type { CollectorLogEntry } from '../types';
+import { ansiToSafeHtml } from '../app/ansi';
 import { useI18n, type LanguagePreference } from '../app/i18n';
 
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -56,6 +57,10 @@ export function SettingsPage({
   const [isCollectorLogsLoading, setIsCollectorLogsLoading] = useState(false);
   const rcAbortRef = useRef<AbortController | null>(null);
   const logsAbortRef = useRef<AbortController | null>(null);
+  const collectorLogsHtml = useMemo(
+    () => ansiToSafeHtml(collectorLogs.map((entry) => entry.line).join('\n')),
+    [collectorLogs],
+  );
 
   const handleSaveLogs = useCallback(() => {
     if (collectorLogs.length === 0) {
@@ -275,9 +280,10 @@ export function SettingsPage({
               {isCollectorLogsLoading && collectorLogs.length === 0 ? (
                 <div className="table-loading-state">{t('settings.logs.refreshing')}</div>
               ) : collectorLogs.length > 0 ? (
-                <pre className="settings-log-output">
-                  {collectorLogs.map((entry) => entry.line).join('\n')}
-                </pre>
+                <pre
+                  className="settings-log-output"
+                  dangerouslySetInnerHTML={{ __html: collectorLogsHtml }}
+                />
               ) : (
                 <div className="settings-log-empty">
                   {recordCollectorUrl.trim()
