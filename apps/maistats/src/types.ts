@@ -241,6 +241,13 @@ export interface ScoreRow {
   playCount: number | null;
 }
 
+export interface CompareScoreRow extends ScoreRow {
+  opponentAchievementX10000: number | null;
+  opponentAchievementPercent: number | null;
+  diffPercent: number | null;
+  hasOwnChart: boolean;
+}
+
 export interface ScoreHistoryPoint {
   key: string;
   playedAtUnix: number;
