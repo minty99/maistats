@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   describeRecordCollectorVersionStatus,
+  fetchPlayerProfile,
   fetchRecordCollectorVersionStatus,
   fetchExplorerPayload,
+  fetchRatedScores,
   fetchRecentPlaylogs,
   formatApiErrorMessage,
   type PlayerProfile,
@@ -14,6 +16,8 @@ import {
 import { HomePage } from './components/HomePage';
 import {
   CHART_TYPES,
+  COMPARE_RECORD_STORAGE_KEY,
+  CompareSortKey,
   DEFAULT_SONG_DATABASE_URL,
   DIFFICULTIES,
   PLAYLOG_FILTERS_STORAGE_KEY,
@@ -55,6 +59,7 @@ import {
 } from './app/storage';
 import {
   buildPlaylogRows,
+  buildCompareScoreRows,
   buildScoreHistoryPoints,
   buildSongDetailRows,
   buildScoreRows,
@@ -63,8 +68,10 @@ import {
 import { useI18n, type TranslationKey, type TranslationVariables } from './app/i18n';
 import {
   buildFilteredPlaylogRows,
+  buildFilteredCompareScoreRows,
   buildFilteredScoreRows,
 } from './app/filtering';
+import { CompareExplorerSection } from './components/CompareExplorerSection';
 import { PlaylogExplorerSection } from './components/PlaylogExplorerSection';
 import { RatingPage } from './components/RatingPage';
 import { ScoreExplorerSection } from './components/ScoreExplorerSection';
@@ -89,7 +96,7 @@ import type {
 } from './types';
 import logoUrl from './assets/logo.png';
 
-type AppPage = 'home' | 'setup' | 'scores' | 'rating' | 'tiers' | 'playlogs' | 'plot' | 'settings';
+type AppPage = 'home' | 'setup' | 'scores' | 'compare' | 'rating' | 'tiers' | 'playlogs' | 'plot' | 'settings';
 type RatedScoreRow = ScoreRow & { rating: number; version: string };
 type ThemePreference = 'system' | 'light' | 'dark';
 type LoadingErrorState =
@@ -102,6 +109,9 @@ function readPageFromHash(hash: string): AppPage {
   }
   if (hash === '#rating') {
     return 'rating';
+  }
+  if (hash === '#compare') {
+    return 'compare';
   }
   if (hash === '#tiers') {
     return 'tiers';
@@ -242,6 +252,20 @@ function ScoresIcon() {
       <path d="M12 19V8" />
       <path d="M16 19V13" />
       <path d="M20 19V6" />
+    </svg>
+  );
+}
+
+function CompareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h10" />
+      <path d="M4 17h10" />
+      <path d="M14 4l3 3-3 3" />
+      <path d="M20 7h-3" />
+      <path d="M20 17H10" />
+      <path d="M10 14l-3 3 3 3" />
+      <path d="M4 17h3" />
     </svg>
   );
 }
@@ -393,13 +417,20 @@ function App() {
   const [songInfoUrlDraft, setSongInfoUrlDraft] = useState(songInfoUrl);
   const [recordCollectorUrlDraft, setRecordCollectorUrlDraft] =
     useState(recordCollectorUrl);
+  const [compareCollectorUrlDraft, setCompareCollectorUrlDraft] = useState<string>(() =>
+    localStorage.getItem(COMPARE_RECORD_STORAGE_KEY)?.trim() ?? '',
+  );
+  const [compareCollectorUrl, setCompareCollectorUrl] = useState(compareCollectorUrlDraft);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaylogsLoading, setIsPlaylogsLoading] = useState(false);
+  const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [loadingError, setLoadingError] = useState<LoadingErrorState | null>(null);
   const [playlogLoadingError, setPlaylogLoadingError] = useState<LoadingErrorState | null>(null);
+  const [compareLoadingError, setCompareLoadingError] = useState<LoadingErrorState | null>(null);
 
   const [scoreRecords, setScoreRecords] = useState<ScoreApiResponse[]>([]);
+  const [compareScoreRecords, setCompareScoreRecords] = useState<ScoreApiResponse[]>([]);
   const [userTierRecords, setUserTierRecords] = useState<RaveilleUserTierEntry[]>([]);
   const [userTierConversions, setUserTierConversions] = useState<RaveilleUserTierConversionEntry[]>([]);
   const [playlogRecords, setPlaylogRecords] = useState<PlayRecordApiResponse[]>([]);
@@ -413,6 +444,7 @@ function App() {
   }, []);
   const [versionsResponse, setVersionsResponse] = useState<string[]>([]);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null);
+  const [comparePlayerProfile, setComparePlayerProfile] = useState<PlayerProfile | null>(null);
   const [recordCollectorVersionStatus, setRecordCollectorVersionStatus] =
     useState<RecordCollectorVersionStatus | null>(null);
   const [isPlayerRefreshPending, setIsPlayerRefreshPending] = useState(false);
@@ -486,6 +518,8 @@ function App() {
 
   const [scoreSortKey, setScoreSortKey] = useState<ScoreSortKey>('lastPlayed');
   const [scoreSortDesc, setScoreSortDesc] = useState(true);
+  const [compareSortKey, setCompareSortKey] = useState<CompareSortKey>('diff');
+  const [compareSortDesc, setCompareSortDesc] = useState(true);
 
   const [selectedDetailSongKey, setSelectedDetailSongKey] = useState<string | null>(null);
   const [selectedHistoryKey, setSelectedHistoryKey] = useState<string | null>(null);
@@ -518,10 +552,12 @@ function App() {
 
   const loadAbortRef = useRef<AbortController | null>(null);
   const playlogLoadAbortRef = useRef<AbortController | null>(null);
+  const compareLoadAbortRef = useRef<AbortController | null>(null);
   const versionStatusAbortRef = useRef<AbortController | null>(null);
   const skipNextVersionStatusEffectRef = useRef(false);
   const loadedExplorerKeyRef = useRef<string | null>(null);
   const loadedPlaylogsKeyRef = useRef<string | null>(null);
+  const loadedCompareKeyRef = useRef<string | null>(null);
   const playlogRecordCountRef = useRef(0);
 
   useEffect(() => {
@@ -545,6 +581,14 @@ function App() {
   const scoreData = useMemo(
     () => buildScoreRows(scoreRecords, songMetadata, locale),
     [locale, scoreRecords, songMetadata],
+  );
+  const compareOpponentScoreData = useMemo(
+    () => buildScoreRows(compareScoreRecords, songMetadata, locale),
+    [compareScoreRecords, locale, songMetadata],
+  );
+  const compareScoreData = useMemo(
+    () => buildCompareScoreRows(scoreData, compareOpponentScoreData),
+    [compareOpponentScoreData, scoreData],
   );
   const selectedDetailRows = useMemo(
     () => buildSongDetailRows(scoreData, selectedDetailSongKey),
@@ -594,15 +638,19 @@ function App() {
     if (!songInfoUrl.trim()) {
       loadedExplorerKeyRef.current = null;
       loadedPlaylogsKeyRef.current = null;
+      loadedCompareKeyRef.current = null;
       playlogLoadAbortRef.current?.abort();
+      compareLoadAbortRef.current?.abort();
       setIsLoading(false);
       setIsPlaylogsLoading(false);
       setScoreRecords([]);
+      setCompareScoreRecords([]);
       setUserTierRecords([]);
       setUserTierConversions([]);
       setPlaylogRecords([]);
       setVersionsResponse([]);
       setPlayerProfile(null);
+      setComparePlayerProfile(null);
       setSongMetadata(new Map<string, SongInfoResponse>());
       setLoadingError({ kind: 'translated', key: 'app.missingUrls' });
       setPlaylogLoadingError(null);
@@ -612,6 +660,7 @@ function App() {
     const requestKey = `${songInfoUrl.trim()}::${recordCollectorUrl.trim()}`;
     if (options?.force) {
       loadedExplorerKeyRef.current = null;
+      loadedCompareKeyRef.current = null;
     } else if (loadedExplorerKeyRef.current === requestKey) {
       setIsLoading(false);
       setLoadingError(null);
@@ -653,11 +702,13 @@ function App() {
       const message = error instanceof Error ? error.message : String(error);
       setLoadingError({ kind: 'message', message });
       setScoreRecords([]);
+      setCompareScoreRecords([]);
       setUserTierRecords([]);
       setUserTierConversions([]);
       setSongMetadata(new Map<string, SongInfoResponse>());
       setVersionsResponse([]);
       setPlayerProfile(null);
+      setComparePlayerProfile(null);
       if (options?.throwOnError) {
         throw error instanceof Error ? error : new Error(String(error));
       }
@@ -729,6 +780,65 @@ function App() {
     }
   }, [recordCollectorUrl]);
 
+  const loadCompareData = useCallback(async (options?: { force?: boolean; throwOnError?: boolean }) => {
+    const url = compareCollectorUrl.trim();
+    if (!url) {
+      loadedCompareKeyRef.current = null;
+      compareLoadAbortRef.current?.abort();
+      setIsCompareLoading(false);
+      setCompareScoreRecords([]);
+      setComparePlayerProfile(null);
+      setCompareLoadingError(null);
+      return;
+    }
+
+    if (options?.force) {
+      loadedCompareKeyRef.current = null;
+    } else if (loadedCompareKeyRef.current === url) {
+      setIsCompareLoading(false);
+      setCompareLoadingError(null);
+      return;
+    }
+
+    compareLoadAbortRef.current?.abort();
+    const controller = new AbortController();
+    compareLoadAbortRef.current = controller;
+
+    setIsCompareLoading(true);
+    setCompareLoadingError(null);
+
+    try {
+      const [scores, profile] = await Promise.all([
+        fetchRatedScores(url, controller.signal),
+        fetchPlayerProfile(url, controller.signal),
+      ]);
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      setCompareScoreRecords(scores);
+      setComparePlayerProfile(profile);
+      loadedCompareKeyRef.current = url;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      loadedCompareKeyRef.current = null;
+      const message = error instanceof Error ? error.message : String(error);
+      setCompareLoadingError({ kind: 'message', message });
+      setCompareScoreRecords([]);
+      setComparePlayerProfile(null);
+      if (options?.throwOnError) {
+        throw error instanceof Error ? error : new Error(String(error));
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsCompareLoading(false);
+      }
+    }
+  }, [compareCollectorUrl]);
+
   const loadRecordCollectorVersionStatus = useCallback(async (baseUrl: string) => {
     const url = baseUrl.trim();
     versionStatusAbortRef.current?.abort();
@@ -767,6 +877,7 @@ function App() {
     return () => {
       loadAbortRef.current?.abort();
       playlogLoadAbortRef.current?.abort();
+      compareLoadAbortRef.current?.abort();
       versionStatusAbortRef.current?.abort();
     };
   }, [loadData]);
@@ -787,6 +898,14 @@ function App() {
 
     void loadPlaylogs();
   }, [activePage, loadPlaylogs]);
+
+  useEffect(() => {
+    if (activePage !== 'compare') {
+      return;
+    }
+
+    void loadCompareData();
+  }, [activePage, loadCompareData]);
 
 
   useEffect(() => {
@@ -868,6 +987,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem(RECORD_STORAGE_KEY, recordCollectorUrl);
   }, [recordCollectorUrl]);
+
+  useEffect(() => {
+    localStorage.setItem(COMPARE_RECORD_STORAGE_KEY, compareCollectorUrl);
+  }, [compareCollectorUrl]);
 
   useEffect(() => {
     if (activePage !== 'settings') {
@@ -999,6 +1122,18 @@ function App() {
     [scoreSortKey],
   );
 
+  const handleCompareSortBy = useCallback(
+    (key: CompareSortKey) => {
+      if (compareSortKey === key) {
+        setCompareSortDesc((current) => !current);
+        return;
+      }
+      setCompareSortKey(key);
+      setCompareSortDesc(key !== 'title');
+    },
+    [compareSortKey],
+  );
+
   const handlePlaylogSortBy = useCallback(
     (key: PlaylogSortKey) => {
       if (playlogSortKey === key) {
@@ -1128,6 +1263,14 @@ function App() {
     setQuery(draft);
   }, []);
 
+  const handleLoadCompareOpponent = useCallback(() => {
+    const normalizedUrl = compareCollectorUrlDraft.trim();
+    setCompareCollectorUrl(normalizedUrl);
+    if (normalizedUrl === compareCollectorUrl.trim()) {
+      void loadCompareData({ force: true });
+    }
+  }, [compareCollectorUrl, compareCollectorUrlDraft, loadCompareData]);
+
   const handleApplyPlaylogQuery = useCallback((draft: string) => {
     setPlaylogQuery(draft);
   }, []);
@@ -1190,6 +1333,50 @@ function App() {
       scoreData,
       scoreSortDesc,
       scoreSortKey,
+      syncFilter,
+      versionOptions,
+      versionSelection,
+    ],
+  );
+
+  const filteredCompareScoreRows = useMemo(
+    () =>
+      buildFilteredCompareScoreRows({
+        scoreData: compareScoreData,
+        locale,
+        query,
+        chartFilter,
+        difficultyFilter,
+        versionSelection,
+        playedOnly,
+        versionOptions,
+        fcFilter,
+        syncFilter,
+        achievementMin,
+        achievementMax,
+        internalMin,
+        internalMax,
+        daysMin,
+        daysMax,
+        scoreSortKey: compareSortKey,
+        scoreSortDesc: compareSortDesc,
+      }),
+    [
+      achievementMax,
+      achievementMin,
+      chartFilter,
+      compareScoreData,
+      compareSortDesc,
+      compareSortKey,
+      daysMax,
+      daysMin,
+      difficultyFilter,
+      fcFilter,
+      internalMax,
+      internalMin,
+      locale,
+      playedOnly,
+      query,
       syncFilter,
       versionOptions,
       versionSelection,
@@ -1411,6 +1598,8 @@ function App() {
         ? '#setup'
       : page === 'playlogs'
         ? '#playlogs'
+        : page === 'compare'
+          ? '#compare'
         : page === 'rating'
           ? '#rating'
           : page === 'tiers'
@@ -1428,6 +1617,7 @@ function App() {
   }, [recordCollectorUrl, songInfoUrl]);
 
   const scoreCountLabel = `${formatNumber(filteredScoreRows.length)}/${formatNumber(scoreData.length)}`;
+  const compareCountLabel = `${formatNumber(filteredCompareScoreRows.length)}/${formatNumber(compareScoreData.length)}`;
   const playlogCountLabel = `${formatNumber(filteredPlaylogRows.length)}/${formatNumber(playlogData.length)}`;
   const loadingErrorMessage = loadingError
     ? loadingError.kind === 'translated'
@@ -1439,6 +1629,11 @@ function App() {
       ? t(playlogLoadingError.key, playlogLoadingError.variables)
       : playlogLoadingError.message
     : null;
+  const compareLoadingErrorMessage = compareLoadingError
+    ? compareLoadingError.kind === 'translated'
+      ? t(compareLoadingError.key, compareLoadingError.variables)
+      : compareLoadingError.message
+    : null;
   const recordCollectorVersionNotice = describeRecordCollectorVersionStatus(
     recordCollectorVersionStatus,
   );
@@ -1447,6 +1642,7 @@ function App() {
       { page: 'home', label: t('nav.home'), Icon: HomeIcon },
       { page: 'setup', label: t('nav.setup'), Icon: SetupIcon },
       { page: 'scores', label: t('nav.scores'), Icon: ScoresIcon },
+      { page: 'compare', label: t('nav.compare'), Icon: CompareIcon },
       { page: 'rating', label: t('nav.rating'), Icon: RatingIcon },
       { page: 'tiers', label: t('nav.tiers'), Icon: TiersIcon },
       { page: 'playlogs', label: t('nav.playlogs'), Icon: PlaylogsIcon },
@@ -1663,6 +1859,67 @@ function App() {
               scoreSortKey={scoreSortKey}
               scoreSortDesc={scoreSortDesc}
               onSortBy={handleScoreSortBy}
+              onResetFilters={handleResetScoreFilters}
+            />
+          </>
+        ) : activePage === 'compare' ? (
+          <>
+            {loadingErrorMessage ? <section className="error-banner">{t('common.error')}: {loadingErrorMessage}</section> : null}
+
+            <CompareExplorerSection
+              sidebarTopContent={desktopSidebarTopContent}
+              scoreCountLabel={compareCountLabel}
+              isLoading={isLoading || isCompareLoading}
+              opponentUrlDraft={compareCollectorUrlDraft}
+              setOpponentUrlDraft={setCompareCollectorUrlDraft}
+              onLoadOpponent={handleLoadCompareOpponent}
+              isOpponentLoading={isCompareLoading}
+              opponentErrorMessage={compareLoadingErrorMessage}
+              opponentPlayerName={comparePlayerProfile?.user_name ?? null}
+              appliedQuery={query}
+              onApplyQuery={handleApplyScoreQuery}
+              chartTypes={CHART_TYPES}
+              chartFilter={chartFilter}
+              setChartFilter={setChartFilter}
+              difficulties={DIFFICULTIES}
+              difficultyFilter={difficultyFilter}
+              setDifficultyFilter={setDifficultyFilter}
+              versionOptions={versionOptions}
+              versionSelection={versionSelection}
+              setVersionSelection={setVersionSelection}
+              playedOnly={playedOnly}
+              setPlayedOnly={setPlayedOnly}
+              internalLevelPresetOptions={INTERNAL_LEVEL_PRESETS.map((preset) => preset.label)}
+              selectedInternalLevelPresets={selectedInternalLevelPresets}
+              onToggleInternalLevelPreset={handleInternalLevelPresetToggle}
+              scoreRankOptions={SCORE_ACHIEVEMENT_PRESETS.map((preset) => preset.label)}
+              selectedScoreRankPresets={selectedScoreRankPresets}
+              onToggleScoreRankPreset={handleScoreRankPresetToggle}
+              fcOptions={filteredFcOptions}
+              fcFilter={fcFilter}
+              onToggleFcFilter={handleFcFilterToggle}
+              syncOptions={filteredSyncOptions}
+              syncFilter={syncFilter}
+              onToggleSyncFilter={handleSyncFilterToggle}
+              achievementMin={achievementMin}
+              onChangeAchievementMin={handleAchievementMinChange}
+              achievementMax={achievementMax}
+              onChangeAchievementMax={handleAchievementMaxChange}
+              internalMin={internalMin}
+              onChangeInternalMin={handleInternalMinChange}
+              internalMax={internalMax}
+              onChangeInternalMax={handleInternalMaxChange}
+              daysMin={daysMin}
+              setDaysMin={setDaysMin}
+              daysMax={daysMax}
+              setDaysMax={setDaysMax}
+              filteredScoreRows={filteredCompareScoreRows}
+              songInfoUrl={songInfoUrl}
+              onOpenSongDetail={handleOpenSongDetail}
+              onOpenHistory={handleOpenHistory}
+              scoreSortKey={compareSortKey}
+              scoreSortDesc={compareSortDesc}
+              onSortBy={handleCompareSortBy}
               onResetFilters={handleResetScoreFilters}
             />
           </>

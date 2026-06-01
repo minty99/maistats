@@ -2595,6 +2595,40 @@ tbody tr:last-child td {
   width: 11ch;
 }
 
+.compare-table .title-col {
+  min-width: 42ch;
+  width: 42ch;
+}
+
+.compare-table .achievement-col {
+  width: 13ch;
+}
+
+.compare-table .diff-col {
+  width: 12ch;
+}
+
+.compare-table .diff-col,
+.compare-table .achievement-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.compare-diff-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.compare-diff-value-positive {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.compare-diff-value-negative {
+  color: #dc2626;
+  font-weight: 700;
+}
+
 .score-table th:not(.title-col),
 .score-table td:not(.title-col),
 .score-table th:not(.title-col) .th-sort-button,
@@ -3025,6 +3059,13 @@ tbody tr:last-child td {
 }
 
 .home-connect-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.compare-connect-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;

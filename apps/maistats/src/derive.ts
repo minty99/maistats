@@ -1,5 +1,6 @@
 import type {
   ChartType,
+  CompareScoreRow,
   DifficultyCategory,
   PlayRecordApiResponse,
   SongAliases,
@@ -301,6 +302,61 @@ export function buildScoreRows(
   }
 
   return rows;
+}
+
+export function buildCompareScoreRows(
+  ownRows: ScoreRow[],
+  opponentRows: ScoreRow[],
+): CompareScoreRow[] {
+  const ownByKey = new Map(ownRows.map((row) => [row.key, row]));
+  const opponentByKey = new Map(opponentRows.map((row) => [row.key, row]));
+  const orderedKeys = new Set<string>();
+
+  for (const row of ownRows) {
+    orderedKeys.add(row.key);
+  }
+  for (const row of opponentRows) {
+    orderedKeys.add(row.key);
+  }
+
+  return Array.from(orderedKeys)
+    .map((key): CompareScoreRow | null => {
+      const ownRow = ownByKey.get(key);
+      const opponentRow = opponentByKey.get(key);
+      const baseRow = ownRow ?? opponentRow;
+      if (!baseRow) {
+        return null;
+      }
+
+      const ownAchievementPercent = ownRow?.achievementPercent ?? null;
+      const opponentAchievementPercent = opponentRow?.achievementPercent ?? null;
+      const diffPercent =
+        ownAchievementPercent !== null && opponentAchievementPercent !== null
+          ? ownAchievementPercent - opponentAchievementPercent
+          : null;
+
+      return {
+        ...baseRow,
+        achievementX10000: ownRow?.achievementX10000 ?? null,
+        achievementPercent: ownAchievementPercent,
+        rank: ownRow?.rank ?? null,
+        fc: ownRow?.fc ?? null,
+        sync: ownRow?.sync ?? null,
+        dxScore: ownRow?.dxScore ?? null,
+        dxScoreMax: ownRow?.dxScoreMax ?? null,
+        dxRatio: ownRow?.dxRatio ?? null,
+        rating: ownRow?.rating ?? null,
+        latestPlayedAtUnix: ownRow?.latestPlayedAtUnix ?? null,
+        latestPlayedAtLabel: ownRow?.latestPlayedAtLabel ?? null,
+        daysSinceLastPlayed: ownRow?.daysSinceLastPlayed ?? null,
+        playCount: ownRow?.playCount ?? null,
+        opponentAchievementX10000: opponentRow?.achievementX10000 ?? null,
+        opponentAchievementPercent,
+        diffPercent,
+        hasOwnChart: ownRow !== undefined,
+      };
+    })
+    .filter((row): row is CompareScoreRow => row !== null);
 }
 
 export function buildPlaylogRows(

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildFilteredPlaylogRows, buildFilteredScoreRows } from './filtering';
+import {
+  buildFilteredCompareScoreRows,
+  buildFilteredPlaylogRows,
+  buildFilteredScoreRows,
+} from './filtering';
 import { DEFAULT_SCORE_FILTERS } from './scoreFilterPresets';
-import type { PlaylogRow, ScoreRow } from '../types';
+import type { CompareScoreRow, PlaylogRow, ScoreRow } from '../types';
 
 function buildPlaylogRow(key: string, overrides: Partial<PlaylogRow> = {}): PlaylogRow {
   return {
@@ -64,6 +68,17 @@ function buildScoreRow(key: string, overrides: Partial<ScoreRow> = {}): ScoreRow
     latestPlayedAtLabel: null,
     daysSinceLastPlayed: 1,
     playCount: 1,
+    ...overrides,
+  };
+}
+
+function buildCompareScoreRow(key: string, overrides: Partial<CompareScoreRow> = {}): CompareScoreRow {
+  return {
+    ...buildScoreRow(key),
+    opponentAchievementX10000: 1000000,
+    opponentAchievementPercent: 100,
+    diffPercent: 0.5,
+    hasOwnChart: true,
     ...overrides,
   };
 }
@@ -177,6 +192,36 @@ describe('buildFilteredScoreRows', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.key).toBe('played');
+  });
+});
+
+describe('buildFilteredCompareScoreRows', () => {
+  it('sorts by diff while keeping score filters shared with Scores', () => {
+    const rows = buildFilteredCompareScoreRows({
+      scoreData: [
+        buildCompareScoreRow('low', { diffPercent: -0.25 }),
+        buildCompareScoreRow('high', { diffPercent: 1.25 }),
+      ],
+      locale: 'ko-KR',
+      query: '',
+      chartFilter: ['DX'],
+      difficultyFilter: ['MASTER'],
+      versionSelection: 'ALL',
+      playedOnly: DEFAULT_SCORE_FILTERS.playedOnly,
+      versionOptions: [],
+      fcFilter: [],
+      syncFilter: [],
+      achievementMin: 0,
+      achievementMax: 101,
+      internalMin: 1,
+      internalMax: 15.5,
+      daysMin: 0,
+      daysMax: 2000,
+      scoreSortKey: 'diff',
+      scoreSortDesc: true,
+    });
+
+    expect(rows.map((row) => row.key)).toEqual(['high', 'low']);
   });
 });
 

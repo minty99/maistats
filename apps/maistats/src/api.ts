@@ -324,6 +324,18 @@ export async function fetchExplorerPayload(
   };
 }
 
+export async function fetchRatedScores(
+  recordCollectorBaseUrl: string,
+  signal?: AbortSignal,
+): Promise<ScoreApiResponse[]> {
+  const recordBase = normalizeBaseUrl(recordCollectorBaseUrl);
+  if (!recordBase) {
+    throw new LocalizedApiError('api.recordCollectorRequired');
+  }
+
+  return getJson<ScoreApiResponse[]>(`${recordBase}/api/scores/rated`, signal);
+}
+
 export async function fetchRecentPlaylogs(
   recordCollectorBaseUrl: string,
   signal?: AbortSignal,
