@@ -79,15 +79,15 @@ describe('buildScoreHistoryPoints', () => {
 describe('buildCompareScoreRows', () => {
   it('uses own scores as the primary record and computes achievement diff', () => {
     const own = buildScoreRow();
-    const opponent = buildScoreRow();
-    opponent.achievementX10000 = 1000000;
-    opponent.achievementPercent = 100;
+    const rival = buildScoreRow();
+    rival.achievementX10000 = 1000000;
+    rival.achievementPercent = 100;
 
-    const rows = buildCompareScoreRows([own], [opponent]);
+    const rows = buildCompareScoreRows([own], [rival]);
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.achievementPercent).toBe(100.5);
-    expect(rows[0]?.opponentAchievementPercent).toBe(100);
+    expect(rows[0]?.rivalAchievementPercent).toBe(100);
     expect(rows[0]?.diffPercent).toBe(0.5);
     expect(rows[0]?.hasOwnChart).toBe(true);
   });

@@ -75,11 +75,11 @@ function buildScoreRow(key: string, overrides: Partial<ScoreRow> = {}): ScoreRow
 function buildCompareScoreRow(key: string, overrides: Partial<CompareScoreRow> = {}): CompareScoreRow {
   return {
     ...buildScoreRow(key),
-    opponentAchievementX10000: 1000000,
-    opponentAchievementPercent: 100,
+    rivalAchievementX10000: 1000000,
+    rivalAchievementPercent: 100,
     diffPercent: 0.5,
     hasOwnChart: true,
-    hasOpponentChart: true,
+    hasRivalChart: true,
     ...overrides,
   };
 }
@@ -209,7 +209,7 @@ describe('buildFilteredCompareScoreRows', () => {
       difficultyFilter: ['MASTER'],
       versionSelection: 'ALL',
       playedOnly: DEFAULT_SCORE_FILTERS.playedOnly,
-      opponentOnly: false,
+      rivalOnly: false,
       bothPlayedOnly: false,
       versionOptions: [],
       fcFilter: [],
@@ -227,14 +227,14 @@ describe('buildFilteredCompareScoreRows', () => {
     expect(rows.map((row) => row.key)).toEqual(['high', 'low']);
   });
 
-  it('can show only songs played by the opponent', () => {
+  it('can show only songs played by the rival', () => {
     const rows = buildFilteredCompareScoreRows({
       scoreData: [
-        buildCompareScoreRow('own-only', { hasOpponentChart: false, opponentAchievementPercent: null }),
-        buildCompareScoreRow('opponent-only', {
+        buildCompareScoreRow('own-only', { hasRivalChart: false, rivalAchievementPercent: null }),
+        buildCompareScoreRow('rival-only', {
           achievementPercent: null,
           hasOwnChart: false,
-          hasOpponentChart: true,
+          hasRivalChart: true,
         }),
         buildCompareScoreRow('both'),
       ],
@@ -244,7 +244,7 @@ describe('buildFilteredCompareScoreRows', () => {
       difficultyFilter: ['MASTER'],
       versionSelection: 'ALL',
       playedOnly: false,
-      opponentOnly: true,
+      rivalOnly: true,
       bothPlayedOnly: false,
       versionOptions: [],
       fcFilter: [],
@@ -259,17 +259,17 @@ describe('buildFilteredCompareScoreRows', () => {
       scoreSortDesc: false,
     });
 
-    expect(rows.map((row) => row.key)).toEqual(['opponent-only']);
+    expect(rows.map((row) => row.key)).toEqual(['rival-only']);
   });
 
-  it('can show only songs played by both players', () => {
+  it('can show only songs played by both me and the rival', () => {
     const rows = buildFilteredCompareScoreRows({
       scoreData: [
-        buildCompareScoreRow('own-only', { hasOpponentChart: false, opponentAchievementPercent: null }),
-        buildCompareScoreRow('opponent-only', {
+        buildCompareScoreRow('own-only', { hasRivalChart: false, rivalAchievementPercent: null }),
+        buildCompareScoreRow('rival-only', {
           achievementPercent: null,
           hasOwnChart: false,
-          hasOpponentChart: true,
+          hasRivalChart: true,
         }),
         buildCompareScoreRow('both'),
       ],
@@ -279,7 +279,7 @@ describe('buildFilteredCompareScoreRows', () => {
       difficultyFilter: ['MASTER'],
       versionSelection: 'ALL',
       playedOnly: false,
-      opponentOnly: false,
+      rivalOnly: false,
       bothPlayedOnly: true,
       versionOptions: [],
       fcFilter: [],

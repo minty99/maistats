@@ -32,12 +32,12 @@ interface CompareExplorerSectionProps {
   sidebarTopContent?: ReactNode;
   scoreCountLabel: string;
   isLoading: boolean;
-  opponentUrlDraft: string;
-  setOpponentUrlDraft: Dispatch<SetStateAction<string>>;
-  onLoadOpponent: () => void;
-  isOpponentLoading: boolean;
-  opponentErrorMessage: string | null;
-  opponentPlayerName: string | null;
+  rivalUrlDraft: string;
+  setRivalUrlDraft: Dispatch<SetStateAction<string>>;
+  onLoadRival: () => void;
+  isRivalLoading: boolean;
+  rivalErrorMessage: string | null;
+  rivalPlayerName: string | null;
   appliedQuery: string;
   onApplyQuery: (query: string) => void;
   chartTypes: ChartType[];
@@ -51,8 +51,8 @@ interface CompareExplorerSectionProps {
   setVersionSelection: Dispatch<SetStateAction<string>>;
   playedOnly: boolean;
   setPlayedOnly: Dispatch<SetStateAction<boolean>>;
-  opponentOnly: boolean;
-  onChangeOpponentOnly: (checked: boolean) => void;
+  rivalOnly: boolean;
+  onChangeRivalOnly: (checked: boolean) => void;
   bothPlayedOnly: boolean;
   onChangeBothPlayedOnly: (checked: boolean) => void;
   internalLevelPresetOptions: string[];
@@ -109,12 +109,12 @@ export function CompareExplorerSection({
   sidebarTopContent,
   scoreCountLabel,
   isLoading,
-  opponentUrlDraft,
-  setOpponentUrlDraft,
-  onLoadOpponent,
-  isOpponentLoading,
-  opponentErrorMessage,
-  opponentPlayerName,
+  rivalUrlDraft,
+  setRivalUrlDraft,
+  onLoadRival,
+  isRivalLoading,
+  rivalErrorMessage,
+  rivalPlayerName,
   appliedQuery,
   onApplyQuery,
   chartTypes,
@@ -128,8 +128,8 @@ export function CompareExplorerSection({
   setVersionSelection,
   playedOnly,
   setPlayedOnly,
-  opponentOnly,
-  onChangeOpponentOnly,
+  rivalOnly,
+  onChangeRivalOnly,
   bothPlayedOnly,
   onChangeBothPlayedOnly,
   internalLevelPresetOptions,
@@ -197,7 +197,7 @@ export function CompareExplorerSection({
     />
   );
 
-  const opponentPanel = (
+  const rivalPanel = (
     <section className="panel compare-connect-panel">
       <div className="panel-heading compact">
         <div>
@@ -209,31 +209,31 @@ export function CompareExplorerSection({
         className="compare-connect-form"
         onSubmit={(event) => {
           event.preventDefault();
-          onLoadOpponent();
+          onLoadRival();
         }}
       >
         <label className="home-url-field">
-          <span>{t('compare.opponentUrl')}</span>
+          <span>{t('compare.rivalUrl')}</span>
           <input
             type="url"
-            value={opponentUrlDraft}
-            onChange={(event) => setOpponentUrlDraft(event.target.value)}
+            value={rivalUrlDraft}
+            onChange={(event) => setRivalUrlDraft(event.target.value)}
             placeholder={t('home.connect.placeholder')}
           />
         </label>
         <button
           type="submit"
           className="home-connect-btn"
-          disabled={isOpponentLoading || !opponentUrlDraft.trim()}
+          disabled={isRivalLoading || !rivalUrlDraft.trim()}
         >
-          {isOpponentLoading ? t('common.connecting') : t('common.apply')}
+          {isRivalLoading ? t('common.connecting') : t('common.apply')}
         </button>
       </form>
-      {opponentPlayerName ? (
-        <p className="home-status success">{t('compare.connectedOpponent', { name: opponentPlayerName })}</p>
+      {rivalPlayerName ? (
+        <p className="home-status success">{t('compare.connectedRival', { name: rivalPlayerName })}</p>
       ) : null}
-      {opponentErrorMessage ? (
-        <p className="home-status error">{t('compare.loadFailed', { message: opponentErrorMessage })}</p>
+      {rivalErrorMessage ? (
+        <p className="home-status error">{t('compare.loadFailed', { message: rivalErrorMessage })}</p>
       ) : null}
     </section>
   );
@@ -308,10 +308,10 @@ export function CompareExplorerSection({
           <label className="score-special-toggle">
             <input
               type="checkbox"
-              checked={opponentOnly}
-              onChange={(event) => onChangeOpponentOnly(event.target.checked)}
+              checked={rivalOnly}
+              onChange={(event) => onChangeRivalOnly(event.target.checked)}
             />
-            <span>{t('compare.opponentOnly')}</span>
+            <span>{t('compare.rivalOnly')}</span>
           </label>
           <label className="score-special-toggle">
             <input
@@ -446,7 +446,7 @@ export function CompareExplorerSection({
       <div className="explorer-layout table-explorer-layout compare-explorer-layout">
         <aside className="sidebar-column">
           {sidebarTopContent}
-          {opponentPanel}
+          {rivalPanel}
           <section className="panel search-panel">
             {renderSearchControl()}
           </section>
@@ -497,10 +497,10 @@ export function CompareExplorerSection({
                       </button>
                     </th>
                     <th className="sortable achievement-col">
-                      <button type="button" className="th-sort-button" onClick={() => onSortBy('opponentAchievement')}>
-                        <span>{t('compare.opponentRecord')}</span>
+                      <button type="button" className="th-sort-button" onClick={() => onSortBy('rivalAchievement')}>
+                        <span>{t('compare.rivalRecord')}</span>
                         <span className="sort-indicator">
-                          {sortIndicator(scoreSortKey === 'opponentAchievement', scoreSortDesc)}
+                          {sortIndicator(scoreSortKey === 'rivalAchievement', scoreSortDesc)}
                         </span>
                       </button>
                     </th>
@@ -551,7 +551,7 @@ export function CompareExplorerSection({
                             onOpenHistory={row.achievementPercent === null ? null : () => onOpenHistory(row)}
                           />
                         </td>
-                        <td className="achievement-col">{formatPercent(row.opponentAchievementPercent)}</td>
+                        <td className="achievement-col">{formatPercent(row.rivalAchievementPercent)}</td>
                         <td className="diff-col">
                           <span className={diffClassName(row.diffPercent)}>{formatSignedPercent(row.diffPercent)}</span>
                         </td>
@@ -583,7 +583,7 @@ export function CompareExplorerSection({
             onClick={(event) => event.stopPropagation()}
           >
             {sidebarTopContent}
-            {opponentPanel}
+            {rivalPanel}
             {filterPanel}
           </section>
         </div>

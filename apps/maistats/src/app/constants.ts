@@ -119,7 +119,7 @@ export type ScoreSortKey =
 export type CompareSortKey =
   | 'title'
   | 'achievement'
-  | 'opponentAchievement'
+  | 'rivalAchievement'
   | 'diff'
   | 'internal';
 
