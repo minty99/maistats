@@ -306,33 +306,35 @@ export function buildScoreRows(
 
 export function buildCompareScoreRows(
   ownRows: ScoreRow[],
-  opponentRows: ScoreRow[],
+  rivalRows: ScoreRow[],
 ): CompareScoreRow[] {
   const ownByKey = new Map(ownRows.map((row) => [row.key, row]));
-  const opponentByKey = new Map(opponentRows.map((row) => [row.key, row]));
+  const rivalByKey = new Map(rivalRows.map((row) => [row.key, row]));
   const orderedKeys = new Set<string>();
+  const hasScoreRecord = (row: ScoreRow | undefined) =>
+    row !== undefined && (row.achievementX10000 !== null || row.playCount !== null);
 
   for (const row of ownRows) {
     orderedKeys.add(row.key);
   }
-  for (const row of opponentRows) {
+  for (const row of rivalRows) {
     orderedKeys.add(row.key);
   }
 
   return Array.from(orderedKeys)
     .map((key): CompareScoreRow | null => {
       const ownRow = ownByKey.get(key);
-      const opponentRow = opponentByKey.get(key);
-      const baseRow = ownRow ?? opponentRow;
+      const rivalRow = rivalByKey.get(key);
+      const baseRow = ownRow ?? rivalRow;
       if (!baseRow) {
         return null;
       }
 
       const ownAchievementPercent = ownRow?.achievementPercent ?? null;
-      const opponentAchievementPercent = opponentRow?.achievementPercent ?? null;
+      const rivalAchievementPercent = rivalRow?.achievementPercent ?? null;
       const diffPercent =
-        ownAchievementPercent !== null && opponentAchievementPercent !== null
-          ? ownAchievementPercent - opponentAchievementPercent
+        ownAchievementPercent !== null && rivalAchievementPercent !== null
+          ? ownAchievementPercent - rivalAchievementPercent
           : null;
 
       return {
@@ -350,10 +352,11 @@ export function buildCompareScoreRows(
         latestPlayedAtLabel: ownRow?.latestPlayedAtLabel ?? null,
         daysSinceLastPlayed: ownRow?.daysSinceLastPlayed ?? null,
         playCount: ownRow?.playCount ?? null,
-        opponentAchievementX10000: opponentRow?.achievementX10000 ?? null,
-        opponentAchievementPercent,
+        rivalAchievementX10000: rivalRow?.achievementX10000 ?? null,
+        rivalAchievementPercent,
         diffPercent,
-        hasOwnChart: ownRow !== undefined,
+        hasOwnRecord: hasScoreRecord(ownRow),
+        hasRivalRecord: hasScoreRecord(rivalRow),
       };
     })
     .filter((row): row is CompareScoreRow => row !== null);

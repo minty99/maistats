@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCompareScoreRows, buildScoreHistoryPoints, toDateLabel } from './derive';
 import type { PlaylogRow, ScoreRow } from './types';
 
-function buildScoreRow(): ScoreRow {
+function buildScoreRow(overrides: Partial<ScoreRow> = {}): ScoreRow {
   return {
     key: 'score-row',
     songKey: 'song-1',
@@ -31,6 +31,7 @@ function buildScoreRow(): ScoreRow {
     latestPlayedAtLabel: null,
     daysSinceLastPlayed: 1,
     playCount: 1,
+    ...overrides,
   };
 }
 
@@ -79,17 +80,37 @@ describe('buildScoreHistoryPoints', () => {
 describe('buildCompareScoreRows', () => {
   it('uses own scores as the primary record and computes achievement diff', () => {
     const own = buildScoreRow();
-    const opponent = buildScoreRow();
-    opponent.achievementX10000 = 1000000;
-    opponent.achievementPercent = 100;
+    const rival = buildScoreRow();
+    rival.achievementX10000 = 1000000;
+    rival.achievementPercent = 100;
 
-    const rows = buildCompareScoreRows([own], [opponent]);
+    const rows = buildCompareScoreRows([own], [rival]);
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.achievementPercent).toBe(100.5);
-    expect(rows[0]?.opponentAchievementPercent).toBe(100);
+    expect(rows[0]?.rivalAchievementPercent).toBe(100);
     expect(rows[0]?.diffPercent).toBe(0.5);
-    expect(rows[0]?.hasOwnChart).toBe(true);
+    expect(rows[0]?.hasOwnRecord).toBe(true);
+    expect(rows[0]?.hasRivalRecord).toBe(true);
+  });
+
+  it('tracks compare record presence separately from metadata row presence', () => {
+    const own = buildScoreRow({
+      achievementX10000: null,
+      achievementPercent: null,
+      playCount: null,
+    });
+    const rival = buildScoreRow({
+      achievementX10000: null,
+      achievementPercent: null,
+      playCount: null,
+    });
+
+    const rows = buildCompareScoreRows([own], [rival]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.hasOwnRecord).toBe(false);
+    expect(rows[0]?.hasRivalRecord).toBe(false);
   });
 });
 

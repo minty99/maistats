@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 
 import {
   describeRecordCollectorVersionStatus,
@@ -503,6 +503,8 @@ function App() {
   const [playedOnly, setPlayedOnly] = useState(
     savedScoreFilters?.playedOnly === true,
   );
+  const [compareRivalOnly, setCompareRivalOnly] = useState(false);
+  const [compareBothPlayedOnly, setCompareBothPlayedOnly] = useState(false);
   const [internalLevelSelectionState, setInternalLevelSelectionState] = useState<
     DirectionalRangeSelectionState<Exclude<InternalLevelPresetId, 'ALL'>> | null
   >(null);
@@ -582,13 +584,13 @@ function App() {
     () => buildScoreRows(scoreRecords, songMetadata, locale),
     [locale, scoreRecords, songMetadata],
   );
-  const compareOpponentScoreData = useMemo(
+  const compareRivalScoreData = useMemo(
     () => buildScoreRows(compareScoreRecords, songMetadata, locale),
     [compareScoreRecords, locale, songMetadata],
   );
   const compareScoreData = useMemo(
-    () => buildCompareScoreRows(scoreData, compareOpponentScoreData),
-    [compareOpponentScoreData, scoreData],
+    () => buildCompareScoreRows(scoreData, compareRivalScoreData),
+    [compareRivalScoreData, scoreData],
   );
   const selectedDetailRows = useMemo(
     () => buildSongDetailRows(scoreData, selectedDetailSongKey),
@@ -1263,7 +1265,7 @@ function App() {
     setQuery(draft);
   }, []);
 
-  const handleLoadCompareOpponent = useCallback(() => {
+  const handleLoadCompareRival = useCallback(() => {
     const normalizedUrl = compareCollectorUrlDraft.trim();
     setCompareCollectorUrl(normalizedUrl);
     if (normalizedUrl === compareCollectorUrl.trim()) {
@@ -1273,6 +1275,31 @@ function App() {
 
   const handleApplyPlaylogQuery = useCallback((draft: string) => {
     setPlaylogQuery(draft);
+  }, []);
+
+  const handleComparePlayedOnlyChange = useCallback((nextValue: SetStateAction<boolean>) => {
+    setPlayedOnly((previous) => {
+      const checked = typeof nextValue === 'function' ? nextValue(previous) : nextValue;
+      if (checked) {
+        setCompareRivalOnly(false);
+      }
+      return checked;
+    });
+  }, []);
+
+  const handleCompareRivalOnlyChange = useCallback((checked: boolean) => {
+    setCompareRivalOnly(checked);
+    if (checked) {
+      setPlayedOnly(false);
+      setCompareBothPlayedOnly(false);
+    }
+  }, []);
+
+  const handleCompareBothPlayedOnlyChange = useCallback((checked: boolean) => {
+    setCompareBothPlayedOnly(checked);
+    if (checked) {
+      setCompareRivalOnly(false);
+    }
   }, []);
 
   const handleResetScoreFilters = useCallback(() => {
@@ -1289,6 +1316,8 @@ function App() {
     setDaysMin(DEFAULT_SCORE_FILTERS.daysMin);
     setDaysMax(DEFAULT_SCORE_FILTERS.daysMax);
     setPlayedOnly(DEFAULT_SCORE_FILTERS.playedOnly);
+    setCompareRivalOnly(false);
+    setCompareBothPlayedOnly(false);
     setInternalLevelSelectionState(null);
     setScoreAchievementSelectionState(null);
     setFcSelectionState(null);
@@ -1349,6 +1378,8 @@ function App() {
         difficultyFilter,
         versionSelection,
         playedOnly,
+        rivalOnly: compareRivalOnly,
+        bothPlayedOnly: compareBothPlayedOnly,
         versionOptions,
         fcFilter,
         syncFilter,
@@ -1365,6 +1396,8 @@ function App() {
       achievementMax,
       achievementMin,
       chartFilter,
+      compareBothPlayedOnly,
+      compareRivalOnly,
       compareScoreData,
       compareSortDesc,
       compareSortKey,
@@ -1870,12 +1903,12 @@ function App() {
               sidebarTopContent={desktopSidebarTopContent}
               scoreCountLabel={compareCountLabel}
               isLoading={isLoading || isCompareLoading}
-              opponentUrlDraft={compareCollectorUrlDraft}
-              setOpponentUrlDraft={setCompareCollectorUrlDraft}
-              onLoadOpponent={handleLoadCompareOpponent}
-              isOpponentLoading={isCompareLoading}
-              opponentErrorMessage={compareLoadingErrorMessage}
-              opponentPlayerName={comparePlayerProfile?.user_name ?? null}
+              rivalUrlDraft={compareCollectorUrlDraft}
+              setRivalUrlDraft={setCompareCollectorUrlDraft}
+              onLoadRival={handleLoadCompareRival}
+              isRivalLoading={isCompareLoading}
+              rivalErrorMessage={compareLoadingErrorMessage}
+              rivalPlayerName={comparePlayerProfile?.user_name ?? null}
               appliedQuery={query}
               onApplyQuery={handleApplyScoreQuery}
               chartTypes={CHART_TYPES}
@@ -1888,7 +1921,11 @@ function App() {
               versionSelection={versionSelection}
               setVersionSelection={setVersionSelection}
               playedOnly={playedOnly}
-              setPlayedOnly={setPlayedOnly}
+              setPlayedOnly={handleComparePlayedOnlyChange}
+              rivalOnly={compareRivalOnly}
+              onChangeRivalOnly={handleCompareRivalOnlyChange}
+              bothPlayedOnly={compareBothPlayedOnly}
+              onChangeBothPlayedOnly={handleCompareBothPlayedOnlyChange}
               internalLevelPresetOptions={INTERNAL_LEVEL_PRESETS.map((preset) => preset.label)}
               selectedInternalLevelPresets={selectedInternalLevelPresets}
               onToggleInternalLevelPreset={handleInternalLevelPresetToggle}

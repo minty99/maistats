@@ -1,13 +1,14 @@
 interface FilterFabButtonProps {
   label: string;
   onClick: () => void;
+  className?: string;
 }
 
-export function FilterFabButton({ label, onClick }: FilterFabButtonProps) {
+export function FilterFabButton({ label, onClick, className }: FilterFabButtonProps) {
   return (
     <button
       type="button"
-      className="mobile-filter-fab"
+      className={['mobile-filter-fab', className].filter(Boolean).join(' ')}
       aria-label={label}
       title={label}
       onClick={onClick}

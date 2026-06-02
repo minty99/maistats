@@ -75,10 +75,11 @@ function buildScoreRow(key: string, overrides: Partial<ScoreRow> = {}): ScoreRow
 function buildCompareScoreRow(key: string, overrides: Partial<CompareScoreRow> = {}): CompareScoreRow {
   return {
     ...buildScoreRow(key),
-    opponentAchievementX10000: 1000000,
-    opponentAchievementPercent: 100,
+    rivalAchievementX10000: 1000000,
+    rivalAchievementPercent: 100,
     diffPercent: 0.5,
-    hasOwnChart: true,
+    hasOwnRecord: true,
+    hasRivalRecord: true,
     ...overrides,
   };
 }
@@ -208,6 +209,8 @@ describe('buildFilteredCompareScoreRows', () => {
       difficultyFilter: ['MASTER'],
       versionSelection: 'ALL',
       playedOnly: DEFAULT_SCORE_FILTERS.playedOnly,
+      rivalOnly: false,
+      bothPlayedOnly: false,
       versionOptions: [],
       fcFilter: [],
       syncFilter: [],
@@ -222,6 +225,106 @@ describe('buildFilteredCompareScoreRows', () => {
     });
 
     expect(rows.map((row) => row.key)).toEqual(['high', 'low']);
+  });
+
+  it('can show only songs played by the rival', () => {
+    const rows = buildFilteredCompareScoreRows({
+      scoreData: [
+        buildCompareScoreRow('own-only', {
+          hasRivalRecord: false,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+        }),
+        buildCompareScoreRow('rival-only', {
+          achievementX10000: null,
+          achievementPercent: null,
+          playCount: null,
+          hasOwnRecord: false,
+          hasRivalRecord: true,
+        }),
+        buildCompareScoreRow('unplayed', {
+          achievementX10000: null,
+          achievementPercent: null,
+          playCount: null,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+          hasOwnRecord: false,
+          hasRivalRecord: false,
+        }),
+        buildCompareScoreRow('both'),
+      ],
+      locale: 'ko-KR',
+      query: '',
+      chartFilter: ['DX'],
+      difficultyFilter: ['MASTER'],
+      versionSelection: 'ALL',
+      playedOnly: false,
+      rivalOnly: true,
+      bothPlayedOnly: false,
+      versionOptions: [],
+      fcFilter: [],
+      syncFilter: [],
+      achievementMin: 0,
+      achievementMax: 101,
+      internalMin: 1,
+      internalMax: 15.5,
+      daysMin: 0,
+      daysMax: 2000,
+      scoreSortKey: 'title',
+      scoreSortDesc: false,
+    });
+
+    expect(rows.map((row) => row.key)).toEqual(['rival-only']);
+  });
+
+  it('can show only songs played by both me and the rival', () => {
+    const rows = buildFilteredCompareScoreRows({
+      scoreData: [
+        buildCompareScoreRow('own-only', {
+          hasRivalRecord: false,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+        }),
+        buildCompareScoreRow('rival-only', {
+          achievementX10000: null,
+          achievementPercent: null,
+          playCount: null,
+          hasOwnRecord: false,
+          hasRivalRecord: true,
+        }),
+        buildCompareScoreRow('unplayed', {
+          achievementX10000: null,
+          achievementPercent: null,
+          playCount: null,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+          hasOwnRecord: false,
+          hasRivalRecord: false,
+        }),
+        buildCompareScoreRow('both'),
+      ],
+      locale: 'ko-KR',
+      query: '',
+      chartFilter: ['DX'],
+      difficultyFilter: ['MASTER'],
+      versionSelection: 'ALL',
+      playedOnly: false,
+      rivalOnly: false,
+      bothPlayedOnly: true,
+      versionOptions: [],
+      fcFilter: [],
+      syncFilter: [],
+      achievementMin: 0,
+      achievementMax: 101,
+      internalMin: 1,
+      internalMax: 15.5,
+      daysMin: 0,
+      daysMax: 2000,
+      scoreSortKey: 'title',
+      scoreSortDesc: false,
+    });
+
+    expect(rows.map((row) => row.key)).toEqual(['both']);
   });
 });
 

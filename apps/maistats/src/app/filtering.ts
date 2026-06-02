@@ -226,31 +226,43 @@ export function buildFilteredScoreRows({
 interface BuildFilteredCompareScoreRowsParams extends Omit<BuildFilteredScoreRowsParams, 'scoreData' | 'scoreSortKey'> {
   scoreData: CompareScoreRow[];
   scoreSortKey: CompareSortKey;
+  rivalOnly: boolean;
+  bothPlayedOnly: boolean;
 }
 
 export function buildFilteredCompareScoreRows({
   scoreSortKey,
   scoreSortDesc,
+  rivalOnly,
+  bothPlayedOnly,
   ...params
 }: BuildFilteredCompareScoreRowsParams): CompareScoreRow[] {
   const sharedSortKey: ScoreSortKey =
-    scoreSortKey === 'opponentAchievement' || scoreSortKey === 'diff'
+    scoreSortKey === 'rivalAchievement' || scoreSortKey === 'diff'
       ? 'achievement'
       : scoreSortKey;
-  const rows = buildFilteredScoreRows({
+  const rows = (buildFilteredScoreRows({
     ...params,
     scoreSortKey: sharedSortKey,
     scoreSortDesc,
-  }) as CompareScoreRow[];
+  }) as CompareScoreRow[]).filter((row) => {
+    if (rivalOnly) {
+      return row.hasRivalRecord && !row.hasOwnRecord;
+    }
+    if (bothPlayedOnly) {
+      return row.hasRivalRecord && row.hasOwnRecord;
+    }
+    return true;
+  });
 
-  if (scoreSortKey !== 'opponentAchievement' && scoreSortKey !== 'diff') {
+  if (scoreSortKey !== 'rivalAchievement' && scoreSortKey !== 'diff') {
     return rows;
   }
 
   rows.sort((left, right) => {
     const result =
-      scoreSortKey === 'opponentAchievement'
-        ? compareNullableNumber(left.opponentAchievementPercent, right.opponentAchievementPercent)
+      scoreSortKey === 'rivalAchievement'
+        ? compareNullableNumber(left.rivalAchievementPercent, right.rivalAchievementPercent)
         : compareNullableNumber(left.diffPercent, right.diffPercent);
     return scoreSortDesc ? -result : result;
   });
