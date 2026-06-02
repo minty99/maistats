@@ -528,7 +528,7 @@ export function CompareExplorerSection({
                         <td className="title-col">
                           <div className="title-cell">
                             <SongTitleButton
-                              target={row.hasOwnChart ? row : null}
+                              target={row.hasOwnRecord ? row : null}
                               title={row.title}
                               subtitle={formatAliasSummary(row.aliases)}
                               onOpenSongDetail={onOpenSongDetail}

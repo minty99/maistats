@@ -247,10 +247,10 @@ export function buildFilteredCompareScoreRows({
     scoreSortDesc,
   }) as CompareScoreRow[]).filter((row) => {
     if (rivalOnly) {
-      return row.hasRivalChart && !row.hasOwnChart;
+      return row.hasRivalRecord && !row.hasOwnRecord;
     }
     if (bothPlayedOnly) {
-      return row.hasRivalChart && row.hasOwnChart;
+      return row.hasRivalRecord && row.hasOwnRecord;
     }
     return true;
   });

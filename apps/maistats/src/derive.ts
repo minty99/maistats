@@ -311,6 +311,8 @@ export function buildCompareScoreRows(
   const ownByKey = new Map(ownRows.map((row) => [row.key, row]));
   const rivalByKey = new Map(rivalRows.map((row) => [row.key, row]));
   const orderedKeys = new Set<string>();
+  const hasScoreRecord = (row: ScoreRow | undefined) =>
+    row !== undefined && (row.achievementX10000 !== null || row.playCount !== null);
 
   for (const row of ownRows) {
     orderedKeys.add(row.key);
@@ -353,8 +355,8 @@ export function buildCompareScoreRows(
         rivalAchievementX10000: rivalRow?.achievementX10000 ?? null,
         rivalAchievementPercent,
         diffPercent,
-        hasOwnChart: ownRow !== undefined,
-        hasRivalChart: rivalRow !== undefined,
+        hasOwnRecord: hasScoreRecord(ownRow),
+        hasRivalRecord: hasScoreRecord(rivalRow),
       };
     })
     .filter((row): row is CompareScoreRow => row !== null);

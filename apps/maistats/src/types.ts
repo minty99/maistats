@@ -245,8 +245,8 @@ export interface CompareScoreRow extends ScoreRow {
   rivalAchievementX10000: number | null;
   rivalAchievementPercent: number | null;
   diffPercent: number | null;
-  hasOwnChart: boolean;
-  hasRivalChart: boolean;
+  hasOwnRecord: boolean;
+  hasRivalRecord: boolean;
 }
 
 export interface ScoreHistoryPoint {

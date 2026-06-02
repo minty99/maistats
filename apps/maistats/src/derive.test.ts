@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCompareScoreRows, buildScoreHistoryPoints, toDateLabel } from './derive';
 import type { PlaylogRow, ScoreRow } from './types';
 
-function buildScoreRow(): ScoreRow {
+function buildScoreRow(overrides: Partial<ScoreRow> = {}): ScoreRow {
   return {
     key: 'score-row',
     songKey: 'song-1',
@@ -31,6 +31,7 @@ function buildScoreRow(): ScoreRow {
     latestPlayedAtLabel: null,
     daysSinceLastPlayed: 1,
     playCount: 1,
+    ...overrides,
   };
 }
 
@@ -89,7 +90,27 @@ describe('buildCompareScoreRows', () => {
     expect(rows[0]?.achievementPercent).toBe(100.5);
     expect(rows[0]?.rivalAchievementPercent).toBe(100);
     expect(rows[0]?.diffPercent).toBe(0.5);
-    expect(rows[0]?.hasOwnChart).toBe(true);
+    expect(rows[0]?.hasOwnRecord).toBe(true);
+    expect(rows[0]?.hasRivalRecord).toBe(true);
+  });
+
+  it('tracks compare record presence separately from metadata row presence', () => {
+    const own = buildScoreRow({
+      achievementX10000: null,
+      achievementPercent: null,
+      playCount: null,
+    });
+    const rival = buildScoreRow({
+      achievementX10000: null,
+      achievementPercent: null,
+      playCount: null,
+    });
+
+    const rows = buildCompareScoreRows([own], [rival]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.hasOwnRecord).toBe(false);
+    expect(rows[0]?.hasRivalRecord).toBe(false);
   });
 });
 

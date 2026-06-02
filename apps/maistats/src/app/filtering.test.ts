@@ -78,8 +78,8 @@ function buildCompareScoreRow(key: string, overrides: Partial<CompareScoreRow> =
     rivalAchievementX10000: 1000000,
     rivalAchievementPercent: 100,
     diffPercent: 0.5,
-    hasOwnChart: true,
-    hasRivalChart: true,
+    hasOwnRecord: true,
+    hasRivalRecord: true,
     ...overrides,
   };
 }
@@ -230,11 +230,26 @@ describe('buildFilteredCompareScoreRows', () => {
   it('can show only songs played by the rival', () => {
     const rows = buildFilteredCompareScoreRows({
       scoreData: [
-        buildCompareScoreRow('own-only', { hasRivalChart: false, rivalAchievementPercent: null }),
+        buildCompareScoreRow('own-only', {
+          hasRivalRecord: false,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+        }),
         buildCompareScoreRow('rival-only', {
+          achievementX10000: null,
           achievementPercent: null,
-          hasOwnChart: false,
-          hasRivalChart: true,
+          playCount: null,
+          hasOwnRecord: false,
+          hasRivalRecord: true,
+        }),
+        buildCompareScoreRow('unplayed', {
+          achievementX10000: null,
+          achievementPercent: null,
+          playCount: null,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+          hasOwnRecord: false,
+          hasRivalRecord: false,
         }),
         buildCompareScoreRow('both'),
       ],
@@ -265,11 +280,26 @@ describe('buildFilteredCompareScoreRows', () => {
   it('can show only songs played by both me and the rival', () => {
     const rows = buildFilteredCompareScoreRows({
       scoreData: [
-        buildCompareScoreRow('own-only', { hasRivalChart: false, rivalAchievementPercent: null }),
+        buildCompareScoreRow('own-only', {
+          hasRivalRecord: false,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+        }),
         buildCompareScoreRow('rival-only', {
+          achievementX10000: null,
           achievementPercent: null,
-          hasOwnChart: false,
-          hasRivalChart: true,
+          playCount: null,
+          hasOwnRecord: false,
+          hasRivalRecord: true,
+        }),
+        buildCompareScoreRow('unplayed', {
+          achievementX10000: null,
+          achievementPercent: null,
+          playCount: null,
+          rivalAchievementX10000: null,
+          rivalAchievementPercent: null,
+          hasOwnRecord: false,
+          hasRivalRecord: false,
         }),
         buildCompareScoreRow('both'),
       ],
