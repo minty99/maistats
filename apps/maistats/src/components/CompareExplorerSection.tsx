@@ -51,6 +51,10 @@ interface CompareExplorerSectionProps {
   setVersionSelection: Dispatch<SetStateAction<string>>;
   playedOnly: boolean;
   setPlayedOnly: Dispatch<SetStateAction<boolean>>;
+  opponentOnly: boolean;
+  onChangeOpponentOnly: (checked: boolean) => void;
+  bothPlayedOnly: boolean;
+  onChangeBothPlayedOnly: (checked: boolean) => void;
   internalLevelPresetOptions: string[];
   selectedInternalLevelPresets: string[];
   onToggleInternalLevelPreset: (value: string) => void;
@@ -124,6 +128,10 @@ export function CompareExplorerSection({
   setVersionSelection,
   playedOnly,
   setPlayedOnly,
+  opponentOnly,
+  onChangeOpponentOnly,
+  bothPlayedOnly,
+  onChangeBothPlayedOnly,
   internalLevelPresetOptions,
   selectedInternalLevelPresets,
   onToggleInternalLevelPreset,
@@ -297,6 +305,22 @@ export function CompareExplorerSection({
             />
             <span>{t('scores.playedOnly')}</span>
           </label>
+          <label className="score-special-toggle">
+            <input
+              type="checkbox"
+              checked={opponentOnly}
+              onChange={(event) => onChangeOpponentOnly(event.target.checked)}
+            />
+            <span>{t('compare.opponentOnly')}</span>
+          </label>
+          <label className="score-special-toggle">
+            <input
+              type="checkbox"
+              checked={bothPlayedOnly}
+              onChange={(event) => onChangeBothPlayedOnly(event.target.checked)}
+            />
+            <span>{t('compare.bothPlayedOnly')}</span>
+          </label>
         </div>
 
         <div className="filter-block">
@@ -419,7 +443,7 @@ export function CompareExplorerSection({
 
   return (
     <>
-      <div className="explorer-layout table-explorer-layout">
+      <div className="explorer-layout table-explorer-layout compare-explorer-layout">
         <aside className="sidebar-column">
           {sidebarTopContent}
           {opponentPanel}
@@ -546,7 +570,11 @@ export function CompareExplorerSection({
         </div>
       </div>
 
-      <FilterFabButton label={t('common.filters')} onClick={() => setIsFilterModalOpen(true)} />
+      <FilterFabButton
+        label={t('common.filters')}
+        className="compare-filter-fab"
+        onClick={() => setIsFilterModalOpen(true)}
+      />
 
       {isFilterModalOpen ? (
         <div className="modal-backdrop mobile-filter-backdrop" onClick={() => setIsFilterModalOpen(false)}>

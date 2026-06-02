@@ -79,6 +79,7 @@ function buildCompareScoreRow(key: string, overrides: Partial<CompareScoreRow> =
     opponentAchievementPercent: 100,
     diffPercent: 0.5,
     hasOwnChart: true,
+    hasOpponentChart: true,
     ...overrides,
   };
 }
@@ -208,6 +209,8 @@ describe('buildFilteredCompareScoreRows', () => {
       difficultyFilter: ['MASTER'],
       versionSelection: 'ALL',
       playedOnly: DEFAULT_SCORE_FILTERS.playedOnly,
+      opponentOnly: false,
+      bothPlayedOnly: false,
       versionOptions: [],
       fcFilter: [],
       syncFilter: [],
@@ -222,6 +225,76 @@ describe('buildFilteredCompareScoreRows', () => {
     });
 
     expect(rows.map((row) => row.key)).toEqual(['high', 'low']);
+  });
+
+  it('can show only songs played by the opponent', () => {
+    const rows = buildFilteredCompareScoreRows({
+      scoreData: [
+        buildCompareScoreRow('own-only', { hasOpponentChart: false, opponentAchievementPercent: null }),
+        buildCompareScoreRow('opponent-only', {
+          achievementPercent: null,
+          hasOwnChart: false,
+          hasOpponentChart: true,
+        }),
+        buildCompareScoreRow('both'),
+      ],
+      locale: 'ko-KR',
+      query: '',
+      chartFilter: ['DX'],
+      difficultyFilter: ['MASTER'],
+      versionSelection: 'ALL',
+      playedOnly: false,
+      opponentOnly: true,
+      bothPlayedOnly: false,
+      versionOptions: [],
+      fcFilter: [],
+      syncFilter: [],
+      achievementMin: 0,
+      achievementMax: 101,
+      internalMin: 1,
+      internalMax: 15.5,
+      daysMin: 0,
+      daysMax: 2000,
+      scoreSortKey: 'title',
+      scoreSortDesc: false,
+    });
+
+    expect(rows.map((row) => row.key)).toEqual(['opponent-only']);
+  });
+
+  it('can show only songs played by both players', () => {
+    const rows = buildFilteredCompareScoreRows({
+      scoreData: [
+        buildCompareScoreRow('own-only', { hasOpponentChart: false, opponentAchievementPercent: null }),
+        buildCompareScoreRow('opponent-only', {
+          achievementPercent: null,
+          hasOwnChart: false,
+          hasOpponentChart: true,
+        }),
+        buildCompareScoreRow('both'),
+      ],
+      locale: 'ko-KR',
+      query: '',
+      chartFilter: ['DX'],
+      difficultyFilter: ['MASTER'],
+      versionSelection: 'ALL',
+      playedOnly: false,
+      opponentOnly: false,
+      bothPlayedOnly: true,
+      versionOptions: [],
+      fcFilter: [],
+      syncFilter: [],
+      achievementMin: 0,
+      achievementMax: 101,
+      internalMin: 1,
+      internalMax: 15.5,
+      daysMin: 0,
+      daysMax: 2000,
+      scoreSortKey: 'title',
+      scoreSortDesc: false,
+    });
+
+    expect(rows.map((row) => row.key)).toEqual(['both']);
   });
 });
 

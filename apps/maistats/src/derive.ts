@@ -354,6 +354,7 @@ export function buildCompareScoreRows(
         opponentAchievementPercent,
         diffPercent,
         hasOwnChart: ownRow !== undefined,
+        hasOpponentChart: opponentRow !== undefined,
       };
     })
     .filter((row): row is CompareScoreRow => row !== null);

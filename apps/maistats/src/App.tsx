@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 
 import {
   describeRecordCollectorVersionStatus,
@@ -503,6 +503,8 @@ function App() {
   const [playedOnly, setPlayedOnly] = useState(
     savedScoreFilters?.playedOnly === true,
   );
+  const [compareOpponentOnly, setCompareOpponentOnly] = useState(false);
+  const [compareBothPlayedOnly, setCompareBothPlayedOnly] = useState(false);
   const [internalLevelSelectionState, setInternalLevelSelectionState] = useState<
     DirectionalRangeSelectionState<Exclude<InternalLevelPresetId, 'ALL'>> | null
   >(null);
@@ -1275,6 +1277,31 @@ function App() {
     setPlaylogQuery(draft);
   }, []);
 
+  const handleComparePlayedOnlyChange = useCallback((nextValue: SetStateAction<boolean>) => {
+    setPlayedOnly((previous) => {
+      const checked = typeof nextValue === 'function' ? nextValue(previous) : nextValue;
+      if (checked) {
+        setCompareOpponentOnly(false);
+      }
+      return checked;
+    });
+  }, []);
+
+  const handleCompareOpponentOnlyChange = useCallback((checked: boolean) => {
+    setCompareOpponentOnly(checked);
+    if (checked) {
+      setPlayedOnly(false);
+      setCompareBothPlayedOnly(false);
+    }
+  }, []);
+
+  const handleCompareBothPlayedOnlyChange = useCallback((checked: boolean) => {
+    setCompareBothPlayedOnly(checked);
+    if (checked) {
+      setCompareOpponentOnly(false);
+    }
+  }, []);
+
   const handleResetScoreFilters = useCallback(() => {
     setQuery('');
     setChartFilter([...CHART_TYPES]);
@@ -1289,6 +1316,8 @@ function App() {
     setDaysMin(DEFAULT_SCORE_FILTERS.daysMin);
     setDaysMax(DEFAULT_SCORE_FILTERS.daysMax);
     setPlayedOnly(DEFAULT_SCORE_FILTERS.playedOnly);
+    setCompareOpponentOnly(false);
+    setCompareBothPlayedOnly(false);
     setInternalLevelSelectionState(null);
     setScoreAchievementSelectionState(null);
     setFcSelectionState(null);
@@ -1349,6 +1378,8 @@ function App() {
         difficultyFilter,
         versionSelection,
         playedOnly,
+        opponentOnly: compareOpponentOnly,
+        bothPlayedOnly: compareBothPlayedOnly,
         versionOptions,
         fcFilter,
         syncFilter,
@@ -1365,6 +1396,8 @@ function App() {
       achievementMax,
       achievementMin,
       chartFilter,
+      compareBothPlayedOnly,
+      compareOpponentOnly,
       compareScoreData,
       compareSortDesc,
       compareSortKey,
@@ -1888,7 +1921,11 @@ function App() {
               versionSelection={versionSelection}
               setVersionSelection={setVersionSelection}
               playedOnly={playedOnly}
-              setPlayedOnly={setPlayedOnly}
+              setPlayedOnly={handleComparePlayedOnlyChange}
+              opponentOnly={compareOpponentOnly}
+              onChangeOpponentOnly={handleCompareOpponentOnlyChange}
+              bothPlayedOnly={compareBothPlayedOnly}
+              onChangeBothPlayedOnly={handleCompareBothPlayedOnlyChange}
               internalLevelPresetOptions={INTERNAL_LEVEL_PRESETS.map((preset) => preset.label)}
               selectedInternalLevelPresets={selectedInternalLevelPresets}
               onToggleInternalLevelPreset={handleInternalLevelPresetToggle}

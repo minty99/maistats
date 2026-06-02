@@ -226,22 +226,34 @@ export function buildFilteredScoreRows({
 interface BuildFilteredCompareScoreRowsParams extends Omit<BuildFilteredScoreRowsParams, 'scoreData' | 'scoreSortKey'> {
   scoreData: CompareScoreRow[];
   scoreSortKey: CompareSortKey;
+  opponentOnly: boolean;
+  bothPlayedOnly: boolean;
 }
 
 export function buildFilteredCompareScoreRows({
   scoreSortKey,
   scoreSortDesc,
+  opponentOnly,
+  bothPlayedOnly,
   ...params
 }: BuildFilteredCompareScoreRowsParams): CompareScoreRow[] {
   const sharedSortKey: ScoreSortKey =
     scoreSortKey === 'opponentAchievement' || scoreSortKey === 'diff'
       ? 'achievement'
       : scoreSortKey;
-  const rows = buildFilteredScoreRows({
+  const rows = (buildFilteredScoreRows({
     ...params,
     scoreSortKey: sharedSortKey,
     scoreSortDesc,
-  }) as CompareScoreRow[];
+  }) as CompareScoreRow[]).filter((row) => {
+    if (opponentOnly) {
+      return row.hasOpponentChart && !row.hasOwnChart;
+    }
+    if (bothPlayedOnly) {
+      return row.hasOpponentChart && row.hasOwnChart;
+    }
+    return true;
+  });
 
   if (scoreSortKey !== 'opponentAchievement' && scoreSortKey !== 'diff') {
     return rows;
