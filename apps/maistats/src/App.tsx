@@ -192,6 +192,21 @@ function userTierEntryKey(entry: RaveilleUserTierEntry): string | null {
   return chartIdentityKey(entry.title, entry.genre, entry.artist, chartType, difficulty);
 }
 
+function formatUserTierLabel(entry: RaveilleUserTierEntry): string | null {
+  const userTier = entry.userTier.trim();
+  if (!userTier) {
+    return null;
+  }
+
+  const raveilleInternalLevel = entry.raveilleInternalLevel?.trim();
+  const raveilleTier = entry.raveilleTier?.trim();
+  if (raveilleInternalLevel && raveilleTier) {
+    return `${raveilleInternalLevel} ${raveilleTier} = ${userTier}`;
+  }
+
+  return userTier;
+}
+
 const MAIMAI_DAY_START_HOUR = 4;
 const MAIMAI_DAY_OFFSET_SECONDS = MAIMAI_DAY_START_HOUR * 60 * 60;
 
@@ -592,9 +607,20 @@ function App() {
     () => buildCompareScoreRows(scoreData, compareRivalScoreData),
     [compareRivalScoreData, scoreData],
   );
+  const userTierLabelsByKey = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const entry of userTierRecords) {
+      const key = userTierEntryKey(entry);
+      const label = formatUserTierLabel(entry);
+      if (key !== null && label !== null) {
+        labels.set(key, label);
+      }
+    }
+    return labels;
+  }, [userTierRecords]);
   const selectedDetailRows = useMemo(
-    () => buildSongDetailRows(scoreData, selectedDetailSongKey),
-    [scoreData, selectedDetailSongKey],
+    () => buildSongDetailRows(scoreData, selectedDetailSongKey, userTierLabelsByKey),
+    [scoreData, selectedDetailSongKey, userTierLabelsByKey],
   );
   const selectedDetailSong = selectedDetailRows[0] ?? null;
   const playlogData = useMemo(

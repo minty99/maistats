@@ -100,6 +100,7 @@ export interface SongDetailRow {
   lastPlayedAtLabel: string | null;
   playCount: number | null;
   version: string | null;
+  userTierLabel: string | null;
 }
 
 export interface PlayRecordApiResponse {

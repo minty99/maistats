@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCompareScoreRows, buildScoreHistoryPoints, toDateLabel } from './derive';
+import {
+  buildCompareScoreRows,
+  buildScoreHistoryPoints,
+  buildSongDetailRows,
+  toDateLabel,
+} from './derive';
 import type { PlaylogRow, ScoreRow } from './types';
 
 function buildScoreRow(overrides: Partial<ScoreRow> = {}): ScoreRow {
@@ -111,6 +116,20 @@ describe('buildCompareScoreRows', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.hasOwnRecord).toBe(false);
     expect(rows[0]?.hasRivalRecord).toBe(false);
+  });
+});
+
+describe('buildSongDetailRows', () => {
+  it('attaches matching user tier labels', () => {
+    const score = buildScoreRow({ key: 'song-chart-key' });
+    const rows = buildSongDetailRows(
+      [score],
+      score.songKey,
+      new Map([[score.key, '13.0 A+ = 13.15']]),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.userTierLabel).toBe('13.0 A+ = 13.15');
   });
 });
 

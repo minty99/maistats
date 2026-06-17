@@ -810,6 +810,20 @@ input[type="radio"] {
   color: var(--diff-remaster-text);
 }
 
+.detail-level-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-user-tier-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .difficulty-summary-list {
   display: inline-flex;
   flex-wrap: wrap;

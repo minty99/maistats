@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { formatApiErrorMessage } from '../api';
 import { useI18n } from '../app/i18n';
@@ -77,21 +77,29 @@ export function SongDetailModal({
   };
 
   const renderLevelCell = (row: SongDetailRow) => {
+    let levelContent: ReactNode;
     if (row.internalLevel === null) {
-      return '-';
-    }
-
-    if (row.isInternalLevelEstimated) {
-      return (
+      levelContent = '-';
+    } else if (row.isInternalLevelEstimated) {
+      levelContent = (
         <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
           {renderInternalLevel(row)}
+        </span>
+      );
+    } else {
+      levelContent = (
+        <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
+          {row.internalLevel.toFixed(1)}
         </span>
       );
     }
 
     return (
-      <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
-        {row.internalLevel.toFixed(1)}
+      <span className="detail-level-value">
+        {levelContent}
+        {row.userTierLabel ? (
+          <span className="detail-user-tier-label">({row.userTierLabel})</span>
+        ) : null}
       </span>
     );
   };

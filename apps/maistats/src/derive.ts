@@ -467,6 +467,7 @@ const difficultyOrder = new Map(DIFFICULTIES.map((value, index) => [value, index
 export function buildSongDetailRows(
   scoreRows: ScoreRow[],
   songKey: string | null,
+  userTierLabelsByKey: ReadonlyMap<string, string> = new Map(),
 ): SongDetailRow[] {
   if (!songKey) {
     return [];
@@ -508,6 +509,7 @@ export function buildSongDetailRows(
       lastPlayedAtLabel: row.latestPlayedAtLabel,
       playCount: row.playCount,
       version: row.version,
+      userTierLabel: userTierLabelsByKey.get(row.key) ?? null,
     }));
 }
 
