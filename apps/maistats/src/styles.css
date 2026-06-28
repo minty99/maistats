@@ -810,6 +810,26 @@ input[type="radio"] {
   color: var(--diff-remaster-text);
 }
 
+.level-badge.detail-level-toggle {
+  cursor: pointer;
+  min-width: 4.6ch;
+  height: 22px;
+  padding: 0 6px;
+  font-size: inherit;
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.level-badge.detail-level-toggle:hover {
+  background: color-mix(in srgb, currentColor 25%, var(--panel));
+}
+
+.level-badge.detail-level-toggle.showing-user-tier {
+  min-width: 7ch;
+  font-weight: 700;
+}
+
 .difficulty-summary-list {
   display: inline-flex;
   flex-wrap: wrap;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { formatApiErrorMessage } from '../api';
 import { useI18n } from '../app/i18n';
@@ -40,6 +40,9 @@ export function SongDetailModal({
   const { locale, t } = useI18n();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [visibleUserTierRows, setVisibleUserTierRows] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
 
   const imageName = selectedDetailRows[0]?.imageName ?? null;
   const englishAliases = aliasValues(selectedDetailAliases, 'en');
@@ -52,6 +55,7 @@ export function SongDetailModal({
   useEffect(() => {
     setIsRefreshing(false);
     setRefreshError(null);
+    setVisibleUserTierRows(new Set());
   }, [selectedDetailArtist, selectedDetailGenre, selectedDetailTitle]);
 
   if (selectedDetailTitle === null) {
@@ -77,22 +81,54 @@ export function SongDetailModal({
   };
 
   const renderLevelCell = (row: SongDetailRow) => {
+    const toneClass = getDifficultyToneClass(row.difficulty);
+    let levelContent: ReactNode;
     if (row.internalLevel === null) {
-      return '-';
+      levelContent = '-';
+    } else if (row.isInternalLevelEstimated) {
+      levelContent = renderInternalLevel(row);
+    } else {
+      levelContent = row.internalLevel.toFixed(1);
     }
 
-    if (row.isInternalLevelEstimated) {
-      return (
-        <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
-          {renderInternalLevel(row)}
-        </span>
-      );
+    if (!row.userTier) {
+      if (row.internalLevel === null) {
+        return levelContent;
+      }
+
+      return <span className={`level-badge ${toneClass}`}>{levelContent}</span>;
     }
+
+    const showingUserTier = visibleUserTierRows.has(row.key);
+    const buttonClassName = [
+      'level-badge',
+      'detail-level-toggle',
+      toneClass,
+      showingUserTier ? 'showing-user-tier' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     return (
-      <span className={`level-badge ${getDifficultyToneClass(row.difficulty)}`}>
-        {row.internalLevel.toFixed(1)}
-      </span>
+      <button
+        type="button"
+        className={buttonClassName}
+        title={row.userTier.label}
+        aria-pressed={showingUserTier}
+        onClick={() => {
+          setVisibleUserTierRows((current) => {
+            const next = new Set(current);
+            if (next.has(row.key)) {
+              next.delete(row.key);
+            } else {
+              next.add(row.key);
+            }
+            return next;
+          });
+        }}
+      >
+        {showingUserTier ? `[U] ${row.userTier.value}` : levelContent}
+      </button>
     );
   };
 

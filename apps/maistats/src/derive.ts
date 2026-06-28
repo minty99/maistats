@@ -9,6 +9,7 @@ import type {
   ScoreApiResponse,
   ScoreRow,
   SongDetailRow,
+  SongDetailUserTier,
   SongInfoResponse,
   SongSheetResponse,
 } from './types';
@@ -467,6 +468,7 @@ const difficultyOrder = new Map(DIFFICULTIES.map((value, index) => [value, index
 export function buildSongDetailRows(
   scoreRows: ScoreRow[],
   songKey: string | null,
+  userTiersByKey: ReadonlyMap<string, SongDetailUserTier> = new Map(),
 ): SongDetailRow[] {
   if (!songKey) {
     return [];
@@ -508,6 +510,7 @@ export function buildSongDetailRows(
       lastPlayedAtLabel: row.latestPlayedAtLabel,
       playCount: row.playCount,
       version: row.version,
+      userTier: userTiersByKey.get(row.key) ?? null,
     }));
 }
 
