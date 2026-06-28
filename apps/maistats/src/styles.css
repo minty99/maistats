@@ -810,18 +810,22 @@ input[type="radio"] {
   color: var(--diff-remaster-text);
 }
 
-.detail-level-value {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
+.detail-level-toggle {
+  cursor: pointer;
+  min-width: 7ch;
+  height: 22px;
+  padding: 0 6px;
+  font-size: inherit;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
-.detail-user-tier-label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
+.detail-level-toggle:hover {
+  background: color-mix(in srgb, currentColor 25%, var(--panel));
+}
+
+.detail-level-toggle.showing-user-tier {
+  font-weight: 700;
 }
 
 .difficulty-summary-list {

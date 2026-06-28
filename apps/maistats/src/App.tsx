@@ -92,6 +92,7 @@ import type {
   PlaylogRow,
   ScoreApiResponse,
   ScoreRow,
+  SongDetailUserTier,
   SongInfoResponse,
 } from './types';
 import logoUrl from './assets/logo.png';
@@ -192,7 +193,7 @@ function userTierEntryKey(entry: RaveilleUserTierEntry): string | null {
   return chartIdentityKey(entry.title, entry.genre, entry.artist, chartType, difficulty);
 }
 
-function formatUserTierLabel(entry: RaveilleUserTierEntry): string | null {
+function buildSongDetailUserTier(entry: RaveilleUserTierEntry): SongDetailUserTier | null {
   const userTier = entry.userTier.trim();
   if (!userTier) {
     return null;
@@ -201,10 +202,16 @@ function formatUserTierLabel(entry: RaveilleUserTierEntry): string | null {
   const raveilleInternalLevel = entry.raveilleInternalLevel?.trim();
   const raveilleTier = entry.raveilleTier?.trim();
   if (raveilleInternalLevel && raveilleTier) {
-    return `${raveilleInternalLevel} ${raveilleTier} = ${userTier}`;
+    return {
+      label: `${raveilleInternalLevel} ${raveilleTier} = ${userTier}`,
+      value: userTier,
+    };
   }
 
-  return userTier;
+  return {
+    label: userTier,
+    value: userTier,
+  };
 }
 
 const MAIMAI_DAY_START_HOUR = 4;
@@ -607,20 +614,20 @@ function App() {
     () => buildCompareScoreRows(scoreData, compareRivalScoreData),
     [compareRivalScoreData, scoreData],
   );
-  const userTierLabelsByKey = useMemo(() => {
-    const labels = new Map<string, string>();
+  const userTiersByKey = useMemo(() => {
+    const userTiers = new Map<string, SongDetailUserTier>();
     for (const entry of userTierRecords) {
       const key = userTierEntryKey(entry);
-      const label = formatUserTierLabel(entry);
-      if (key !== null && label !== null) {
-        labels.set(key, label);
+      const userTier = buildSongDetailUserTier(entry);
+      if (key !== null && userTier !== null) {
+        userTiers.set(key, userTier);
       }
     }
-    return labels;
+    return userTiers;
   }, [userTierRecords]);
   const selectedDetailRows = useMemo(
-    () => buildSongDetailRows(scoreData, selectedDetailSongKey, userTierLabelsByKey),
-    [scoreData, selectedDetailSongKey, userTierLabelsByKey],
+    () => buildSongDetailRows(scoreData, selectedDetailSongKey, userTiersByKey),
+    [scoreData, selectedDetailSongKey, userTiersByKey],
   );
   const selectedDetailSong = selectedDetailRows[0] ?? null;
   const playlogData = useMemo(

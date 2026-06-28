@@ -120,16 +120,16 @@ describe('buildCompareScoreRows', () => {
 });
 
 describe('buildSongDetailRows', () => {
-  it('attaches matching user tier labels', () => {
+  it('attaches matching user tier details', () => {
     const score = buildScoreRow({ key: 'song-chart-key' });
     const rows = buildSongDetailRows(
       [score],
       score.songKey,
-      new Map([[score.key, '13.0 A+ = 13.15']]),
+      new Map([[score.key, { label: '13.0 A+ = 13.15', value: '13.15' }]]),
     );
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.userTierLabel).toBe('13.0 A+ = 13.15');
+    expect(rows[0]?.userTier).toEqual({ label: '13.0 A+ = 13.15', value: '13.15' });
   });
 });
 

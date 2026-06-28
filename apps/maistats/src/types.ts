@@ -78,6 +78,11 @@ export interface SongDetailScoreApiResponse {
   play_count?: number | null;
 }
 
+export interface SongDetailUserTier {
+  label: string;
+  value: string;
+}
+
 export interface SongDetailRow {
   key: string;
   songKey: string;
@@ -100,7 +105,7 @@ export interface SongDetailRow {
   lastPlayedAtLabel: string | null;
   playCount: number | null;
   version: string | null;
-  userTierLabel: string | null;
+  userTier: SongDetailUserTier | null;
 }
 
 export interface PlayRecordApiResponse {
