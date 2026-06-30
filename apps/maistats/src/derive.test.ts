@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildCompareScoreRows,
   buildScoreHistoryPoints,
   buildSongDetailRows,
   toDateLabel,
@@ -79,43 +78,6 @@ describe('buildScoreHistoryPoints', () => {
     );
 
     expect(points.map((point) => point.key)).toEqual(['100-1', '100-2']);
-  });
-});
-
-describe('buildCompareScoreRows', () => {
-  it('uses own scores as the primary record and computes achievement diff', () => {
-    const own = buildScoreRow();
-    const rival = buildScoreRow();
-    rival.achievementX10000 = 1000000;
-    rival.achievementPercent = 100;
-
-    const rows = buildCompareScoreRows([own], [rival]);
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.achievementPercent).toBe(100.5);
-    expect(rows[0]?.rivalAchievementPercent).toBe(100);
-    expect(rows[0]?.diffPercent).toBe(0.5);
-    expect(rows[0]?.hasOwnRecord).toBe(true);
-    expect(rows[0]?.hasRivalRecord).toBe(true);
-  });
-
-  it('tracks compare record presence separately from metadata row presence', () => {
-    const own = buildScoreRow({
-      achievementX10000: null,
-      achievementPercent: null,
-      playCount: null,
-    });
-    const rival = buildScoreRow({
-      achievementX10000: null,
-      achievementPercent: null,
-      playCount: null,
-    });
-
-    const rows = buildCompareScoreRows([own], [rival]);
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.hasOwnRecord).toBe(false);
-    expect(rows[0]?.hasRivalRecord).toBe(false);
   });
 });
 

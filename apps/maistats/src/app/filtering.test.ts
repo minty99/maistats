@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildFilteredCompareScoreRows,
   buildFilteredPlaylogRows,
   buildFilteredScoreRows,
 } from './filtering';
 import { DEFAULT_SCORE_FILTERS } from './scoreFilterPresets';
-import type { CompareScoreRow, PlaylogRow, ScoreRow } from '../types';
+import type { PlaylogRow, ScoreRow } from '../types';
 
 function buildPlaylogRow(key: string, overrides: Partial<PlaylogRow> = {}): PlaylogRow {
   return {
@@ -68,18 +67,6 @@ function buildScoreRow(key: string, overrides: Partial<ScoreRow> = {}): ScoreRow
     latestPlayedAtLabel: null,
     daysSinceLastPlayed: 1,
     playCount: 1,
-    ...overrides,
-  };
-}
-
-function buildCompareScoreRow(key: string, overrides: Partial<CompareScoreRow> = {}): CompareScoreRow {
-  return {
-    ...buildScoreRow(key),
-    rivalAchievementX10000: 1000000,
-    rivalAchievementPercent: 100,
-    diffPercent: 0.5,
-    hasOwnRecord: true,
-    hasRivalRecord: true,
     ...overrides,
   };
 }
@@ -193,138 +180,6 @@ describe('buildFilteredScoreRows', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.key).toBe('played');
-  });
-});
-
-describe('buildFilteredCompareScoreRows', () => {
-  it('sorts by diff while keeping score filters shared with Scores', () => {
-    const rows = buildFilteredCompareScoreRows({
-      scoreData: [
-        buildCompareScoreRow('low', { diffPercent: -0.25 }),
-        buildCompareScoreRow('high', { diffPercent: 1.25 }),
-      ],
-      locale: 'ko-KR',
-      query: '',
-      chartFilter: ['DX'],
-      difficultyFilter: ['MASTER'],
-      versionSelection: 'ALL',
-      playedOnly: DEFAULT_SCORE_FILTERS.playedOnly,
-      rivalOnly: false,
-      bothPlayedOnly: false,
-      versionOptions: [],
-      fcFilter: [],
-      syncFilter: [],
-      achievementMin: 0,
-      achievementMax: 101,
-      internalMin: 1,
-      internalMax: 15.5,
-      daysMin: 0,
-      daysMax: 2000,
-      scoreSortKey: 'diff',
-      scoreSortDesc: true,
-    });
-
-    expect(rows.map((row) => row.key)).toEqual(['high', 'low']);
-  });
-
-  it('can show only songs played by the rival', () => {
-    const rows = buildFilteredCompareScoreRows({
-      scoreData: [
-        buildCompareScoreRow('own-only', {
-          hasRivalRecord: false,
-          rivalAchievementX10000: null,
-          rivalAchievementPercent: null,
-        }),
-        buildCompareScoreRow('rival-only', {
-          achievementX10000: null,
-          achievementPercent: null,
-          playCount: null,
-          hasOwnRecord: false,
-          hasRivalRecord: true,
-        }),
-        buildCompareScoreRow('unplayed', {
-          achievementX10000: null,
-          achievementPercent: null,
-          playCount: null,
-          rivalAchievementX10000: null,
-          rivalAchievementPercent: null,
-          hasOwnRecord: false,
-          hasRivalRecord: false,
-        }),
-        buildCompareScoreRow('both'),
-      ],
-      locale: 'ko-KR',
-      query: '',
-      chartFilter: ['DX'],
-      difficultyFilter: ['MASTER'],
-      versionSelection: 'ALL',
-      playedOnly: false,
-      rivalOnly: true,
-      bothPlayedOnly: false,
-      versionOptions: [],
-      fcFilter: [],
-      syncFilter: [],
-      achievementMin: 0,
-      achievementMax: 101,
-      internalMin: 1,
-      internalMax: 15.5,
-      daysMin: 0,
-      daysMax: 2000,
-      scoreSortKey: 'title',
-      scoreSortDesc: false,
-    });
-
-    expect(rows.map((row) => row.key)).toEqual(['rival-only']);
-  });
-
-  it('can show only songs played by both me and the rival', () => {
-    const rows = buildFilteredCompareScoreRows({
-      scoreData: [
-        buildCompareScoreRow('own-only', {
-          hasRivalRecord: false,
-          rivalAchievementX10000: null,
-          rivalAchievementPercent: null,
-        }),
-        buildCompareScoreRow('rival-only', {
-          achievementX10000: null,
-          achievementPercent: null,
-          playCount: null,
-          hasOwnRecord: false,
-          hasRivalRecord: true,
-        }),
-        buildCompareScoreRow('unplayed', {
-          achievementX10000: null,
-          achievementPercent: null,
-          playCount: null,
-          rivalAchievementX10000: null,
-          rivalAchievementPercent: null,
-          hasOwnRecord: false,
-          hasRivalRecord: false,
-        }),
-        buildCompareScoreRow('both'),
-      ],
-      locale: 'ko-KR',
-      query: '',
-      chartFilter: ['DX'],
-      difficultyFilter: ['MASTER'],
-      versionSelection: 'ALL',
-      playedOnly: false,
-      rivalOnly: false,
-      bothPlayedOnly: true,
-      versionOptions: [],
-      fcFilter: [],
-      syncFilter: [],
-      achievementMin: 0,
-      achievementMax: 101,
-      internalMin: 1,
-      internalMax: 15.5,
-      daysMin: 0,
-      daysMax: 2000,
-      scoreSortKey: 'title',
-      scoreSortDesc: false,
-    });
-
-    expect(rows.map((row) => row.key)).toEqual(['both']);
   });
 });
 

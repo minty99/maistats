@@ -2615,39 +2615,12 @@ tbody tr:last-child td {
   width: 11ch;
 }
 
-.compare-table .title-col {
-  min-width: 42ch;
-  width: 42ch;
-}
 
-.compare-table .achievement-col {
-  width: 13ch;
-}
 
-.compare-table .diff-col {
-  width: 12ch;
-}
 
-.compare-table .diff-col,
-.compare-table .achievement-col {
-  text-align: right;
-  white-space: nowrap;
-}
 
-.compare-diff-value {
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
 
-.compare-diff-value-positive {
-  color: #2563eb;
-  font-weight: 700;
-}
 
-.compare-diff-value-negative {
-  color: #dc2626;
-  font-weight: 700;
-}
 
 .score-table th:not(.title-col),
 .score-table td:not(.title-col),
@@ -3085,12 +3058,6 @@ tbody tr:last-child td {
   align-items: end;
 }
 
-.compare-connect-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: end;
-}
 
 .home-url-field {
   display: grid;
@@ -3219,28 +3186,7 @@ tbody tr:last-child td {
 
 
 @media (max-width: 1440px) and (min-width: 1201px) {
-  .compare-filter-fab {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 35;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    padding: 0;
-    border: 1px solid rgba(224, 144, 0, 0.35);
-    border-radius: 999px;
-    background: rgba(17, 17, 22, 0.95);
-    color: var(--accent);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.38);
-  }
 
-  .compare-filter-fab svg {
-    width: 20px;
-    height: 20px;
-  }
 }
 
 @media (max-width: 1200px) {
