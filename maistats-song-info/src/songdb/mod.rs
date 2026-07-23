@@ -23,8 +23,7 @@ use sheet_versions::SheetVersionMap;
 pub const SONG_DATA_SUBDIR: &str = "song_data";
 const MAIMAI_SONGS_URL: &str = "https://maimai.sega.jp/data/maimai_songs.json";
 const IMAGE_BASE_URL: &str = "https://maimaidx.jp/maimai-mobile/img/Music/";
-const OFFICIAL_MAIMAI_CIRCLE_PLUS_JSON: &str =
-    include_str!("data/maimai_circle_plus_official.json");
+const OFFICIAL_MAIMAI_JSON: &str = include_str!("data/maimai_official.json");
 
 #[derive(Debug, Deserialize)]
 struct RawSong {
@@ -406,7 +405,7 @@ async fn fetch_maimai_songs(client: &reqwest::Client) -> eyre::Result<Vec<RawSon
     // let body = response.text().await.wrap_err("read maimai songs json")?;
     // parse_maimai_songs_json(&body)
 
-    parse_maimai_songs_json(OFFICIAL_MAIMAI_CIRCLE_PLUS_JSON)
+    parse_maimai_songs_json(OFFICIAL_MAIMAI_JSON)
 }
 
 fn parse_maimai_songs_json(json: &str) -> eyre::Result<Vec<RawSong>> {
@@ -960,7 +959,7 @@ mod tests {
 
     #[test]
     fn parses_official_maimai_songs_fixture() {
-        let fixture = include_str!("data/maimai_circle_plus_official.json");
+        let fixture = include_str!("data/maimai_official.json");
         let raw_songs = parse_maimai_songs_json(fixture).expect("parse official songs fixture");
         let (songs, sheets) =
             load_official_rows_from_json(fixture).expect("extract official rows from fixture");
@@ -1188,9 +1187,8 @@ mod tests {
     #[test]
     fn filter_official_songs_by_title_skips_manual_override_titles() {
         let manual_override_rows = load_manual_override_rows().expect("load manual override rows");
-        let raw_songs =
-            parse_maimai_songs_json(include_str!("data/maimai_circle_plus_official.json"))
-                .expect("parse fixture");
+        let raw_songs = parse_maimai_songs_json(include_str!("data/maimai_official.json"))
+            .expect("parse fixture");
 
         let filtered =
             filter_official_songs_by_title(raw_songs, &manual_override_rows.overridden_titles)

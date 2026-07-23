@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SNAPSHOT_PATH: maistats-song-info/src/songdb/data/maimai_circle_plus_official.json
+  SNAPSHOT_PATH: maistats-song-info/src/songdb/data/maimai_official.json
   UPDATE_BRANCH: automation/update-maimai-snapshot
 
 jobs:
