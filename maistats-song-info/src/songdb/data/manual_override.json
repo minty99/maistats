@@ -11,14 +11,14 @@
           "difficulty": "BASIC",
           "level": "5",
           "version": "CiRCLE",
-          "region": { "jp": false, "intl": true }
+          "region": { "jp": true, "intl": true }
         },
         {
           "type": "DX",
           "difficulty": "ADVANCED",
           "level": "8+",
           "version": "CiRCLE",
-          "region": { "jp": false, "intl": true }
+          "region": { "jp": true, "intl": true }
         },
         {
           "type": "DX",
@@ -26,7 +26,7 @@
           "level": "12+",
           "version": "CiRCLE",
           "internal_level": 12.9,
-          "region": { "jp": false, "intl": true }
+          "region": { "jp": true, "intl": true }
         },
         {
           "type": "DX",
@@ -34,7 +34,7 @@
           "level": "14+",
           "version": "CiRCLE",
           "internal_level": 14.7,
-          "region": { "jp": false, "intl": true }
+          "region": { "jp": true, "intl": true }
         }
       ]
     },

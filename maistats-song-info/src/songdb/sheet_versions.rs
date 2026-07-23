@@ -252,7 +252,7 @@ mod tests {
     use super::*;
     use models::SongGenre;
 
-    const OFFICIAL_JP_SONGS_JSON: &str = include_str!("data/maimai_circle_offical.json");
+    const OFFICIAL_JP_SONGS_JSON: &str = include_str!("data/maimai_circle_plus_official.json");
     const INTL_VERSION1_MAIMAI_PLUS_DIFF0_HTML: &str =
         include_str!("../examples/maimai/intl_version/version1_maimai_plus_diff0.html");
     const INTL_VERSION0_MAIMAI_DIFF0_HTML: &str = include_str!(
@@ -445,12 +445,12 @@ mod tests {
     }
 
     #[test]
-    fn intl_fetch_targets_exclude_future_jp_only_versions() {
+    fn intl_fetch_targets_include_circle_plus() {
         let versions = MaimaiVersion::iter()
             .filter(|version| version.is_available_in_intl())
             .collect::<Vec<_>>();
 
-        assert_eq!(versions.last().copied(), Some(MaimaiVersion::Circle));
-        assert!(!versions.contains(&MaimaiVersion::CirclePlus));
+        assert_eq!(versions.last().copied(), Some(MaimaiVersion::CirclePlus));
+        assert!(versions.contains(&MaimaiVersion::CirclePlus));
     }
 }
