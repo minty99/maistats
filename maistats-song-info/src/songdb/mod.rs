@@ -412,14 +412,13 @@ async fn fetch_maimai_songs(client: &reqwest::Client) -> eyre::Result<Vec<RawSon
 fn parse_maimai_songs_json(json: &str) -> eyre::Result<Vec<RawSong>> {
     let raw_songs =
         serde_json::from_str::<Vec<RawSong>>(json).wrap_err("parse maimai songs json")?;
-    let (mut filtered, dropped_count) = filter_out_utage_entries(raw_songs);
+    let (filtered, dropped_count) = filter_out_utage_entries(raw_songs);
     if dropped_count > 0 {
         tracing::info!(
             "Skipped {} utage entries from official songs JSON",
             dropped_count
         );
     }
-    apply_jp_song_patches(&mut filtered);
     Ok(filtered)
 }
 
@@ -442,22 +441,6 @@ fn build_official_rows(raw_songs: Vec<RawSong>) -> eyre::Result<(Vec<SongRow>, V
     ensure_unique_sheet_keys(&sheets)?;
 
     Ok((songs, sheets))
-}
-
-/// Hardcoded patches for known JP/INTL artist discrepancies in maimai_songs.json.
-/// The JP data is used as the primary source, but some songs have different artist
-/// strings on INTL — which affects song identity matching against INTL score records.
-/// TODO: detect these mismatches automatically in the song info server.
-fn apply_jp_song_patches(songs: &mut [RawSong]) {
-    for song in songs.iter_mut() {
-        // "Hurtling Boys": JP artist is "さだきち イシカダス「太鼓の達人」より" but
-        // INTL uses "さだきち「太鼓の達人」より". Patch to match the INTL identity.
-        if song.title == "Hurtling Boys"
-            && song.artist.as_deref() == Some("さだきち イシカダス「太鼓の達人」より")
-        {
-            song.artist = Some("さだきち「太鼓の達人」より".to_string());
-        }
-    }
 }
 
 fn load_official_rows_from_json(json: &str) -> eyre::Result<(Vec<SongRow>, Vec<SheetRow>)> {
@@ -664,23 +647,12 @@ fn derive_song_identity(raw_song: &RawSong) -> eyre::Result<SongIdentity> {
             raw_song.catcode.trim()
         )
     })?;
-    let title = normalized_song_title(raw_song, &genre);
+    let title = normalized_song_title(raw_song);
     let artist = normalized_song_artist(raw_song.artist.as_deref());
     Ok(SongIdentity::new(&title, genre, &artist))
 }
 
-fn normalized_song_title(raw_song: &RawSong, genre: &SongGenre) -> String {
-    if *genre == SongGenre::Utage && raw_song.title.trim() == "[協]青春コンプレックス" {
-        if raw_song.comment.as_deref() == Some("バンドメンバーを集めて楽しもう！（入門編）")
-        {
-            return "[協]青春コンプレックス（入門編）".to_string();
-        }
-        if raw_song.comment.as_deref() == Some("バンドメンバーを集めて挑め！（ヒーロー級）")
-        {
-            return "[協]青春コンプレックス（ヒーロー級）".to_string();
-        }
-    }
-
+fn normalized_song_title(raw_song: &RawSong) -> String {
     let title = normalize_identity_component(&raw_song.title);
     normalize_song_title_value(&title)
 }
@@ -690,12 +662,7 @@ fn normalized_song_artist(artist: Option<&str>) -> String {
 }
 
 pub(crate) fn normalize_song_title_value(title: &str) -> String {
-    let title = normalize_identity_component(title);
-    if title == "Bad Apple!! feat nomico" {
-        "Bad Apple!! feat.nomico".to_string()
-    } else {
-        title
-    }
+    normalize_identity_component(title)
 }
 
 pub(crate) fn normalize_identity_component(value: &str) -> String {
@@ -918,33 +885,10 @@ mod tests {
     }
 
     #[test]
-    fn derives_song_identity_with_special_cases() {
+    fn derives_song_identity_with_genre_distinction() {
         let mut raw_song = raw_song_stub();
-        raw_song.catcode = "宴会場".to_string();
-        raw_song.title = "[協]青春コンプレックス".to_string();
-        raw_song.comment = Some("バンドメンバーを集めて楽しもう！（入門編）".to_string());
-        assert_eq!(
-            derive_song_identity(&raw_song).expect("derive song identity"),
-            SongIdentity::new(
-                "[協]青春コンプレックス（入門編）",
-                SongGenre::Utage,
-                "artist"
-            )
-        );
-
-        raw_song.comment = Some("バンドメンバーを集めて挑め！（ヒーロー級）".to_string());
-        assert_eq!(
-            derive_song_identity(&raw_song).expect("derive song identity"),
-            SongIdentity::new(
-                "[協]青春コンプレックス（ヒーロー級）",
-                SongGenre::Utage,
-                "artist"
-            )
-        );
-
         raw_song.catcode = "niconico＆ボーカロイド".to_string();
         raw_song.title = "Link".to_string();
-        raw_song.comment = None;
         assert_eq!(
             derive_song_identity(&raw_song).expect("derive song identity"),
             SongIdentity::new("Link", SongGenre::NiconicoVocaloid, "artist")
@@ -954,12 +898,6 @@ mod tests {
         assert_eq!(
             derive_song_identity(&raw_song).expect("derive song identity"),
             SongIdentity::new("Link", SongGenre::Maimai, "artist")
-        );
-
-        raw_song.title = "Bad Apple!! feat nomico".to_string();
-        assert_eq!(
-            derive_song_identity(&raw_song).expect("derive song identity"),
-            SongIdentity::new("Bad Apple!! feat.nomico", SongGenre::Maimai, "artist")
         );
     }
 
@@ -1264,6 +1202,8 @@ mod tests {
 
         assert!(!titles.contains("Link"));
         assert!(!titles.contains(""));
+        assert!(titles.contains("Break The Speakers"));
+        assert!(titles.contains("Galaxy Blaster"));
     }
 
     #[test]
