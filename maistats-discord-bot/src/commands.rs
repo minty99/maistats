@@ -24,6 +24,10 @@ pub(crate) const BOT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Add one entry here every time the workspace version is bumped.
 const CHANGELOG: &[(&str, &str)] = &[
     (
+        "1.3.0",
+        "Song data collection now supports the maimai DX CiRCLE PLUS International Version.",
+    ),
+    (
         "1.2.0",
         "Recent playlog sync icons now recognize FDX and FDX+ results correctly.",
     ),

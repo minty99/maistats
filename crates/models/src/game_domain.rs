@@ -425,7 +425,7 @@ impl MaimaiVersion {
     }
 
     pub const fn is_available_in_intl(self) -> bool {
-        !matches!(self, Self::CirclePlus)
+        self.as_index() <= Self::CirclePlus.as_index()
     }
 
     pub const fn as_str(self) -> &'static str {
@@ -552,7 +552,7 @@ mod song_genre_tests {
     #[test]
     fn song_genre_parses_all_official_fixture_catcodes() {
         let fixture =
-            include_str!("../../../maistats-song-info/src/songdb/data/maimai_circle_offical.json");
+            include_str!("../../../maistats-song-info/src/songdb/data/maimai_official.json");
         let rows: serde_json::Value =
             serde_json::from_str(fixture).expect("parse official songs fixture");
         let catcodes = rows
@@ -786,9 +786,9 @@ mod tests {
     }
 
     #[test]
-    fn intl_availability_skips_future_jp_only_versions() {
+    fn intl_availability_includes_circle_plus() {
         assert!(MaimaiVersion::Circle.is_available_in_intl());
-        assert!(!MaimaiVersion::CirclePlus.is_available_in_intl());
+        assert!(MaimaiVersion::CirclePlus.is_available_in_intl());
     }
 
     #[test]

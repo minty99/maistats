@@ -1,0 +1,147 @@
+name: Update maimai Snapshot
+
+on:
+  schedule:
+    - cron: "15 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-maimai-snapshot
+  cancel-in-progress: true
+
+env:
+  SNAPSHOT_PATH: maistats-song-info/src/songdb/data/maimai_official.json
+  UPDATE_BRANCH: automation/update-maimai-snapshot
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      HAS_GENERATE_SECRETS: ${{ secrets.MAIMAI_INTL_SEGA_ID != '' && secrets.MAIMAI_INTL_SEGA_PASSWORD != '' && secrets.USER_AGENT != '' }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download official song data
+        run: |
+          curl --fail --silent --show-error --location --retry 3 \
+            https://maimai.sega.jp/data/maimai_songs.json \
+            --output "${RUNNER_TEMP}/maimai_songs.json"
+
+      - name: Replace snapshot and summarize changes
+        run: |
+          python3 .github/scripts/update-maimai-snapshot.py \
+            --source "${RUNNER_TEMP}/maimai_songs.json" \
+            --snapshot "${SNAPSHOT_PATH}" \
+            --summary "${RUNNER_TEMP}/snapshot-summary.md"
+          cat "${RUNNER_TEMP}/snapshot-summary.md" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Detect a new upstream revision
+        id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin "${UPDATE_BRANCH}:refs/remotes/origin/${UPDATE_BRANCH}" || true
+          open_pr=$(gh pr list \
+            --base main \
+            --head "${UPDATE_BRANCH}" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          echo "open_pr=${open_pr}" >> "${GITHUB_OUTPUT}"
+
+          branch_snapshot="${RUNNER_TEMP}/branch-snapshot.json"
+          if [ -n "${open_pr}" ] && \
+             git show "refs/remotes/origin/${UPDATE_BRANCH}:${SNAPSHOT_PATH}" > "${branch_snapshot}" 2>/dev/null && \
+             cmp --silent "${SNAPSHOT_PATH}" "${branch_snapshot}"; then
+            echo "The open automation PR already contains this upstream revision."
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          elif git diff --quiet -- "${SNAPSHOT_PATH}"; then
+            echo "The pinned snapshot already matches the official JSON."
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "A new official snapshot revision was found."
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Set up Rust
+        if: steps.changes.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        if: steps.changes.outputs.changed == 'true'
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run focused tests
+        id: tests
+        if: steps.changes.outputs.changed == 'true'
+        continue-on-error: true
+        run: cargo test -p models -p maistats-song-info
+
+      - name: Generate the international song database
+        id: generate
+        if: steps.changes.outputs.changed == 'true' && env.HAS_GENERATE_SECRETS == 'true'
+        continue-on-error: true
+        env:
+          SONG_DATA_PATH: /tmp/song_data
+          MAIMAI_INTL_SEGA_ID: ${{ secrets.MAIMAI_INTL_SEGA_ID }}
+          MAIMAI_INTL_SEGA_PASSWORD: ${{ secrets.MAIMAI_INTL_SEGA_PASSWORD }}
+          SKIP_COVER_DOWNLOAD: "true"
+          USER_AGENT: ${{ secrets.USER_AGENT }}
+        run: cargo run -p maistats-song-info
+
+      - name: Commit and push the snapshot
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "${UPDATE_BRANCH}"
+          git add "${SNAPSHOT_PATH}"
+          git commit \
+            -m "chore(song-info): refresh maimai snapshot" \
+            -m "Co-authored-by: GPT-5 Codex <noreply@openai.com>"
+          git push --force-with-lease origin "HEAD:${UPDATE_BRANCH}"
+
+      - name: Create or update the draft PR
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPEN_PR: ${{ steps.changes.outputs.open_pr }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          GENERATE_OUTCOME: ${{ steps.generate.outcome }}
+        run: |
+          body="${RUNNER_TEMP}/pr-body.md"
+          {
+            echo "This draft PR refreshes the pinned official JP song snapshot. It is never merged automatically."
+            echo
+            echo "## Validation"
+            echo
+            echo "- Focused Rust tests: \`${TEST_OUTCOME}\`"
+            echo "- International song database generation: \`${GENERATE_OUTCOME}\`"
+            if [ "${GENERATE_OUTCOME}" = "skipped" ]; then
+              echo "  - Generation was skipped because the required repository secrets are unavailable."
+            fi
+            echo
+            cat "${RUNNER_TEMP}/snapshot-summary.md"
+          } > "${body}"
+
+          if [ -n "${OPEN_PR}" ]; then
+            gh pr edit "${OPEN_PR}" \
+              --title "chore(song-info): refresh maimai snapshot" \
+              --body-file "${body}"
+          else
+            gh pr create \
+              --draft \
+              --base main \
+              --head "${UPDATE_BRANCH}" \
+              --title "chore(song-info): refresh maimai snapshot" \
+              --body-file "${body}"
+          fi
