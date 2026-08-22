@@ -5,6 +5,7 @@ use models::{
 };
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Instant;
@@ -115,6 +116,12 @@ struct CachedRaveilleUserTierEntries {
     fetched_at: Instant,
 }
 
+#[derive(Debug, Clone)]
+struct CachedMaishiftStats {
+    stats: MaishiftStats,
+    fetched_at: Instant,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RaveilleUserTierEntry {
     pub title: String,
@@ -138,6 +145,39 @@ pub struct RaveilleUserTierEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RaveilleUserTierResponse {
     entries: Vec<RaveilleUserTierEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaishiftRatingRange {
+    pub index: usize,
+    pub min: i32,
+    pub max_exclusive: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaishiftChartStats {
+    pub total: u32,
+    pub achieved: HashMap<String, u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaishiftChart {
+    pub track_id: u32,
+    pub song_title: String,
+    pub artist: String,
+    pub genre: String,
+    pub chart_type: ChartType,
+    pub difficulty: DifficultyCategory,
+    pub display_level: String,
+    pub internal_level: f32,
+    pub stats: HashMap<String, MaishiftChartStats>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaishiftStats {
+    pub schema_version: u32,
+    pub rating_ranges: Vec<MaishiftRatingRange>,
+    pub charts: Vec<MaishiftChart>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,6 +208,7 @@ pub struct SongDatabaseClient {
     base_url: String,
     cache: Arc<RwLock<Option<CachedSongCatalog>>>,
     raveille_user_tier_cache: Arc<RwLock<Option<CachedRaveilleUserTierEntries>>>,
+    maishift_stats_cache: Arc<RwLock<Option<CachedMaishiftStats>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -278,6 +319,7 @@ impl SongDatabaseClient {
             base_url,
             cache: Arc::new(RwLock::new(None)),
             raveille_user_tier_cache: Arc::new(RwLock::new(None)),
+            maishift_stats_cache: Arc::new(RwLock::new(None)),
         })
     }
 
@@ -362,6 +404,51 @@ impl SongDatabaseClient {
         });
 
         Ok(response.entries)
+    }
+
+    pub async fn get_maishift_stats(&self) -> Result<MaishiftStats> {
+        const MAISHIFT_STATS_CACHE_TTL: Duration = Duration::from_secs(3600);
+
+        {
+            let cache = self.maishift_stats_cache.read().await;
+            if let Some(cached) = cache.as_ref()
+                && cached.fetched_at.elapsed() < MAISHIFT_STATS_CACHE_TTL
+            {
+                return Ok(cached.stats.clone());
+            }
+        }
+
+        let url = format!("{}/maishift_stats.json", self.base_url);
+        let resp = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .wrap_err("fetch maishift statistics")?;
+
+        if !resp.status().is_success() {
+            return Err(eyre::eyre!(
+                "Failed to fetch maishift statistics: HTTP {}",
+                resp.status()
+            ));
+        }
+
+        let stats = resp
+            .json::<MaishiftStats>()
+            .await
+            .wrap_err("parse maishift statistics response")?;
+        eyre::ensure!(
+            stats.schema_version == 1,
+            "unsupported maishift statistics schema"
+        );
+
+        let mut cache = self.maishift_stats_cache.write().await;
+        *cache = Some(CachedMaishiftStats {
+            stats: stats.clone(),
+            fetched_at: Instant::now(),
+        });
+
+        Ok(stats)
     }
 
     pub fn cover_url(&self, image_name: &str) -> String {
