@@ -4,7 +4,9 @@ use crate::db;
 use crate::embeds::{embed_base, format_level_with_internal};
 use crate::emoji::{format_fc, format_rank, format_sync};
 use eyre::WrapErr;
-use maimai_client::{RaveilleUserTierEntry, RecordCollectorClient, SongCatalogSong};
+use maimai_client::{
+    MaishiftChart, MaishiftStats, RaveilleUserTierEntry, RecordCollectorClient, SongCatalogSong,
+};
 use models::{ChartType, DifficultyCategory, ScoreApiResponse};
 use poise::serenity_prelude as serenity;
 use rand::seq::SliceRandom;
@@ -25,6 +27,7 @@ const MIN_INTERNAL_LEVEL_STEP: isize = 10;
 const MAX_INTERNAL_LEVEL_STEP: isize = 150;
 const MIN_USER_TIER_STEP: isize = 1300;
 const MAX_USER_TIER_STEP: isize = 1450;
+pub(crate) const MAISHIFT_START_STEP: isize = 5;
 const REACTION_DOWN: &str = "⬇️";
 const REACTION_STAY: &str = "⏺️";
 const REACTION_UP: &str = "⬆️";
@@ -39,7 +42,63 @@ struct UpdownCandidate {
     level: String,
     internal_level: f32,
     user_tier: Option<String>,
+    maishift_rate: Option<(u32, u32)>,
     score: Option<ScoreApiResponse>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, poise::ChoiceParameter)]
+pub(crate) enum MaishiftLevel {
+    #[name = "13"]
+    Level13,
+    #[name = "13+"]
+    Level13Plus,
+    #[name = "14"]
+    Level14,
+    #[name = "14+"]
+    Level14Plus,
+}
+
+impl MaishiftLevel {
+    pub(crate) const fn as_key(self) -> &'static str {
+        match self {
+            Self::Level13 => "LEVEL_13",
+            Self::Level13Plus => "LEVEL_13_PLUS",
+            Self::Level14 => "LEVEL_14",
+            Self::Level14Plus => "LEVEL_14_PLUS",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, poise::ChoiceParameter)]
+pub(crate) enum MaishiftRank {
+    #[name = "SSS+"]
+    SssPlus,
+    #[name = "SSS"]
+    Sss,
+    #[name = "SS+"]
+    SsPlus,
+    #[name = "SS"]
+    Ss,
+    #[name = "S+"]
+    SPlus,
+    #[name = "S"]
+    S,
+    #[name = "AAA"]
+    Aaa,
+}
+
+impl MaishiftRank {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::SssPlus => "SSS+",
+            Self::Sss => "SSS",
+            Self::SsPlus => "SS+",
+            Self::Ss => "SS",
+            Self::SPlus => "S+",
+            Self::S => "S",
+            Self::Aaa => "AAA",
+        }
+    }
 }
 
 pub(crate) fn new_in_flight_locks() -> UpdownInFlightLocks {
@@ -89,6 +148,7 @@ pub(crate) async fn start_session(
     record_collector_client: RecordCollectorClient,
     criterion: db::UpdownCriterion,
     start_step: isize,
+    maishift_filter: Option<db::MaishiftSessionFilter>,
 ) -> Result<(), Error> {
     ensure_start_channel_supported(ctx).await?;
 
@@ -96,6 +156,7 @@ pub(crate) async fn start_session(
         &ctx.data().song_database_client,
         &record_collector_client,
         criterion,
+        maishift_filter.as_ref(),
     )
     .await?;
 
@@ -116,6 +177,7 @@ pub(crate) async fn start_session(
                 ctx.author().id,
                 criterion,
                 start_step,
+                maishift_filter.as_ref(),
             )),
         )
         .await
@@ -160,11 +222,14 @@ pub(crate) async fn start_session(
     db::upsert_updown_session(
         &ctx.data().db_pool,
         ctx.author().id,
-        thread.id,
-        pick_message.id,
-        criterion,
-        start_step,
-        OffsetDateTime::now_utc().unix_timestamp(),
+        db::UpdownSessionUpsert {
+            thread_channel_id: thread.id,
+            pick_message_id: pick_message.id,
+            criterion,
+            current_step: start_step,
+            maishift_filter: maishift_filter.as_ref(),
+            now_unix: OffsetDateTime::now_utc().unix_timestamp(),
+        },
     )
     .await
     .wrap_err("persist mai-updown session")?;
@@ -272,6 +337,7 @@ async fn process_reaction(
         &data.song_database_client,
         &record_collector_client,
         criterion,
+        session.maishift_filter.as_ref(),
     )
     .await?;
 
@@ -322,6 +388,7 @@ async fn build_candidate_pools(
     song_database_client: &maimai_client::SongDatabaseClient,
     record_collector_client: &RecordCollectorClient,
     criterion: db::UpdownCriterion,
+    maishift_filter: Option<&db::MaishiftSessionFilter>,
 ) -> eyre::Result<HashMap<isize, Vec<UpdownCandidate>>> {
     let scores = record_collector_client
         .get_all_rated_scores()
@@ -363,6 +430,19 @@ async fn build_candidate_pools(
             for song in songs {
                 append_user_tier_candidates(&mut pools, &song, &score_map, &user_tier_map);
             }
+        }
+        db::UpdownCriterion::Maishift => {
+            let filter = maishift_filter
+                .ok_or_else(|| eyre::eyre!("maishift session is missing its filters"))?;
+            return build_maishift_candidate_pools(
+                song_database_client
+                    .get_maishift_stats()
+                    .await
+                    .wrap_err("load maishift statistics")?,
+                &songs,
+                &score_map,
+                filter,
+            );
         }
     }
 
@@ -426,6 +506,7 @@ fn append_internal_level_candidates(
                 level: sheet.level.clone(),
                 internal_level,
                 user_tier: None,
+                maishift_rate: None,
                 score,
             });
     }
@@ -470,6 +551,7 @@ fn append_user_tier_candidates(
                 level: sheet.level.clone(),
                 internal_level,
                 user_tier: Some(user_tier.label.clone()),
+                maishift_rate: None,
                 score,
             });
     }
@@ -503,6 +585,110 @@ fn build_user_tier_map(
         );
     }
     Ok(map)
+}
+
+fn build_maishift_candidate_pools(
+    stats: MaishiftStats,
+    songs: &[SongCatalogSong],
+    score_map: &HashMap<String, ScoreApiResponse>,
+    filter: &db::MaishiftSessionFilter,
+) -> eyre::Result<HashMap<isize, Vec<UpdownCandidate>>> {
+    let rating_range = stats
+        .rating_ranges
+        .iter()
+        .find(|range| (range.min..range.max_exclusive).contains(&filter.rating))
+        .ok_or_else(|| eyre::eyre!("Rating must be between 13000 and 16999."))?;
+    let rating_key = rating_range.index.to_string();
+    let charts_by_key: HashMap<_, _> = stats
+        .charts
+        .iter()
+        .filter(|chart| chart.display_level == filter.level)
+        .map(|chart| (maishift_chart_key(chart), chart))
+        .collect();
+    let mut ranked = Vec::new();
+
+    for song in songs {
+        for sheet in &song.sheets {
+            if !sheet.region.intl || sheet.level != format_maishift_level(&filter.level) {
+                continue;
+            }
+            let key = simple_chart_key(&song.title, sheet.chart_type, sheet.diff_category);
+            let Some(maishift_chart) = charts_by_key.get(&key) else {
+                continue;
+            };
+            let Some(chart_stats) = maishift_chart.stats.get(&rating_key) else {
+                continue;
+            };
+            let Some(&achieved) = chart_stats.achieved.get(&filter.rank) else {
+                continue;
+            };
+            if chart_stats.total == 0 {
+                continue;
+            }
+            let Some(internal_level) = sheet.internal_level else {
+                continue;
+            };
+            let score_key = chart_identity_key(
+                &song.title,
+                &song.genre,
+                &song.artist,
+                sheet.chart_type,
+                sheet.diff_category,
+            );
+            ranked.push((
+                achieved,
+                chart_stats.total,
+                UpdownCandidate {
+                    title: song.title.clone(),
+                    image_name: song.image_name.clone(),
+                    version: sheet.version.clone(),
+                    chart_type: sheet.chart_type,
+                    diff_category: sheet.diff_category,
+                    level: sheet.level.clone(),
+                    internal_level,
+                    user_tier: None,
+                    maishift_rate: Some((achieved, chart_stats.total)),
+                    score: score_map.get(&score_key).cloned(),
+                },
+            ));
+        }
+    }
+
+    ranked.sort_by(|left, right| {
+        let left_scaled = u64::from(left.0) * u64::from(right.1);
+        let right_scaled = u64::from(right.0) * u64::from(left.1);
+        right_scaled
+            .cmp(&left_scaled)
+            .then_with(|| left.2.title.cmp(&right.2.title))
+    });
+
+    let count = ranked.len();
+    let mut pools: HashMap<isize, Vec<UpdownCandidate>> = HashMap::new();
+    for (index, (_, _, candidate)) in ranked.into_iter().enumerate() {
+        let decile = decile_for_ranked_index(index, count);
+        pools.entry(decile).or_default().push(candidate);
+    }
+    Ok(pools)
+}
+
+fn decile_for_ranked_index(index: usize, count: usize) -> isize {
+    ((index * 10) / count).min(9) as isize
+}
+
+fn maishift_chart_key(chart: &MaishiftChart) -> String {
+    simple_chart_key(&chart.song_title, chart.chart_type, chart.difficulty)
+}
+
+fn simple_chart_key(
+    title: &str,
+    chart_type: ChartType,
+    diff_category: DifficultyCategory,
+) -> String {
+    format!(
+        "{title}\u{1f}{}\u{1f}{}",
+        chart_type.as_str(),
+        diff_category.as_str()
+    )
 }
 
 fn choose_candidate_at_step(
@@ -572,19 +758,34 @@ fn build_session_intro_embed(
     user_id: serenity::UserId,
     criterion: db::UpdownCriterion,
     start_step: isize,
+    maishift_filter: Option<&db::MaishiftSessionFilter>,
 ) -> serenity::CreateEmbed {
     let source_note = match criterion {
         db::UpdownCriterion::InternalLevel => None,
         db::UpdownCriterion::UserTier => {
             Some("Uses Raveille's tier list converted through Lomo's internal-level mapping.")
         }
+        db::UpdownCriterion::Maishift => Some(
+            "Uses maishift achievement rates; lower percentiles are easier and higher percentiles are harder.",
+        ),
     };
     let source_line = source_note
         .map(|note| format!("{note}\n"))
         .unwrap_or_default();
+    let filter_line = maishift_filter
+        .map(|filter| {
+            format!(
+                "Level: **{}** • Rating: **{}** • Rank: **{}**\n",
+                format_maishift_level(&filter.level),
+                filter.rating,
+                filter.rank
+            )
+        })
+        .unwrap_or_default();
     embed_base(criterion.started_title()).description(format!(
         "Started by <@{}>\n\
          {source_line}\
+         {filter_line}\
          Start {}: **{}**\n\
          Controls: {REACTION_DOWN} `{}` • {REACTION_STAY} `{}` • {REACTION_UP} `{}`",
         user_id.get(),
@@ -622,6 +823,12 @@ fn build_pick_embed(data: &BotData, candidate: &UpdownCandidate) -> serenity::Cr
             .user_tier
             .as_deref()
             .map(|value| format!("User tier: {value}")),
+        candidate.maishift_rate.map(|(achieved, total)| {
+            format!(
+                "maishift: {achieved}/{total} ({:.1}%)",
+                achieved as f64 / total as f64 * 100.0
+            )
+        }),
         score
             .and_then(|s| s.last_played_at.as_deref())
             .map(|value| format!("Last: {value}")),
@@ -773,18 +980,19 @@ impl db::UpdownCriterion {
         match self {
             Self::InternalLevel => parse_level_tenths(value),
             Self::UserTier => parse_user_tier_step(value),
+            Self::Maishift => Err(eyre::eyre!("maishift does not use a starting value")),
         }
     }
 
     fn started_title(self) -> &'static str {
         match self {
-            Self::InternalLevel | Self::UserTier => "mai-updown started",
+            Self::InternalLevel | Self::UserTier | Self::Maishift => "mai-updown started",
         }
     }
 
     fn thread_prefix(self) -> &'static str {
         match self {
-            Self::InternalLevel | Self::UserTier => "mai-updown",
+            Self::InternalLevel | Self::UserTier | Self::Maishift => "mai-updown",
         }
     }
 
@@ -792,6 +1000,7 @@ impl db::UpdownCriterion {
         match self {
             Self::InternalLevel => "internal level",
             Self::UserTier => "user tier",
+            Self::Maishift => "difficulty percentile",
         }
     }
 
@@ -799,12 +1008,13 @@ impl db::UpdownCriterion {
         match self {
             Self::InternalLevel => "1.0-15.0",
             Self::UserTier => "13.00-14.50",
+            Self::Maishift => "0-100% difficulty percentile",
         }
     }
 
     fn step_size(self) -> isize {
         match self {
-            Self::InternalLevel => 1,
+            Self::InternalLevel | Self::Maishift => 1,
             Self::UserTier => 5,
         }
     }
@@ -815,6 +1025,7 @@ impl db::UpdownCriterion {
                 (MIN_INTERNAL_LEVEL_STEP..=MAX_INTERNAL_LEVEL_STEP).contains(&step)
             }
             Self::UserTier => (MIN_USER_TIER_STEP..=MAX_USER_TIER_STEP).contains(&step),
+            Self::Maishift => (0..=9).contains(&step),
         }
     }
 
@@ -822,6 +1033,7 @@ impl db::UpdownCriterion {
         match self {
             Self::InternalLevel => format_level_tenths(step),
             Self::UserTier => format_user_tier_step(step),
+            Self::Maishift => format!("{}-{}%", step * 10, (step + 1) * 10),
         }
     }
 
@@ -829,6 +1041,7 @@ impl db::UpdownCriterion {
         match self {
             Self::InternalLevel => format!("{:+.1}", delta as f64 / 10.0),
             Self::UserTier => format!("{:+.2}", delta as f64 / 100.0),
+            Self::Maishift => format!("{:+} decile", delta),
         }
     }
 
@@ -836,7 +1049,18 @@ impl db::UpdownCriterion {
         match self {
             Self::InternalLevel => "±0.0",
             Self::UserTier => "±0.00",
+            Self::Maishift => "same decile",
         }
+    }
+}
+
+fn format_maishift_level(level: &str) -> &str {
+    match level {
+        "LEVEL_13" => "13",
+        "LEVEL_13_PLUS" => "13+",
+        "LEVEL_14" => "14",
+        "LEVEL_14_PLUS" => "14+",
+        _ => level,
     }
 }
 
@@ -881,7 +1105,8 @@ fn reaction_delta(emoji: &serenity::ReactionType) -> Option<isize> {
 #[cfg(test)]
 mod tests {
     use super::{
-        MIN_INTERNAL_LEVEL_STEP, parse_level_tenths, parse_user_tier_step, reaction_delta,
+        MIN_INTERNAL_LEVEL_STEP, decile_for_ranked_index, parse_level_tenths, parse_user_tier_step,
+        reaction_delta,
     };
     use crate::db::UpdownCriterion;
     use poise::serenity_prelude as serenity;
@@ -938,5 +1163,17 @@ mod tests {
             reaction_delta(&serenity::ReactionType::Unicode("⬆️".to_string())),
             Some(1)
         );
+    }
+
+    #[test]
+    fn ranked_charts_are_split_into_ten_deciles() {
+        let deciles = (0..100)
+            .map(|index| decile_for_ranked_index(index, 100))
+            .collect::<Vec<_>>();
+        for decile in 0..10 {
+            assert_eq!(deciles.iter().filter(|&&value| value == decile).count(), 10);
+        }
+        assert_eq!(decile_for_ranked_index(0, 13), 0);
+        assert_eq!(decile_for_ranked_index(12, 13), 9);
     }
 }

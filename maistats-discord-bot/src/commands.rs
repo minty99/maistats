@@ -876,7 +876,10 @@ fn same_playlog_chart_identity(
 pub(crate) async fn mai_updown(
     ctx: Context<'_>,
     #[description = "Up/down criterion"] criterion: db::UpdownCriterion,
-    #[description = "Starting value (internal_level: 13.0, user_tier: 13.45)"] value: f64,
+    #[description = "Starting value for internal_level or user_tier"] value: Option<f64>,
+    #[description = "Displayed level for maishift"] level: Option<updown::MaishiftLevel>,
+    #[description = "Player rating for maishift (13000-16999)"] rating: Option<i32>,
+    #[description = "Target score rank for maishift"] rank: Option<updown::MaishiftRank>,
 ) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
@@ -886,9 +889,40 @@ pub(crate) async fn mai_updown(
     let record_collector_client = collector_context.client;
     let pending_warning = collector_context.pending_warning;
 
-    let reply = match criterion.parse_start_value(value) {
-        Ok(start_step) => {
-            match updown::start_session(ctx, record_collector_client, criterion, start_step).await {
+    let request = match criterion {
+        db::UpdownCriterion::Maishift => match (level, rating, rank) {
+            (Some(level), Some(rating), Some(rank)) if (13000..17000).contains(&rating) => Ok((
+                updown::MAISHIFT_START_STEP,
+                Some(db::MaishiftSessionFilter {
+                    level: level.as_key().to_string(),
+                    rating,
+                    rank: rank.as_str().to_string(),
+                }),
+            )),
+            (Some(_), Some(_), Some(_)) => {
+                Err(eyre::eyre!("Rating must be between 13000 and 16999."))
+            }
+            _ => Err(eyre::eyre!(
+                "maishift requires level, rating, and rank inputs."
+            )),
+        },
+        db::UpdownCriterion::InternalLevel | db::UpdownCriterion::UserTier => value
+            .ok_or_else(|| eyre::eyre!("This criterion requires a starting value."))
+            .and_then(|value| criterion.parse_start_value(value))
+            .map(|start_step| (start_step, None)),
+    };
+
+    let reply = match request {
+        Ok((start_step, maishift_filter)) => {
+            match updown::start_session(
+                ctx,
+                record_collector_client,
+                criterion,
+                start_step,
+                maishift_filter,
+            )
+            .await
+            {
                 Ok(()) => CreateReply::default()
                     .ephemeral(true)
                     .content("mai-updown session started."),

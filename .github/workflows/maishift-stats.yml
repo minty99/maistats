@@ -1,0 +1,51 @@
+name: maishift Statistics
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: maishift-statistics
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AWS CLI
+        run: |
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "${workdir}"' EXIT
+          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "${workdir}/awscliv2.zip"
+          unzip -q "${workdir}/awscliv2.zip" -d "${workdir}"
+          sudo "${workdir}/aws/install" --update
+          aws --version
+
+      - name: Collect maishift statistics
+        run: python scripts/collect_maishift_stats.py --output maishift_stats.json
+
+      - name: Validate generated artifact
+        run: |
+          test -f maishift_stats.json
+          python -m json.tool maishift_stats.json > /dev/null
+
+      - name: Upload to R2
+        env:
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: bash ./.github/scripts/upload-maishift-stats.sh
+
+      - name: Smoke check public maishift_stats.json
+        env:
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: curl -fsSL "${R2_PUBLIC_BASE_URL}/maishift_stats.json" > /dev/null

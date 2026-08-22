@@ -110,7 +110,35 @@ pub(crate) struct PersistedUpdownSession {
     pub(crate) pick_message_id: serenity::MessageId,
     pub(crate) criterion: UpdownCriterion,
     pub(crate) current_step: isize,
+    pub(crate) maishift_filter: Option<MaishiftSessionFilter>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MaishiftSessionFilter {
+    pub(crate) level: String,
+    pub(crate) rating: i32,
+    pub(crate) rank: String,
+}
+
+pub(crate) struct UpdownSessionUpsert<'a> {
+    pub(crate) thread_channel_id: serenity::ChannelId,
+    pub(crate) pick_message_id: serenity::MessageId,
+    pub(crate) criterion: UpdownCriterion,
+    pub(crate) current_step: isize,
+    pub(crate) maishift_filter: Option<&'a MaishiftSessionFilter>,
+    pub(crate) now_unix: i64,
+}
+
+type UpdownSessionRow = (
+    String,
+    String,
+    String,
+    String,
+    i64,
+    Option<String>,
+    Option<i32>,
+    Option<String>,
+);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, poise::ChoiceParameter)]
 pub(crate) enum UpdownCriterion {
@@ -118,6 +146,8 @@ pub(crate) enum UpdownCriterion {
     InternalLevel,
     #[name = "user_tier"]
     UserTier,
+    #[name = "maishift"]
+    Maishift,
 }
 
 impl UpdownCriterion {
@@ -125,6 +155,7 @@ impl UpdownCriterion {
         match self {
             Self::InternalLevel => "internal_level",
             Self::UserTier => "user_tier",
+            Self::Maishift => "maishift",
         }
     }
 
@@ -132,6 +163,7 @@ impl UpdownCriterion {
         match value {
             "internal_level" => Ok(Self::InternalLevel),
             "user_tier" => Ok(Self::UserTier),
+            "maishift" => Ok(Self::Maishift),
             _ => Err(eyre::eyre!("unknown updown criterion: {value}")),
         }
     }
@@ -145,6 +177,7 @@ mod updown_criterion_tests {
     fn criterion_storage_names_are_stable() {
         assert_eq!(UpdownCriterion::InternalLevel.as_str(), "internal_level");
         assert_eq!(UpdownCriterion::UserTier.as_str(), "user_tier");
+        assert_eq!(UpdownCriterion::Maishift.as_str(), "maishift");
         assert_eq!(
             UpdownCriterion::from_db("internal_level").unwrap(),
             UpdownCriterion::InternalLevel
@@ -155,11 +188,7 @@ mod updown_criterion_tests {
 pub(crate) async fn upsert_updown_session(
     pool: &SqlitePool,
     discord_user_id: serenity::UserId,
-    thread_channel_id: serenity::ChannelId,
-    pick_message_id: serenity::MessageId,
-    criterion: UpdownCriterion,
-    current_step: isize,
-    now_unix: i64,
+    session: UpdownSessionUpsert<'_>,
 ) -> eyre::Result<()> {
     sqlx::query(
         r#"
@@ -169,24 +198,33 @@ INSERT INTO updown_sessions (
   pick_message_id,
   current_step,
   mode,
+  maishift_level,
+  maishift_rating,
+  maishift_rank,
   created_at,
   updated_at
 )
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)
 ON CONFLICT(discord_user_id) DO UPDATE SET
   thread_channel_id = excluded.thread_channel_id,
   pick_message_id = excluded.pick_message_id,
   current_step = excluded.current_step,
   mode = excluded.mode,
+  maishift_level = excluded.maishift_level,
+  maishift_rating = excluded.maishift_rating,
+  maishift_rank = excluded.maishift_rank,
   updated_at = excluded.updated_at
 "#,
     )
     .bind(discord_user_id.to_string())
-    .bind(thread_channel_id.to_string())
-    .bind(pick_message_id.to_string())
-    .bind(current_step as i64)
-    .bind(criterion.as_str())
-    .bind(now_unix)
+    .bind(session.thread_channel_id.to_string())
+    .bind(session.pick_message_id.to_string())
+    .bind(session.current_step as i64)
+    .bind(session.criterion.as_str())
+    .bind(session.maishift_filter.map(|filter| filter.level.as_str()))
+    .bind(session.maishift_filter.map(|filter| filter.rating))
+    .bind(session.maishift_filter.map(|filter| filter.rank.as_str()))
+    .bind(session.now_unix)
     .execute(pool)
     .await
     .wrap_err("upsert updown session")?;
@@ -197,9 +235,10 @@ pub(crate) async fn get_updown_session(
     pool: &SqlitePool,
     discord_user_id: serenity::UserId,
 ) -> eyre::Result<Option<PersistedUpdownSession>> {
-    let row = sqlx::query_as::<_, (String, String, String, String, i64)>(
+    let row = sqlx::query_as::<_, UpdownSessionRow>(
         r#"
-SELECT discord_user_id, thread_channel_id, pick_message_id, mode, current_step
+SELECT discord_user_id, thread_channel_id, pick_message_id, mode, current_step,
+       maishift_level, maishift_rating, maishift_rank
 FROM updown_sessions
 WHERE discord_user_id = ?1
 "#,
@@ -253,10 +292,8 @@ pub(crate) async fn delete_updown_session_by_thread(
     Ok(())
 }
 
-fn parse_updown_session_row(
-    row: (String, String, String, String, i64),
-) -> eyre::Result<PersistedUpdownSession> {
-    let (user_id, thread_id, message_id, mode, current_step) = row;
+fn parse_updown_session_row(row: UpdownSessionRow) -> eyre::Result<PersistedUpdownSession> {
+    let (user_id, thread_id, message_id, mode, current_step, level, rating, rank) = row;
     let parsed_user = user_id
         .parse::<u64>()
         .wrap_err("parse discord_user_id from updown_sessions")?;
@@ -270,13 +307,31 @@ fn parse_updown_session_row(
         .try_into()
         .wrap_err("parse current_step from updown_sessions")?;
 
+    let criterion =
+        UpdownCriterion::from_db(&mode).wrap_err("parse criterion from updown_sessions")?;
+    let maishift_filter = match (criterion, level, rating, rank) {
+        (UpdownCriterion::Maishift, Some(level), Some(rating), Some(rank)) => {
+            Some(MaishiftSessionFilter {
+                level,
+                rating,
+                rank,
+            })
+        }
+        (criterion, None, None, None) if criterion != UpdownCriterion::Maishift => None,
+        _ => {
+            return Err(eyre::eyre!(
+                "incomplete maishift filters in updown_sessions"
+            ));
+        }
+    };
+
     Ok(PersistedUpdownSession {
         discord_user_id: serenity::UserId::new(parsed_user),
         thread_channel_id: serenity::ChannelId::new(parsed_thread),
         pick_message_id: serenity::MessageId::new(parsed_message),
-        criterion: UpdownCriterion::from_db(&mode)
-            .wrap_err("parse criterion from updown_sessions")?,
+        criterion,
         current_step: parsed_step,
+        maishift_filter,
     })
 }
 
@@ -353,11 +408,14 @@ mod tests {
         upsert_updown_session(
             &pool,
             user_id,
-            thread_id,
-            pick_id,
-            UpdownCriterion::InternalLevel,
-            130,
-            100,
+            UpdownSessionUpsert {
+                thread_channel_id: thread_id,
+                pick_message_id: pick_id,
+                criterion: UpdownCriterion::InternalLevel,
+                current_step: 130,
+                maishift_filter: None,
+                now_unix: 100,
+            },
         )
         .await?;
         let stored = get_updown_session(&pool, user_id)
@@ -402,11 +460,14 @@ mod tests {
         upsert_updown_session(
             &pool,
             user_id,
-            thread_id,
-            new_pick_id,
-            UpdownCriterion::UserTier,
-            1345,
-            400,
+            UpdownSessionUpsert {
+                thread_channel_id: thread_id,
+                pick_message_id: new_pick_id,
+                criterion: UpdownCriterion::UserTier,
+                current_step: 1345,
+                maishift_filter: None,
+                now_unix: 400,
+            },
         )
         .await?;
         let stored = get_updown_session(&pool, user_id)
@@ -414,6 +475,30 @@ mod tests {
             .expect("session should update mode");
         assert_eq!(stored.criterion, UpdownCriterion::UserTier);
         assert_eq!(stored.current_step, 1345);
+
+        let maishift_filter = MaishiftSessionFilter {
+            level: "LEVEL_14_PLUS".to_string(),
+            rating: 15500,
+            rank: "SSS+".to_string(),
+        };
+        upsert_updown_session(
+            &pool,
+            user_id,
+            UpdownSessionUpsert {
+                thread_channel_id: thread_id,
+                pick_message_id: new_pick_id,
+                criterion: UpdownCriterion::Maishift,
+                current_step: 5,
+                maishift_filter: Some(&maishift_filter),
+                now_unix: 500,
+            },
+        )
+        .await?;
+        let stored = get_updown_session(&pool, user_id)
+            .await?
+            .expect("maishift session should be stored");
+        assert_eq!(stored.criterion, UpdownCriterion::Maishift);
+        assert_eq!(stored.maishift_filter, Some(maishift_filter));
 
         Ok(())
     }
@@ -430,11 +515,14 @@ mod tests {
         upsert_updown_session(
             &pool,
             user_id,
-            thread_id,
-            pick_id,
-            UpdownCriterion::InternalLevel,
-            130,
-            100,
+            UpdownSessionUpsert {
+                thread_channel_id: thread_id,
+                pick_message_id: pick_id,
+                criterion: UpdownCriterion::InternalLevel,
+                current_step: 130,
+                maishift_filter: None,
+                now_unix: 100,
+            },
         )
         .await?;
         assert!(get_updown_session(&pool, user_id).await?.is_some());

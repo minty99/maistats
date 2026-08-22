@@ -155,7 +155,8 @@ self-hosted collector.
 
 Users connect their collector with `/register <url>`. The bot can then show
 score summaries, song metadata, recent plays, today's plays, up/down sessions,
-user-tier up/down sessions, and rating plots through slash commands.
+user-tier and maishift percentile up/down sessions, and rating plots through
+slash commands.
 
 ## Data Storage
 
