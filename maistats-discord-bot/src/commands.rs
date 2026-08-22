@@ -156,7 +156,7 @@ pub(crate) async fn how_to_use(ctx: Context<'_>) -> Result<(), Error> {
                 "maistats helps you collect and manage your personal maimai records over time.\n\n\
                 Open `https://maistats.muhwan.dev` to see how to set up your own record collector.\n\
                 Once your collector is ready, connect it to this bot with `/register <url>`.\n\n\
-                After registering, you can use commands like `/mai-score`, `/mai-recent`, `/mai-song-info`, `/mai-today`, and `/mai-updown` with your own data. For `/mai-updown`, choose the `internal_level` or `user_tier` criterion.",
+                After registering, you can use commands like `/mai-score`, `/mai-recent`, `/mai-song-info`, `/mai-today`, and `/mai-updown` with your own data.",
             ),
         ),
     )
