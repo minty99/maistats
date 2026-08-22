@@ -105,12 +105,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --create "${UPDATE_BRANCH}"
           git add "${SNAPSHOT_PATH}"
+          snapshot_date="$(date -u +%Y-%m-%d)"
           git commit \
-            -m "chore(song-info): refresh maimai snapshot" \
-            -m "Co-authored-by: GPT-5 Codex <noreply@openai.com>"
+            -m "chore(song-info): refresh maimai snapshot (${snapshot_date})"
           git push --force-with-lease origin "HEAD:${UPDATE_BRANCH}"
 
-      - name: Create or update the draft PR
+      - name: Create or update the PR
         if: steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -134,14 +134,18 @@ jobs:
           } > "${body}"
 
           if [ -n "${OPEN_PR}" ]; then
+            if [ "$(gh pr view "${OPEN_PR}" --json isDraft --jq '.isDraft')" = "true" ]; then
+              gh pr ready "${OPEN_PR}"
+            fi
             gh pr edit "${OPEN_PR}" \
               --title "chore(song-info): refresh maimai snapshot" \
-              --body-file "${body}"
+              --body-file "${body}" \
+              --add-reviewer minty99
           else
             gh pr create \
-              --draft \
               --base main \
               --head "${UPDATE_BRANCH}" \
+              --reviewer minty99 \
               --title "chore(song-info): refresh maimai snapshot" \
               --body-file "${body}"
           fi
