@@ -176,7 +176,7 @@ pub(crate) async fn start_session(
     )
     .await?;
 
-    let Some(candidate) = choose_initial_candidate(&pools, criterion, start_step) else {
+    let Some(candidate) = choose_candidate_at_step(&pools, start_step) else {
         return Err(eyre::eyre!(
             "No eligible charts found at {} **{}** with the current filters.",
             criterion.subject_label(),
@@ -737,17 +737,6 @@ fn choose_candidate_at_step(
     candidates.choose(&mut rng).cloned()
 }
 
-fn choose_initial_candidate(
-    pools: &HashMap<isize, Vec<UpdownCandidate>>,
-    criterion: db::UpdownCriterion,
-    step: isize,
-) -> Option<UpdownCandidate> {
-    if criterion == db::UpdownCriterion::Maishift {
-        return pools.get(&step)?.first().cloned();
-    }
-    choose_candidate_at_step(pools, step)
-}
-
 fn pick_next_candidate(
     pools: &HashMap<isize, Vec<UpdownCandidate>>,
     criterion: db::UpdownCriterion,
@@ -814,7 +803,7 @@ fn build_session_intro_embed(
             Some("Uses Raveille's tier list converted through Lomo's internal-level mapping.")
         }
         db::UpdownCriterion::Maishift => {
-            Some("Uses maishift achievement rates and starts with the easiest chart.")
+            Some("Uses maishift achievement rates and starts within the easiest 10% of charts.")
         }
     };
     let source_line = source_note
