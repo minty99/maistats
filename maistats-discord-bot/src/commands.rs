@@ -156,7 +156,7 @@ pub(crate) async fn how_to_use(ctx: Context<'_>) -> Result<(), Error> {
                 "maistats helps you collect and manage your personal maimai records over time.\n\n\
                 Open `https://maistats.muhwan.dev` to see how to set up your own record collector.\n\
                 Once your collector is ready, connect it to this bot with `/register <url>`.\n\n\
-                After registering, you can use commands like `/mai-score`, `/mai-recent`, `/mai-song-info`, `/mai-today`, `/mai-updown`, and `/mai-updown-user-tier` with your own data.",
+                After registering, you can use commands like `/mai-score`, `/mai-recent`, `/mai-song-info`, `/mai-today`, and `/mai-updown` with your own data.",
             ),
         ),
     )
@@ -871,11 +871,12 @@ fn same_playlog_chart_identity(
         && left.diff_category == right.diff_category
 }
 
-/// Start a mai-updown random session in a thread
+/// Start a mai-updown random session in a thread using the selected criterion
 #[poise::command(slash_command, rename = "mai-updown", guild_only)]
 pub(crate) async fn mai_updown(
     ctx: Context<'_>,
-    #[description = "Starting internal level (for example 13.0)"] internal_level: f64,
+    #[description = "Up/down criterion"] criterion: db::UpdownCriterion,
+    #[description = "Starting value (internal_level: 13.0, user_tier: 13.45)"] value: f64,
 ) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
@@ -885,15 +886,9 @@ pub(crate) async fn mai_updown(
     let record_collector_client = collector_context.client;
     let pending_warning = collector_context.pending_warning;
 
-    let reply = match updown::parse_level_tenths(internal_level) {
-        Ok(start_level_tenths) => {
-            match updown::start_session(
-                ctx,
-                record_collector_client,
-                updown::UpdownStart::InternalLevel(start_level_tenths),
-            )
-            .await
-            {
+    let reply = match criterion.parse_start_value(value) {
+        Ok(start_step) => {
+            match updown::start_session(ctx, record_collector_client, criterion, start_step).await {
                 Ok(()) => CreateReply::default()
                     .ephemeral(true)
                     .content("mai-updown session started."),
@@ -902,48 +897,7 @@ pub(crate) async fn mai_updown(
         }
         Err(err) => CreateReply::default()
             .ephemeral(true)
-            .embed(embed_base("Invalid internal level").description(err.to_string())),
-    };
-
-    ctx.send(reply).await?;
-
-    send_pending_record_collector_update_warning(ctx, pending_warning).await?;
-
-    Ok(())
-}
-
-/// Start a mai-updown random session using Raveille user tiers
-#[poise::command(slash_command, rename = "mai-updown-user-tier", guild_only)]
-pub(crate) async fn mai_updown_user_tier(
-    ctx: Context<'_>,
-    #[description = "Starting user tier (for example 13.45)"] user_tier: f64,
-) -> Result<(), Error> {
-    ctx.defer_ephemeral().await?;
-
-    let Some(collector_context) = registered_record_collector_client(ctx).await? else {
-        return Ok(());
-    };
-    let record_collector_client = collector_context.client;
-    let pending_warning = collector_context.pending_warning;
-
-    let reply = match updown::parse_user_tier_step(user_tier) {
-        Ok(start_user_tier_step) => {
-            match updown::start_session(
-                ctx,
-                record_collector_client,
-                updown::UpdownStart::UserTier(start_user_tier_step),
-            )
-            .await
-            {
-                Ok(()) => CreateReply::default()
-                    .ephemeral(true)
-                    .content("mai-updown-user-tier session started."),
-                Err(err) => build_mai_updown_start_error_reply(&err),
-            }
-        }
-        Err(err) => CreateReply::default()
-            .ephemeral(true)
-            .embed(embed_base("Invalid user tier").description(err.to_string())),
+            .embed(embed_base("Invalid mai-updown value").description(err.to_string())),
     };
 
     ctx.send(reply).await?;

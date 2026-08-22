@@ -42,27 +42,6 @@ struct UpdownCandidate {
     score: Option<ScoreApiResponse>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum UpdownStart {
-    InternalLevel(isize),
-    UserTier(isize),
-}
-
-impl UpdownStart {
-    fn mode(self) -> db::UpdownMode {
-        match self {
-            Self::InternalLevel(_) => db::UpdownMode::InternalLevel,
-            Self::UserTier(_) => db::UpdownMode::UserTier,
-        }
-    }
-
-    fn step(self) -> isize {
-        match self {
-            Self::InternalLevel(step) | Self::UserTier(step) => step,
-        }
-    }
-}
-
 pub(crate) fn new_in_flight_locks() -> UpdownInFlightLocks {
     Arc::new(Mutex::new(HashMap::new()))
 }
@@ -108,24 +87,23 @@ pub(crate) fn parse_user_tier_step(value: f64) -> eyre::Result<isize> {
 pub(crate) async fn start_session(
     ctx: PoiseContext<'_>,
     record_collector_client: RecordCollectorClient,
-    start: UpdownStart,
+    criterion: db::UpdownCriterion,
+    start_step: isize,
 ) -> Result<(), Error> {
     ensure_start_channel_supported(ctx).await?;
 
-    let mode = start.mode();
-    let start_step = start.step();
     let pools = build_candidate_pools(
         &ctx.data().song_database_client,
         &record_collector_client,
-        mode,
+        criterion,
     )
     .await?;
 
     let Some(candidate) = choose_candidate_at_step(&pools, start_step) else {
         return Err(eyre::eyre!(
             "No eligible charts found at {} **{}** with the current filters.",
-            mode.subject_label(),
-            mode.format_step(start_step)
+            criterion.subject_label(),
+            criterion.format_step(start_step)
         )
         .into());
     };
@@ -136,7 +114,7 @@ pub(crate) async fn start_session(
             ctx.serenity_context(),
             CreateMessage::new().embed(build_session_intro_embed(
                 ctx.author().id,
-                mode,
+                criterion,
                 start_step,
             )),
         )
@@ -144,7 +122,11 @@ pub(crate) async fn start_session(
         .inspect_err(|err| tracing::error!("{err:?}"))
         .wrap_err("send mai-updown root message")?;
 
-    let thread_name = format!("{} {}", mode.thread_prefix(), mode.format_step(start_step));
+    let thread_name = format!(
+        "{} {}",
+        criterion.thread_prefix(),
+        criterion.format_step(start_step)
+    );
     let thread = ctx
         .channel_id()
         .create_thread_from_message(
@@ -180,7 +162,7 @@ pub(crate) async fn start_session(
         ctx.author().id,
         thread.id,
         pick_message.id,
-        mode,
+        criterion,
         start_step,
         OffsetDateTime::now_utc().unix_timestamp(),
     )
@@ -285,9 +267,13 @@ async fn process_reaction(
         RecordCollectorClient::new(registration.record_collector_server_url)
             .wrap_err("build record collector client")?;
 
-    let mode = session.mode;
-    let pools =
-        build_candidate_pools(&data.song_database_client, &record_collector_client, mode).await?;
+    let criterion = session.criterion;
+    let pools = build_candidate_pools(
+        &data.song_database_client,
+        &record_collector_client,
+        criterion,
+    )
+    .await?;
 
     if !session_is_current(&data.db_pool, session).await? {
         tracing::info!(
@@ -298,9 +284,9 @@ async fn process_reaction(
         return Ok(());
     }
 
-    let step_delta = mode.step_size() * delta;
+    let step_delta = criterion.step_size() * delta;
     let (new_step, candidate, note) =
-        match pick_next_candidate(&pools, mode, session.current_step, step_delta) {
+        match pick_next_candidate(&pools, criterion, session.current_step, step_delta) {
             Ok(result) => result,
             Err(notice_msg) => {
                 announce_session_notice(ctx, session.thread_channel_id, &notice_msg).await?;
@@ -335,7 +321,7 @@ async fn process_reaction(
 async fn build_candidate_pools(
     song_database_client: &maimai_client::SongDatabaseClient,
     record_collector_client: &RecordCollectorClient,
-    mode: db::UpdownMode,
+    criterion: db::UpdownCriterion,
 ) -> eyre::Result<HashMap<isize, Vec<UpdownCandidate>>> {
     let scores = record_collector_client
         .get_all_rated_scores()
@@ -361,13 +347,13 @@ async fn build_candidate_pools(
         .wrap_err("load song catalog")?;
 
     let mut pools: HashMap<isize, Vec<UpdownCandidate>> = HashMap::new();
-    match mode {
-        db::UpdownMode::InternalLevel => {
+    match criterion {
+        db::UpdownCriterion::InternalLevel => {
             for song in songs {
                 append_internal_level_candidates(&mut pools, &song, &score_map);
             }
         }
-        db::UpdownMode::UserTier => {
+        db::UpdownCriterion::UserTier => {
             let user_tier_map = build_user_tier_map(
                 song_database_client
                     .list_raveille_user_tiers()
@@ -530,7 +516,7 @@ fn choose_candidate_at_step(
 
 fn pick_next_candidate(
     pools: &HashMap<isize, Vec<UpdownCandidate>>,
-    mode: db::UpdownMode,
+    criterion: db::UpdownCriterion,
     current_step: isize,
     step_delta: isize,
 ) -> Result<(isize, UpdownCandidate, Option<String>), String> {
@@ -539,40 +525,40 @@ fn pick_next_candidate(
             Some(candidate) => Ok((current_step, candidate, None)),
             None => Err(format!(
                 "No eligible charts found at **{}** with the current filters. Keeping the current {}.",
-                mode.format_step(current_step),
-                mode.subject_label()
+                criterion.format_step(current_step),
+                criterion.subject_label()
             )),
         };
     }
 
     let requested_step = current_step + step_delta;
-    match choose_candidate_in_direction(pools, mode, current_step, step_delta) {
+    match choose_candidate_in_direction(pools, criterion, current_step, step_delta) {
         Some((found_step, candidate)) => {
             let note = (found_step != requested_step).then(|| {
                 format!(
                     "No eligible chart at **{}**. Jumped to **{}** instead.",
-                    mode.format_step(requested_step),
-                    mode.format_step(found_step)
+                    criterion.format_step(requested_step),
+                    criterion.format_step(found_step)
                 )
             });
             Ok((found_step, candidate, note))
         }
         None => Err(format!(
             "No eligible chart found before leaving the {} range. Keeping **{}**.",
-            mode.range_label(),
-            mode.format_step(current_step)
+            criterion.range_label(),
+            criterion.format_step(current_step)
         )),
     }
 }
 
 fn choose_candidate_in_direction(
     pools: &HashMap<isize, Vec<UpdownCandidate>>,
-    mode: db::UpdownMode,
+    criterion: db::UpdownCriterion,
     current_step: isize,
     step_delta: isize,
 ) -> Option<(isize, UpdownCandidate)> {
     let mut next_step = current_step + step_delta;
-    while mode.contains_step(next_step) {
+    while criterion.contains_step(next_step) {
         if let Some(candidate) = choose_candidate_at_step(pools, next_step) {
             return Some((next_step, candidate));
         }
@@ -584,29 +570,29 @@ fn choose_candidate_in_direction(
 
 fn build_session_intro_embed(
     user_id: serenity::UserId,
-    mode: db::UpdownMode,
+    criterion: db::UpdownCriterion,
     start_step: isize,
 ) -> serenity::CreateEmbed {
-    let source_note = match mode {
-        db::UpdownMode::InternalLevel => None,
-        db::UpdownMode::UserTier => {
+    let source_note = match criterion {
+        db::UpdownCriterion::InternalLevel => None,
+        db::UpdownCriterion::UserTier => {
             Some("Uses Raveille's tier list converted through Lomo's internal-level mapping.")
         }
     };
     let source_line = source_note
         .map(|note| format!("{note}\n"))
         .unwrap_or_default();
-    embed_base(mode.started_title()).description(format!(
+    embed_base(criterion.started_title()).description(format!(
         "Started by <@{}>\n\
          {source_line}\
          Start {}: **{}**\n\
          Controls: {REACTION_DOWN} `{}` • {REACTION_STAY} `{}` • {REACTION_UP} `{}`",
         user_id.get(),
-        mode.subject_label(),
-        mode.format_step(start_step),
-        mode.format_delta(-mode.step_size()),
-        mode.format_zero_delta(),
-        mode.format_delta(mode.step_size()),
+        criterion.subject_label(),
+        criterion.format_step(start_step),
+        criterion.format_delta(-criterion.step_size()),
+        criterion.format_zero_delta(),
+        criterion.format_delta(criterion.step_size()),
     ))
 }
 
@@ -782,18 +768,23 @@ fn parse_user_tier_label(value: &str) -> eyre::Result<isize> {
         .and_then(parse_user_tier_step)
 }
 
-impl db::UpdownMode {
+impl db::UpdownCriterion {
+    pub(crate) fn parse_start_value(self, value: f64) -> eyre::Result<isize> {
+        match self {
+            Self::InternalLevel => parse_level_tenths(value),
+            Self::UserTier => parse_user_tier_step(value),
+        }
+    }
+
     fn started_title(self) -> &'static str {
         match self {
-            Self::InternalLevel => "mai-updown started",
-            Self::UserTier => "mai-updown-user-tier started",
+            Self::InternalLevel | Self::UserTier => "mai-updown started",
         }
     }
 
     fn thread_prefix(self) -> &'static str {
         match self {
-            Self::InternalLevel => "mai-updown",
-            Self::UserTier => "mai-updown-user-tier",
+            Self::InternalLevel | Self::UserTier => "mai-updown",
         }
     }
 
@@ -892,6 +883,7 @@ mod tests {
     use super::{
         MIN_INTERNAL_LEVEL_STEP, parse_level_tenths, parse_user_tier_step, reaction_delta,
     };
+    use crate::db::UpdownCriterion;
     use poise::serenity_prelude as serenity;
 
     #[test]
@@ -910,6 +902,26 @@ mod tests {
         assert!(parse_user_tier_step(12.95).is_err());
         assert!(parse_user_tier_step(13.03).is_err());
         assert!(parse_user_tier_step(14.55).is_err());
+    }
+
+    #[test]
+    fn criterion_selects_the_matching_start_value_parser() {
+        assert_eq!(
+            UpdownCriterion::InternalLevel
+                .parse_start_value(13.0)
+                .unwrap(),
+            130
+        );
+        assert_eq!(
+            UpdownCriterion::UserTier.parse_start_value(13.45).unwrap(),
+            1345
+        );
+        assert!(
+            UpdownCriterion::InternalLevel
+                .parse_start_value(13.05)
+                .is_err()
+        );
+        assert!(UpdownCriterion::UserTier.parse_start_value(13.03).is_err());
     }
 
     #[test]
