@@ -58,6 +58,10 @@ struct MaishiftStanding {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, poise::ChoiceParameter)]
 pub(crate) enum MaishiftLevel {
+    #[name = "12"]
+    Level12,
+    #[name = "12+"]
+    Level12Plus,
     #[name = "13"]
     Level13,
     #[name = "13+"]
@@ -71,6 +75,8 @@ pub(crate) enum MaishiftLevel {
 impl MaishiftLevel {
     pub(crate) const fn as_key(self) -> &'static str {
         match self {
+            Self::Level12 => "LEVEL_12",
+            Self::Level12Plus => "LEVEL_12_PLUS",
             Self::Level13 => "LEVEL_13",
             Self::Level13Plus => "LEVEL_13_PLUS",
             Self::Level14 => "LEVEL_14",
@@ -155,7 +161,7 @@ pub(crate) fn parse_user_tier_step(value: f64) -> eyre::Result<isize> {
 
 pub(crate) async fn start_session(
     ctx: PoiseContext<'_>,
-    record_collector_client: RecordCollectorClient,
+    record_collector_client: Option<RecordCollectorClient>,
     criterion: db::UpdownCriterion,
     start_step: isize,
     maishift_filter: Option<db::MaishiftSessionFilter>,
@@ -164,7 +170,7 @@ pub(crate) async fn start_session(
 
     let pools = build_candidate_pools(
         &ctx.data().song_database_client,
-        &record_collector_client,
+        record_collector_client.as_ref(),
         criterion,
         maishift_filter.as_ref(),
     )
@@ -332,16 +338,21 @@ async fn process_reaction(
 ) -> Result<(), Error> {
     let registration = db::get_registration(&data.db_pool, session.discord_user_id)
         .await
-        .wrap_err("load user registration")?
-        .ok_or_else(|| eyre::eyre!("no record collector registered"))?;
-    let record_collector_client =
-        RecordCollectorClient::new(registration.record_collector_server_url)
-            .wrap_err("build record collector client")?;
+        .wrap_err("load user registration")?;
+    let record_collector_client = registration.and_then(|registration| {
+        match RecordCollectorClient::new(registration.record_collector_server_url) {
+            Ok(client) => Some(client),
+            Err(err) => {
+                tracing::warn!("ignore invalid record collector during mai-updown: {err:#}");
+                None
+            }
+        }
+    });
 
     let criterion = session.criterion;
     let pools = build_candidate_pools(
         &data.song_database_client,
-        &record_collector_client,
+        record_collector_client.as_ref(),
         criterion,
         session.maishift_filter.as_ref(),
     )
@@ -392,14 +403,20 @@ async fn process_reaction(
 
 async fn build_candidate_pools(
     song_database_client: &maimai_client::SongDatabaseClient,
-    record_collector_client: &RecordCollectorClient,
+    record_collector_client: Option<&RecordCollectorClient>,
     criterion: db::UpdownCriterion,
     maishift_filter: Option<&db::MaishiftSessionFilter>,
 ) -> eyre::Result<HashMap<isize, Vec<UpdownCandidate>>> {
-    let scores = record_collector_client
-        .get_all_rated_scores()
-        .await
-        .wrap_err("fetch rated scores")?;
+    let scores = match record_collector_client {
+        Some(client) => match client.get_all_rated_scores().await {
+            Ok(scores) => scores,
+            Err(err) => {
+                tracing::warn!("omit personal records from mai-updown session: {err:#}");
+                Vec::new()
+            }
+        },
+        None => Vec::new(),
+    };
     let mut score_map = HashMap::with_capacity(scores.len());
     for score in scores {
         score_map.insert(
@@ -1117,6 +1134,8 @@ fn format_maishift_standing(standing: &MaishiftStanding) -> String {
 
 fn format_maishift_level(level: &str) -> &str {
     match level {
+        "LEVEL_12" => "12",
+        "LEVEL_12_PLUS" => "12+",
         "LEVEL_13" => "13",
         "LEVEL_13_PLUS" => "13+",
         "LEVEL_14" => "14",
@@ -1166,9 +1185,9 @@ fn reaction_delta(emoji: &serenity::ReactionType) -> Option<isize> {
 #[cfg(test)]
 mod tests {
     use super::{
-        MAISHIFT_START_STEP, MIN_INTERNAL_LEVEL_STEP, MaishiftStanding, build_thread_name,
-        decile_for_ranked_index, find_maishift_rating_range, format_maishift_standing,
-        parse_level_tenths, parse_user_tier_step, reaction_delta,
+        MAISHIFT_START_STEP, MIN_INTERNAL_LEVEL_STEP, MaishiftLevel, MaishiftStanding,
+        build_thread_name, decile_for_ranked_index, find_maishift_rating_range,
+        format_maishift_standing, parse_level_tenths, parse_user_tier_step, reaction_delta,
     };
     use crate::db::{MaishiftSessionFilter, UpdownCriterion};
     use maimai_client::MaishiftRatingRange;
@@ -1291,5 +1310,21 @@ mod tests {
         assert_eq!(UpdownCriterion::Maishift.format_delta(-1), "easier");
         assert_eq!(UpdownCriterion::Maishift.format_zero_delta(), "same");
         assert_eq!(UpdownCriterion::Maishift.format_delta(1), "harder");
+    }
+
+    #[test]
+    fn maishift_supports_level_twelve_choices() {
+        assert_eq!(MaishiftLevel::Level12.as_key(), "LEVEL_12");
+        assert_eq!(MaishiftLevel::Level12Plus.as_key(), "LEVEL_12_PLUS");
+
+        let filter = MaishiftSessionFilter {
+            level: MaishiftLevel::Level12Plus.as_key().to_string(),
+            rating: 14500,
+            rank: "SSS".to_string(),
+        };
+        assert_eq!(
+            build_thread_name(UpdownCriterion::Maishift, 0, Some(&filter)),
+            "mai-updown maishift Lv.12+ 14500 SSS"
+        );
     }
 }

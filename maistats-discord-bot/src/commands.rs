@@ -883,11 +883,14 @@ pub(crate) async fn mai_updown(
 ) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
-    let Some(collector_context) = registered_record_collector_client(ctx).await? else {
-        return Ok(());
+    let collector_context = optional_registered_record_collector_client(ctx).await?;
+    let (record_collector_client, pending_warning) = match collector_context {
+        Some(collector_context) => (
+            Some(collector_context.client),
+            collector_context.pending_warning,
+        ),
+        None => (None, None),
     };
-    let record_collector_client = collector_context.client;
-    let pending_warning = collector_context.pending_warning;
 
     let request = match criterion {
         db::UpdownCriterion::Maishift => match (level, rating, rank) {
@@ -1150,6 +1153,40 @@ async fn registered_record_collector_client(
                 ),
             )
             .await?;
+            return Ok(None);
+        }
+    };
+
+    client.trigger_poll().await;
+
+    let pending_warning = prepare_record_collector_update_warning(
+        registration.discord_user_id,
+        &registration.record_collector_server_url,
+        &client,
+    )
+    .await;
+
+    Ok(Some(RegisteredRecordCollectorContext {
+        client,
+        pending_warning,
+    }))
+}
+
+async fn optional_registered_record_collector_client(
+    ctx: Context<'_>,
+) -> Result<Option<RegisteredRecordCollectorContext>, Error> {
+    let Some(registration) = db::get_registration(&ctx.data().db_pool, ctx.author().id)
+        .await
+        .wrap_err("load user registration")?
+    else {
+        return Ok(None);
+    };
+
+    let client = match RecordCollectorClient::new(registration.record_collector_server_url.clone())
+    {
+        Ok(client) => client,
+        Err(err) => {
+            warn!("ignore invalid record collector for mai-updown session: {err:#}");
             return Ok(None);
         }
     };
