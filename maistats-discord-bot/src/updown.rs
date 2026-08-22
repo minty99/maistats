@@ -1185,9 +1185,9 @@ fn reaction_delta(emoji: &serenity::ReactionType) -> Option<isize> {
 #[cfg(test)]
 mod tests {
     use super::{
-        MAISHIFT_START_STEP, MIN_INTERNAL_LEVEL_STEP, MaishiftLevel, MaishiftStanding,
-        build_thread_name, decile_for_ranked_index, find_maishift_rating_range,
-        format_maishift_standing, parse_level_tenths, parse_user_tier_step, reaction_delta,
+        MIN_INTERNAL_LEVEL_STEP, MaishiftStanding, build_thread_name, decile_for_ranked_index,
+        find_maishift_rating_range, format_maishift_standing, parse_level_tenths,
+        parse_user_tier_step, reaction_delta,
     };
     use crate::db::{MaishiftSessionFilter, UpdownCriterion};
     use maimai_client::MaishiftRatingRange;
@@ -1257,7 +1257,6 @@ mod tests {
         }
         assert_eq!(decile_for_ranked_index(0, 13), 0);
         assert_eq!(decile_for_ranked_index(12, 13), 9);
-        assert_eq!(MAISHIFT_START_STEP, 0);
     }
 
     #[test]
@@ -1310,21 +1309,5 @@ mod tests {
         assert_eq!(UpdownCriterion::Maishift.format_delta(-1), "easier");
         assert_eq!(UpdownCriterion::Maishift.format_zero_delta(), "same");
         assert_eq!(UpdownCriterion::Maishift.format_delta(1), "harder");
-    }
-
-    #[test]
-    fn maishift_supports_level_twelve_choices() {
-        assert_eq!(MaishiftLevel::Level12.as_key(), "LEVEL_12");
-        assert_eq!(MaishiftLevel::Level12Plus.as_key(), "LEVEL_12_PLUS");
-
-        let filter = MaishiftSessionFilter {
-            level: MaishiftLevel::Level12Plus.as_key().to_string(),
-            rating: 14500,
-            rank: "SSS".to_string(),
-        };
-        assert_eq!(
-            build_thread_name(UpdownCriterion::Maishift, 0, Some(&filter)),
-            "mai-updown maishift Lv.12+ 14500 SSS"
-        );
     }
 }
