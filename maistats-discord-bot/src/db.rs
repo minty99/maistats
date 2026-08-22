@@ -108,17 +108,19 @@ pub(crate) struct PersistedUpdownSession {
     pub(crate) discord_user_id: serenity::UserId,
     pub(crate) thread_channel_id: serenity::ChannelId,
     pub(crate) pick_message_id: serenity::MessageId,
-    pub(crate) mode: UpdownMode,
+    pub(crate) criterion: UpdownCriterion,
     pub(crate) current_step: isize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum UpdownMode {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, poise::ChoiceParameter)]
+pub(crate) enum UpdownCriterion {
+    #[name = "internal_level"]
     InternalLevel,
+    #[name = "user_tier"]
     UserTier,
 }
 
-impl UpdownMode {
+impl UpdownCriterion {
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::InternalLevel => "internal_level",
@@ -130,8 +132,23 @@ impl UpdownMode {
         match value {
             "internal_level" => Ok(Self::InternalLevel),
             "user_tier" => Ok(Self::UserTier),
-            _ => Err(eyre::eyre!("unknown updown mode: {value}")),
+            _ => Err(eyre::eyre!("unknown updown criterion: {value}")),
         }
+    }
+}
+
+#[cfg(test)]
+mod updown_criterion_tests {
+    use super::UpdownCriterion;
+
+    #[test]
+    fn criterion_storage_names_are_stable() {
+        assert_eq!(UpdownCriterion::InternalLevel.as_str(), "internal_level");
+        assert_eq!(UpdownCriterion::UserTier.as_str(), "user_tier");
+        assert_eq!(
+            UpdownCriterion::from_db("internal_level").unwrap(),
+            UpdownCriterion::InternalLevel
+        );
     }
 }
 
@@ -140,7 +157,7 @@ pub(crate) async fn upsert_updown_session(
     discord_user_id: serenity::UserId,
     thread_channel_id: serenity::ChannelId,
     pick_message_id: serenity::MessageId,
-    mode: UpdownMode,
+    criterion: UpdownCriterion,
     current_step: isize,
     now_unix: i64,
 ) -> eyre::Result<()> {
@@ -168,7 +185,7 @@ ON CONFLICT(discord_user_id) DO UPDATE SET
     .bind(thread_channel_id.to_string())
     .bind(pick_message_id.to_string())
     .bind(current_step as i64)
-    .bind(mode.as_str())
+    .bind(criterion.as_str())
     .bind(now_unix)
     .execute(pool)
     .await
@@ -257,7 +274,8 @@ fn parse_updown_session_row(
         discord_user_id: serenity::UserId::new(parsed_user),
         thread_channel_id: serenity::ChannelId::new(parsed_thread),
         pick_message_id: serenity::MessageId::new(parsed_message),
-        mode: UpdownMode::from_db(&mode).wrap_err("parse mode from updown_sessions")?,
+        criterion: UpdownCriterion::from_db(&mode)
+            .wrap_err("parse criterion from updown_sessions")?,
         current_step: parsed_step,
     })
 }
@@ -337,7 +355,7 @@ mod tests {
             user_id,
             thread_id,
             pick_id,
-            UpdownMode::InternalLevel,
+            UpdownCriterion::InternalLevel,
             130,
             100,
         )
@@ -347,7 +365,7 @@ mod tests {
             .expect("session should exist");
         assert_eq!(stored.thread_channel_id, thread_id);
         assert_eq!(stored.pick_message_id, pick_id);
-        assert_eq!(stored.mode, UpdownMode::InternalLevel);
+        assert_eq!(stored.criterion, UpdownCriterion::InternalLevel);
         assert_eq!(stored.current_step, 130);
 
         let new_pick_id = serenity::MessageId::new(2002);
@@ -360,7 +378,7 @@ mod tests {
             .await?
             .expect("session should still exist");
         assert_eq!(stored.pick_message_id, new_pick_id);
-        assert_eq!(stored.mode, UpdownMode::InternalLevel);
+        assert_eq!(stored.criterion, UpdownCriterion::InternalLevel);
         assert_eq!(stored.current_step, 131);
 
         let other_thread_id = serenity::ChannelId::new(1002);
@@ -386,7 +404,7 @@ mod tests {
             user_id,
             thread_id,
             new_pick_id,
-            UpdownMode::UserTier,
+            UpdownCriterion::UserTier,
             1345,
             400,
         )
@@ -394,7 +412,7 @@ mod tests {
         let stored = get_updown_session(&pool, user_id)
             .await?
             .expect("session should update mode");
-        assert_eq!(stored.mode, UpdownMode::UserTier);
+        assert_eq!(stored.criterion, UpdownCriterion::UserTier);
         assert_eq!(stored.current_step, 1345);
 
         Ok(())
@@ -414,7 +432,7 @@ mod tests {
             user_id,
             thread_id,
             pick_id,
-            UpdownMode::InternalLevel,
+            UpdownCriterion::InternalLevel,
             130,
             100,
         )
