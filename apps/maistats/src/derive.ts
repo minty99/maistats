@@ -1,6 +1,5 @@
 import type {
   ChartType,
-  CompareScoreRow,
   DifficultyCategory,
   PlayRecordApiResponse,
   SongAliases,
@@ -303,64 +302,6 @@ export function buildScoreRows(
   }
 
   return rows;
-}
-
-export function buildCompareScoreRows(
-  ownRows: ScoreRow[],
-  rivalRows: ScoreRow[],
-): CompareScoreRow[] {
-  const ownByKey = new Map(ownRows.map((row) => [row.key, row]));
-  const rivalByKey = new Map(rivalRows.map((row) => [row.key, row]));
-  const orderedKeys = new Set<string>();
-  const hasScoreRecord = (row: ScoreRow | undefined) =>
-    row !== undefined && (row.achievementX10000 !== null || row.playCount !== null);
-
-  for (const row of ownRows) {
-    orderedKeys.add(row.key);
-  }
-  for (const row of rivalRows) {
-    orderedKeys.add(row.key);
-  }
-
-  return Array.from(orderedKeys)
-    .map((key): CompareScoreRow | null => {
-      const ownRow = ownByKey.get(key);
-      const rivalRow = rivalByKey.get(key);
-      const baseRow = ownRow ?? rivalRow;
-      if (!baseRow) {
-        return null;
-      }
-
-      const ownAchievementPercent = ownRow?.achievementPercent ?? null;
-      const rivalAchievementPercent = rivalRow?.achievementPercent ?? null;
-      const diffPercent =
-        ownAchievementPercent !== null && rivalAchievementPercent !== null
-          ? ownAchievementPercent - rivalAchievementPercent
-          : null;
-
-      return {
-        ...baseRow,
-        achievementX10000: ownRow?.achievementX10000 ?? null,
-        achievementPercent: ownAchievementPercent,
-        rank: ownRow?.rank ?? null,
-        fc: ownRow?.fc ?? null,
-        sync: ownRow?.sync ?? null,
-        dxScore: ownRow?.dxScore ?? null,
-        dxScoreMax: ownRow?.dxScoreMax ?? null,
-        dxRatio: ownRow?.dxRatio ?? null,
-        rating: ownRow?.rating ?? null,
-        latestPlayedAtUnix: ownRow?.latestPlayedAtUnix ?? null,
-        latestPlayedAtLabel: ownRow?.latestPlayedAtLabel ?? null,
-        daysSinceLastPlayed: ownRow?.daysSinceLastPlayed ?? null,
-        playCount: ownRow?.playCount ?? null,
-        rivalAchievementX10000: rivalRow?.achievementX10000 ?? null,
-        rivalAchievementPercent,
-        diffPercent,
-        hasOwnRecord: hasScoreRecord(ownRow),
-        hasRivalRecord: hasScoreRecord(rivalRow),
-      };
-    })
-    .filter((row): row is CompareScoreRow => row !== null);
 }
 
 export function buildPlaylogRows(

@@ -2,7 +2,6 @@ import {
   FC_ORDER_MAP,
   SCORE_RANK_ORDER_MAP,
   ScoreSortKey,
-  CompareSortKey,
   SYNC_ORDER_MAP,
   VERSION_ORDER_MAP,
   PlaylogSortKey,
@@ -18,7 +17,7 @@ import {
   ALL_FILTER_PRESET_ID,
   NA_FILTER_OPTION_ID,
 } from "./scoreFilterPresets";
-import type { CompareScoreRow, PlaylogRow, ScoreRank, ScoreRow } from "../types";
+import type { PlaylogRow, ScoreRank, ScoreRow } from "../types";
 
 export function computeScoreRankOptions(scoreData: ScoreRow[], locale: string): ScoreRank[] {
   const values = Array.from(
@@ -217,53 +216,6 @@ export function buildFilteredScoreRows({
       }
     }
 
-    return scoreSortDesc ? -result : result;
-  });
-
-  return rows;
-}
-
-interface BuildFilteredCompareScoreRowsParams extends Omit<BuildFilteredScoreRowsParams, 'scoreData' | 'scoreSortKey'> {
-  scoreData: CompareScoreRow[];
-  scoreSortKey: CompareSortKey;
-  rivalOnly: boolean;
-  bothPlayedOnly: boolean;
-}
-
-export function buildFilteredCompareScoreRows({
-  scoreSortKey,
-  scoreSortDesc,
-  rivalOnly,
-  bothPlayedOnly,
-  ...params
-}: BuildFilteredCompareScoreRowsParams): CompareScoreRow[] {
-  const sharedSortKey: ScoreSortKey =
-    scoreSortKey === 'rivalAchievement' || scoreSortKey === 'diff'
-      ? 'achievement'
-      : scoreSortKey;
-  const rows = (buildFilteredScoreRows({
-    ...params,
-    scoreSortKey: sharedSortKey,
-    scoreSortDesc,
-  }) as CompareScoreRow[]).filter((row) => {
-    if (rivalOnly) {
-      return row.hasRivalRecord && !row.hasOwnRecord;
-    }
-    if (bothPlayedOnly) {
-      return row.hasRivalRecord && row.hasOwnRecord;
-    }
-    return true;
-  });
-
-  if (scoreSortKey !== 'rivalAchievement' && scoreSortKey !== 'diff') {
-    return rows;
-  }
-
-  rows.sort((left, right) => {
-    const result =
-      scoreSortKey === 'rivalAchievement'
-        ? compareNullableNumber(left.rivalAchievementPercent, right.rivalAchievementPercent)
-        : compareNullableNumber(left.diffPercent, right.diffPercent);
     return scoreSortDesc ? -result : result;
   });
 

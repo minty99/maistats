@@ -247,13 +247,6 @@ export interface ScoreRow {
   playCount: number | null;
 }
 
-export interface CompareScoreRow extends ScoreRow {
-  rivalAchievementX10000: number | null;
-  rivalAchievementPercent: number | null;
-  diffPercent: number | null;
-  hasOwnRecord: boolean;
-  hasRivalRecord: boolean;
-}
 
 export interface ScoreHistoryPoint {
   key: string;

@@ -3,7 +3,6 @@ import type { ChartType, DifficultyCategory, FcStatus, ScoreRank, SyncStatus } f
 export const SONG_INFO_STORAGE_KEY = 'maistats.song-info-url';
 export const SONG_DATABASE_STORAGE_KEY = 'maistats.song-database-url';
 export const RECORD_STORAGE_KEY = 'maistats.record-url';
-export const COMPARE_RECORD_STORAGE_KEY = 'maistats.compare-record-url';
 export const SCORE_FILTERS_STORAGE_KEY = 'maistats.score-filters';
 export const PLAYLOG_FILTERS_STORAGE_KEY = 'maistats.playlog-filters';
 export const THEME_STORAGE_KEY = 'maistats.theme';
@@ -115,13 +114,6 @@ export type ScoreSortKey =
   | 'fc'
   | 'sync'
   | 'version';
-
-export type CompareSortKey =
-  | 'title'
-  | 'achievement'
-  | 'rivalAchievement'
-  | 'diff'
-  | 'internal';
 
 export type PlaylogSortKey =
   | 'playedAt'
