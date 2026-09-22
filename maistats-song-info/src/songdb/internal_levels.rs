@@ -153,9 +153,6 @@ fn build_lookup(
 
     let mut lookup: HashMap<LookupKey, LookupEntry> = HashMap::new();
     for sheet in sheets.iter().filter(|sheet| sheet.source.is_official()) {
-        let Some((_base_level, _is_plus)) = parse_displayed_level(&sheet.level) else {
-            continue;
-        };
         let Some(song) = song_by_identity.get(&sheet.song_identity) else {
             continue;
         };
@@ -634,7 +631,7 @@ mod tests {
             "ハオ",
             SongGenre::NiconicoVocaloid,
             DifficultyCategory::Expert,
-            "9+",
+            "6+",
         )];
         let lookup = build_lookup(&songs, &sheets).expect("build lookup");
         let ignored_titles = HashSet::new();
@@ -676,13 +673,7 @@ mod tests {
 
         let manual_override_rows =
             super::super::load_manual_override_rows().expect("load manual override rows");
-        let client = reqwest::Client::builder()
-            .build()
-            .expect("build reqwest client for manual internal level test");
-        let raw_songs = tokio::runtime::Runtime::new()
-            .expect("build tokio runtime for manual internal level test")
-            .block_on(super::super::fetch_maimai_songs(&client))
-            .expect("fetch official songs json");
+        let raw_songs = super::super::load_maimai_songs().expect("load official songs json");
         let raw_songs = super::super::filter_official_songs_by_title(
             raw_songs,
             &manual_override_rows.overridden_titles,

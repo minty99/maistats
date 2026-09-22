@@ -21,9 +21,10 @@ use manual_override::load_manual_override_rows;
 use sheet_versions::SheetVersionMap;
 
 pub const SONG_DATA_SUBDIR: &str = "song_data";
-const MAIMAI_SONGS_URL: &str = "https://maimai.sega.jp/data/maimai_songs.json";
 const IMAGE_BASE_URL: &str = "https://maimaidx.jp/maimai-mobile/img/Music/";
-const OFFICIAL_MAIMAI_JSON: &str = include_str!("data/maimai_official.json");
+// Keep the final CiRCLE PLUS data separate from the rolling Japanese snapshot.
+const CIRCLE_PLUS_OFFICIAL_MAIMAI_JSON: &str =
+    include_str!("data/maimai_circle_plus_official.json");
 
 #[derive(Debug, Deserialize)]
 struct RawSong {
@@ -200,7 +201,7 @@ impl SongDatabase {
             .cloned()
             .collect::<HashMap<_, _>>();
         let overridden_titles = manual_override_rows.overridden_titles.clone();
-        let raw_songs = fetch_maimai_songs(&client).await?;
+        let raw_songs = load_maimai_songs()?;
         let raw_songs = filter_official_songs_by_title(raw_songs, &overridden_titles)
             .wrap_err("filter official songs by manual override title")?;
 
@@ -323,13 +324,18 @@ fn build_data_root(
             .get(&il_key)
             .map(|il| il.internal_level.trim().to_string());
 
-        let (version_name, internal_level, region) = match &sheet.source {
+        let (level, version_name, internal_level, region) = match &sheet.source {
             SheetSource::Official => {
                 let version_name = sheet_versions
                     .get(&sheet.song_identity)
                     .and_then(|versions| versions.get(&sheet.sheet_type))
                     .cloned();
+                let level = internal_level_from_map
+                    .as_deref()
+                    .and_then(displayed_level_from_internal_level)
+                    .unwrap_or_else(|| sheet.level.clone());
                 (
+                    level,
                     version_name.clone(),
                     internal_level_from_map,
                     SongChartRegion {
@@ -343,6 +349,7 @@ fn build_data_root(
                 internal_level,
                 region,
             } => (
+                sheet.level.clone(),
                 Some(version_name.clone()),
                 internal_level.clone(),
                 region.clone(),
@@ -352,7 +359,7 @@ fn build_data_root(
         song.sheets.push(SongCatalogChart {
             chart_type: sheet.sheet_type.as_lowercase().to_string(),
             difficulty: sheet.difficulty.as_lowercase().to_string(),
-            level: sheet.level.clone(),
+            level,
             version_name,
             internal_level,
             region,
@@ -391,21 +398,8 @@ fn build_song_alias_map(
     aliases_by_identity
 }
 
-async fn fetch_maimai_songs(client: &reqwest::Client) -> eyre::Result<Vec<RawSong>> {
-    let _ = client;
-
-    // let response = client
-    //     .get(MAIMAI_SONGS_URL)
-    //     .send()
-    //     .await
-    //     .wrap_err("fetch maimai songs json")?;
-    // let response = response
-    //     .error_for_status()
-    //     .wrap_err("maimai songs json status")?;
-    // let body = response.text().await.wrap_err("read maimai songs json")?;
-    // parse_maimai_songs_json(&body)
-
-    parse_maimai_songs_json(OFFICIAL_MAIMAI_JSON)
+fn load_maimai_songs() -> eyre::Result<Vec<RawSong>> {
+    parse_maimai_songs_json(CIRCLE_PLUS_OFFICIAL_MAIMAI_JSON)
 }
 
 fn parse_maimai_songs_json(json: &str) -> eyre::Result<Vec<RawSong>> {
@@ -708,6 +702,25 @@ fn normalize_level(level: Option<&str>) -> Option<String> {
     }
 }
 
+fn displayed_level_from_internal_level(internal_level: &str) -> Option<String> {
+    let (base, decimal) = internal_level.trim().split_once('.')?;
+    if decimal.len() != 1 {
+        return None;
+    }
+
+    let base = base.parse::<u8>().ok()?;
+    let decimal = decimal.parse::<u8>().ok()?;
+    if decimal >= 10 {
+        return None;
+    }
+
+    if decimal >= 6 {
+        Some(format!("{base}+"))
+    } else {
+        Some(base.to_string())
+    }
+}
+
 fn is_truthy(value: &Option<String>) -> bool {
     value.as_deref().is_some_and(|text| !text.trim().is_empty())
 }
@@ -926,6 +939,27 @@ mod tests {
     }
 
     #[test]
+    fn derives_displayed_level_from_internal_level() {
+        assert_eq!(
+            displayed_level_from_internal_level("13.0"),
+            Some("13".to_string())
+        );
+        assert_eq!(
+            displayed_level_from_internal_level("13.5"),
+            Some("13".to_string())
+        );
+        assert_eq!(
+            displayed_level_from_internal_level("13.6"),
+            Some("13+".to_string())
+        );
+        assert_eq!(
+            displayed_level_from_internal_level(" 14.9 "),
+            Some("14+".to_string())
+        );
+        assert_eq!(displayed_level_from_internal_level("unknown"), None);
+    }
+
+    #[test]
     fn skips_utage_sheets() {
         let mut raw_song = raw_song_stub();
         raw_song.lev_utage = Some("14".to_string());
@@ -958,11 +992,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_official_maimai_songs_fixture() {
-        let fixture = include_str!("data/maimai_official.json");
-        let raw_songs = parse_maimai_songs_json(fixture).expect("parse official songs fixture");
-        let (songs, sheets) =
-            load_official_rows_from_json(fixture).expect("extract official rows from fixture");
+    fn parses_circle_plus_maimai_songs_fixture() {
+        let raw_songs = parse_maimai_songs_json(CIRCLE_PLUS_OFFICIAL_MAIMAI_JSON)
+            .expect("load CiRCLE PLUS songs fixture");
+        let raw_song_count = raw_songs.len();
 
         assert!(
             raw_songs.len() > 1000,
@@ -972,7 +1005,23 @@ mod tests {
             raw_songs.iter().any(|song| song.version.starts_with("265")),
             "expected JP songs fixture to contain CiRCLE PLUS songs"
         );
-        assert_eq!(songs.len(), raw_songs.len());
+        assert!(raw_songs.iter().all(|song| {
+            song.version
+                .parse::<i64>()
+                .is_ok_and(|version| version < 27_000)
+        }));
+        let true_love_song = raw_songs
+            .iter()
+            .find(|song| song.title == "True Love Song")
+            .expect("expected True Love Song in official songs fixture");
+        assert_eq!(
+            true_love_song.lev_adv.as_deref(),
+            Some("7"),
+            "keep the pinned CiRCLE PLUS level when the rolling JP snapshot re-rates a chart"
+        );
+
+        let (songs, sheets) = build_official_rows(raw_songs).expect("extract official rows");
+        assert_eq!(songs.len(), raw_song_count);
         assert!(
             sheets.len() > songs.len(),
             "expected multiple sheets across official songs"
@@ -990,9 +1039,10 @@ mod tests {
 
     #[test]
     fn build_data_root_sets_region_flags_for_official_and_manual_override() {
+        let official_identity = SongIdentity::new("Official Song", SongGenre::Maimai, "");
         let songs = vec![
             SongRow {
-                identity: SongIdentity::new("Official Song", SongGenre::Maimai, ""),
+                identity: official_identity.clone(),
                 image_name: "official.png".to_string(),
                 image_url: "https://example.com/official.png".to_string(),
                 release_date: None,
@@ -1014,14 +1064,14 @@ mod tests {
         ];
         let sheets = vec![
             SheetRow {
-                song_identity: SongIdentity::new("Official Song", SongGenre::Maimai, ""),
+                song_identity: official_identity.clone(),
                 sheet_type: ChartType::Std,
                 difficulty: DifficultyCategory::Master,
-                level: "12+".to_string(),
+                level: "12".to_string(),
                 source: SheetSource::Official,
             },
             SheetRow {
-                song_identity: SongIdentity::new("Official Song", SongGenre::Maimai, ""),
+                song_identity: official_identity.clone(),
                 sheet_type: ChartType::Dx,
                 difficulty: DifficultyCategory::Master,
                 level: "12+".to_string(),
@@ -1044,15 +1094,28 @@ mod tests {
         ];
         let mut sheet_versions = SheetVersionMap::new();
         sheet_versions.insert(
-            SongIdentity::new("Official Song", SongGenre::Maimai, ""),
+            official_identity.clone(),
             HashMap::from([(ChartType::Std, "Splash".to_string())]),
         );
+        let internal_levels = HashMap::from([(
+            (
+                official_identity.clone(),
+                ChartType::Std,
+                DifficultyCategory::Master,
+            ),
+            InternalLevelRow {
+                song_identity: official_identity,
+                sheet_type: ChartType::Std,
+                difficulty: DifficultyCategory::Master,
+                internal_level: "12.7".to_string(),
+            },
+        )]);
 
         let catalog = build_data_root(
             &songs,
             &sheets,
             &sheet_versions,
-            &HashMap::new(),
+            &internal_levels,
             &HashMap::new(),
         );
         let official = catalog
@@ -1072,6 +1135,8 @@ mod tests {
             .expect("official dx exists");
         assert!(official_std.region.jp);
         assert!(official_std.region.intl);
+        assert_eq!(official_std.level, "12+");
+        assert_eq!(official_std.internal_level.as_deref(), Some("12.7"));
         assert!(official_dx.region.jp);
         assert!(!official_dx.region.intl);
 
