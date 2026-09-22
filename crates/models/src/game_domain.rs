@@ -131,6 +131,7 @@ fn parse_maimai_version(value: &str) -> Option<MaimaiVersion> {
         "prismplus" => Some(MaimaiVersion::PrismPlus),
         "circle" => Some(MaimaiVersion::Circle),
         "circleplus" => Some(MaimaiVersion::CirclePlus),
+        "magical" => Some(MaimaiVersion::Magical),
         _ => None,
     }
 }
@@ -417,6 +418,7 @@ pub enum MaimaiVersion {
     PrismPlus = 24,
     Circle = 25,
     CirclePlus = 26,
+    Magical = 27,
 }
 
 impl MaimaiVersion {
@@ -457,6 +459,7 @@ impl MaimaiVersion {
             Self::PrismPlus => "PRiSM PLUS",
             Self::Circle => "CiRCLE",
             Self::CirclePlus => "CiRCLE PLUS",
+            Self::Magical => "MAGiCAL",
         }
     }
 
@@ -786,9 +789,10 @@ mod tests {
     }
 
     #[test]
-    fn intl_availability_includes_circle_plus() {
+    fn intl_availability_stops_at_circle_plus() {
         assert!(MaimaiVersion::Circle.is_available_in_intl());
         assert!(MaimaiVersion::CirclePlus.is_available_in_intl());
+        assert!(!MaimaiVersion::Magical.is_available_in_intl());
     }
 
     #[test]
@@ -832,6 +836,14 @@ mod tests {
         assert_eq!(
             "circle plus".parse::<MaimaiVersion>().ok(),
             Some(MaimaiVersion::CirclePlus)
+        );
+        assert_eq!(
+            "MAGiCAL".parse::<MaimaiVersion>().ok(),
+            Some(MaimaiVersion::Magical)
+        );
+        assert_eq!(
+            "27".parse::<MaimaiVersion>().ok(),
+            Some(MaimaiVersion::Magical)
         );
         assert_eq!(
             "music_icon_sssp.png".parse::<ScoreRank>().ok(),
